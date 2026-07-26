@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, PartyPopper, PlusCircle, Sparkles } from "lucide-react";
+import {
+  CalendarDays,
+  LayoutDashboard,
+  PartyPopper,
+  PlusCircle,
+  Sparkles,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { roleLabel } from "@/lib/auth";
@@ -10,6 +16,7 @@ import type { User } from "@/types/auth";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/calendario", label: "Calendário", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
 ] as const;
@@ -47,10 +54,13 @@ export function Sidebar({ user }: SidebarProps) {
           const active =
             item.href === "/dashboard"
               ? pathname === "/dashboard"
-              : pathname === item.href ||
-                (item.href === "/vendas" &&
-                  pathname.startsWith("/vendas") &&
-                  !pathname.startsWith("/vendas/nova"));
+              : item.href === "/calendario"
+                ? pathname === "/calendario" ||
+                  pathname.startsWith("/calendario/")
+                : pathname === item.href ||
+                  (item.href === "/vendas" &&
+                    pathname.startsWith("/vendas") &&
+                    !pathname.startsWith("/vendas/nova"));
 
           return (
             <Link

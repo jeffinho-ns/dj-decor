@@ -1,4 +1,4 @@
-import { StatusFesta } from "@prisma/client";
+import { StatusFesta, TamanhoDecoracao } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
 
@@ -7,9 +7,17 @@ const createFestaSchema = z.object({
   telefone: z.string().min(8, "Telefone é obrigatório"),
   tema: z.string().min(2, "Tema é obrigatório"),
   dataEvento: z.coerce.date({
-    required_error: "Data do evento é obrigatória",
-    invalid_type_error: "Data do evento inválida",
+    required_error: "Data/hora do evento é obrigatória",
+    invalid_type_error: "Data/hora do evento inválida",
   }),
+  horarioMontagem: z.coerce.date({
+    required_error: "Horário de montagem é obrigatório",
+    invalid_type_error: "Horário de montagem inválido",
+  }),
+  tamanhoDecoracao: z.nativeEnum(TamanhoDecoracao, {
+    required_error: "Tamanho da decoração é obrigatório",
+  }),
+  itensExtras: z.array(z.string().min(1)).optional().default([]),
   endereco: z.string().min(5, "Endereço é obrigatório"),
   valor: z.coerce.number().positive("Valor deve ser positivo"),
   status: z.nativeEnum(StatusFesta).optional().default(StatusFesta.ORCAMENTO),
@@ -19,6 +27,9 @@ const createFestaSchema = z.object({
 const updateFestaSchema = z.object({
   tema: z.string().min(2).optional(),
   dataEvento: z.coerce.date().optional(),
+  horarioMontagem: z.coerce.date().optional(),
+  tamanhoDecoracao: z.nativeEnum(TamanhoDecoracao).optional(),
+  itensExtras: z.array(z.string().min(1)).optional(),
   endereco: z.string().min(5).optional(),
   valor: z.coerce.number().positive().optional(),
   status: z.nativeEnum(StatusFesta).optional(),
@@ -38,7 +49,7 @@ export class FestasService {
           select: { id: true, nome: true, email: true, role: true },
         },
       },
-      orderBy: { criadoEm: "desc" },
+      orderBy: [{ dataEvento: "asc" }, { horarioMontagem: "asc" }],
     });
   }
 
@@ -76,9 +87,12 @@ export class FestasService {
     return prisma.festa.create({
       data: {
         dataEvento: data.dataEvento,
+        horarioMontagem: data.horarioMontagem,
         status: data.status,
         valor: data.valor,
         tema: data.tema,
+        tamanhoDecoracao: data.tamanhoDecoracao,
+        itensExtras: data.itensExtras,
         endereco: data.endereco,
         clienteId: cliente.id,
         vendedorId,
@@ -111,6 +125,13 @@ export class FestasService {
       data: {
         ...(data.tema !== undefined ? { tema: data.tema } : {}),
         ...(data.dataEvento !== undefined ? { dataEvento: data.dataEvento } : {}),
+        ...(data.horarioMontagem !== undefined
+          ? { horarioMontagem: data.horarioMontagem }
+          : {}),
+        ...(data.tamanhoDecoracao !== undefined
+          ? { tamanhoDecoracao: data.tamanhoDecoracao }
+          : {}),
+        ...(data.itensExtras !== undefined ? { itensExtras: data.itensExtras } : {}),
         ...(data.endereco !== undefined ? { endereco: data.endereco } : {}),
         ...(data.valor !== undefined ? { valor: data.valor } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),
@@ -136,7 +157,6 @@ export class FestasService {
       return existing;
     }
 
-    // Seed automático do vendedor mock para desenvolvimento
     if (vendedorId === "mock-vendedor-id") {
       return prisma.user.create({
         data: {

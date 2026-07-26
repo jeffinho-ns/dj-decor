@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/calendario", label: "Calendário" },
   { href: "/vendas", label: "Vendas" },
   { href: "/vendas/nova", label: "Nova Venda" },
 ] as const;
@@ -17,7 +18,10 @@ export function MobileNav() {
   return (
     <nav className="mt-3 flex gap-4 overflow-x-auto border-t border-border/60 pt-3 md:hidden">
       {items.map((item) => {
-        const active = pathname === item.href;
+        const active =
+          item.href === "/calendario"
+            ? pathname === "/calendario" || pathname.startsWith("/calendario/")
+            : pathname === item.href;
         return (
           <Link
             key={item.href}

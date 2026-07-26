@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, PartyPopper, Sparkles, Wallet } from "lucide-react";
+import { CalendarClock, CalendarDays, PartyPopper, Sparkles, Wallet } from "lucide-react";
 
 import { CtaBanner } from "@/components/dashboard/cta-banner";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
@@ -98,6 +98,12 @@ export default async function DashboardPage() {
         {user.role !== "VENDEDOR" ? (
           <QuickLinks
             links={[
+              {
+                href: "/calendario",
+                label: "Calendário",
+                description: "Agenda do mês com horários de montagem",
+                icon: CalendarDays,
+              },
               {
                 href: "/vendas",
                 label: "Vendas",

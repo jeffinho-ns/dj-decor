@@ -81,7 +81,7 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
 | GET | `/api/health` | Health check |
 | GET | `/api/festas` | Listar festas (autenticado) |
 | GET | `/api/festas/:id` | Detalhe |
-| POST | `/api/festas` | Criar venda |
+| POST | `/api/festas` | Criar venda (inclui horário festa/montagem, tamanho, extras) |
 | PUT | `/api/festas/:id` | Atualizar |
 | DELETE | `/api/festas/:id` | Remover |
 | POST | `/api/webhooks/atendimento-ia` | Webhook IA/WhatsApp (200) |
@@ -92,6 +92,7 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
 |------|--------|
 | `/login` | Público |
 | `/dashboard` | Autenticado (visão por role) |
+| `/calendario` | Autenticado — agenda mensal + detalhe do dia |
 | `/vendas` | Autenticado |
 | `/vendas/nova` | Autenticado |
 
@@ -123,7 +124,7 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
 
 - **User** — nome (login), senha, role ADMIN (SuperAdmin) | GERENTE | VENDEDOR; e-mail opcional (perfil futuro)
 - **Cliente** — nome, telefone
-- **Festa** — data, status (ORCAMENTO | FECHADO | CONCLUIDO), valor, tema, endereço; relaciona Cliente + User (vendedor)
+- **Festa** — `dataEvento` (data + horário da festa), `horarioMontagem`, `tamanhoDecoracao` (P|M|G|GG), `itensExtras`, tema, endereço, status (ORCAMENTO | FECHADO | CONCLUIDO), valor; relaciona Cliente + User (vendedor)
 
 ## Repositório
 

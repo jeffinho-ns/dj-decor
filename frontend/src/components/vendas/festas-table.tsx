@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { Festa, StatusFesta } from "@/types/festa";
+import type { Festa, StatusFesta, TamanhoDecoracao } from "@/types/festa";
 
 const statusLabel: Record<StatusFesta, string> = {
   ORCAMENTO: "Orçamento",
@@ -25,6 +25,13 @@ const statusClass: Record<StatusFesta, string> = {
   ORCAMENTO: "bg-champagne/12 text-champagne",
   FECHADO: "bg-status-closed/14 text-status-closed",
   CONCLUIDO: "bg-status-done/14 text-status-done",
+};
+
+const tamanhoLabel: Record<TamanhoDecoracao, string> = {
+  P: "P",
+  M: "M",
+  G: "G",
+  GG: "GG",
 };
 
 interface FestasTableProps {
@@ -46,32 +53,51 @@ export function FestasTable({ festas }: FestasTableProps) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/70 bg-card/40">
+    <div className="overflow-x-auto rounded-xl border border-border/70 bg-card/40">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead>Cliente</TableHead>
-            <TableHead>Telefone</TableHead>
-            <TableHead>Tema</TableHead>
-            <TableHead>Data do evento</TableHead>
+            <TableHead>Decoração</TableHead>
+            <TableHead>Tam.</TableHead>
+            <TableHead>Data / festa</TableHead>
+            <TableHead>Montagem</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Valor</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {festas.map((festa) => (
-            <TableRow key={festa.id} className="border-border/60 hover:bg-champagne/[0.03]">
-              <TableCell className="font-medium text-foreground">
-                {festa.cliente.nome}
+            <TableRow
+              key={festa.id}
+              className="border-border/60 hover:bg-champagne/[0.03]"
+            >
+              <TableCell>
+                <p className="font-medium text-foreground">
+                  {festa.cliente.nome}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {festa.cliente.telefone}
+                </p>
               </TableCell>
               <TableCell className="text-muted-foreground">
-                {festa.cliente.telefone}
+                <p>{festa.tema}</p>
+                {festa.itensExtras?.length ? (
+                  <p className="mt-0.5 text-xs text-muted-foreground/80">
+                    + {festa.itensExtras.join(", ")}
+                  </p>
+                ) : null}
               </TableCell>
               <TableCell className="text-muted-foreground">
-                {festa.tema}
+                {tamanhoLabel[festa.tamanhoDecoracao] ?? festa.tamanhoDecoracao}
               </TableCell>
               <TableCell className="text-muted-foreground">
-                {format(new Date(festa.dataEvento), "dd/MM/yyyy", {
+                {format(new Date(festa.dataEvento), "dd/MM/yyyy HH:mm", {
+                  locale: ptBR,
+                })}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {format(new Date(festa.horarioMontagem), "HH:mm", {
                   locale: ptBR,
                 })}
               </TableCell>

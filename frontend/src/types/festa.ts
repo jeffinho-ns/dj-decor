@@ -1,6 +1,7 @@
 import type { User } from "./auth";
 
 export type StatusFesta = "ORCAMENTO" | "FECHADO" | "CONCLUIDO";
+export type TamanhoDecoracao = "P" | "M" | "G" | "GG";
 
 export interface Cliente {
   id: string;
@@ -11,9 +12,12 @@ export interface Cliente {
 export interface Festa {
   id: string;
   dataEvento: string;
+  horarioMontagem: string;
   status: StatusFesta;
   valor: string | number;
   tema: string;
+  tamanhoDecoracao: TamanhoDecoracao;
+  itensExtras: string[];
   endereco: string;
   criadoEm: string;
   clienteId: string;
@@ -27,6 +31,9 @@ export interface CreateFestaPayload {
   telefone: string;
   tema: string;
   dataEvento: string;
+  horarioMontagem: string;
+  tamanhoDecoracao: TamanhoDecoracao;
+  itensExtras?: string[];
   endereco: string;
   valor: number;
 }
