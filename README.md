@@ -113,18 +113,22 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
    - **Start:** `npx prisma migrate deploy && npx prisma db seed && npm start`
    - **Environment:**
      - `DATABASE_URL`
-     - `FRONTEND_URL` = URL da Vercel (ex: `https://dj-decor-r.vercel.app`)
+     - `FRONTEND_URL` = `https://dj-decor.vercel.app`
      - `JWT_SECRET` (gere um valor forte; o `render.yaml` pode gerar automaticamente)
      - `JWT_EXPIRES_IN` = `7d`
      - `NODE_ENV` = `production`
 
 ### Frontend (Vercel)
 
-1. Importe o repositório na Vercel.
+Produção única: projeto **dj-decor** → https://dj-decor.vercel.app
+
+1. Importe o repositório na Vercel (um projeto só).
 2. **Root Directory:** `frontend`
 3. Environment:
    - `NEXT_PUBLIC_API_URL` = URL do Web Service no Render (ex: `https://dj-decor.onrender.com`)
 4. Redeploy após alterar variáveis `NEXT_PUBLIC_*`.
+
+Não mantenha um segundo projeto Vercel no mesmo repositório (ex.: `dj-decor-r`); isso gera deploys duplicados.
 
 ## Modelo de dados (Prisma)
 
