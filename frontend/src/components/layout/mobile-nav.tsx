@@ -7,8 +7,7 @@ import { cn } from "@/lib/utils";
 import type { User } from "@/types/auth";
 
 const DEFAULT_ITEMS = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/calendario", label: "Calendário" },
+  { href: "/dashboard", label: "Agenda" },
   { href: "/vendas", label: "Vendas" },
   { href: "/vendas/nova", label: "Nova Venda" },
   { href: "/perfil", label: "Perfil" },
@@ -16,7 +15,7 @@ const DEFAULT_ITEMS = [
 
 const MONTADOR_ITEMS = [
   { href: "/montagem", label: "Montagem" },
-  { href: "/calendario", label: "Calendário" },
+  { href: "/dashboard", label: "Agenda" },
   { href: "/perfil", label: "Perfil" },
 ] as const;
 
@@ -32,8 +31,11 @@ export function MobileNav({ user }: MobileNavProps) {
     <nav className="mt-3 flex gap-4 overflow-x-auto border-t border-border/60 pt-3 md:hidden">
       {items.map((item) => {
         const active =
-          item.href === "/calendario"
-            ? pathname === "/calendario" || pathname.startsWith("/calendario/")
+          item.href === "/dashboard"
+            ? pathname === "/dashboard" ||
+              pathname.startsWith("/dashboard/") ||
+              pathname === "/calendario" ||
+              pathname.startsWith("/calendario/")
             : item.href === "/montagem"
               ? pathname === "/montagem" || pathname.startsWith("/montagem/")
               : pathname === item.href;

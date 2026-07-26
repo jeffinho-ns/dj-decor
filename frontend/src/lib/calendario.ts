@@ -69,9 +69,35 @@ export function monthSummary(festas: Festa[], month: Date) {
   const inMonth = festas.filter((festa) =>
     isSameMonth(parseISO(festa.dataEvento), month)
   );
+
+  let valorFechado = 0;
+  let valorTotal = 0;
+  let fechadas = 0;
+  let orcamentos = 0;
+  let concluidas = 0;
+
+  for (const festa of inMonth) {
+    const valor =
+      typeof festa.valor === "string" ? Number(festa.valor) : festa.valor;
+    const amount = Number.isFinite(valor) ? valor : 0;
+    valorTotal += amount;
+
+    if (festa.status === "FECHADO") {
+      fechadas += 1;
+      valorFechado += amount;
+    } else if (festa.status === "ORCAMENTO") {
+      orcamentos += 1;
+    } else if (festa.status === "CONCLUIDO") {
+      concluidas += 1;
+    }
+  }
+
   return {
     total: inMonth.length,
-    fechadas: inMonth.filter((festa) => festa.status === "FECHADO").length,
-    orcamentos: inMonth.filter((festa) => festa.status === "ORCAMENTO").length,
+    fechadas,
+    orcamentos,
+    concluidas,
+    valorFechado,
+    valorTotal,
   };
 }

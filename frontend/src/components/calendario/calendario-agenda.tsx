@@ -8,7 +8,16 @@ import {
   subMonths,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Clock3, MapPin, Package } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  MapPin,
+  Package,
+  Phone,
+  UserRound,
+  Wallet,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +28,7 @@ import {
   monthSummary,
   toDayKey,
 } from "@/lib/calendario";
+import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Festa, StatusFesta } from "@/types/festa";
 
@@ -106,22 +116,36 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
           <p>
-            <span className="font-medium text-foreground">{summary.total}</span>{" "}
-            festas no mês
+            <span className="font-medium tabular-nums text-foreground">
+              {summary.total}
+            </span>{" "}
+            festas
           </p>
           <p>
-            <span className="font-medium text-foreground">
+            <span className="font-medium tabular-nums text-status-closed">
               {summary.fechadas}
             </span>{" "}
             fechadas
           </p>
           <p>
-            <span className="font-medium text-foreground">
+            <span className="font-medium tabular-nums text-champagne">
               {summary.orcamentos}
             </span>{" "}
             orçamentos
+          </p>
+          <p>
+            <span className="font-medium tabular-nums text-status-done">
+              {summary.concluidas}
+            </span>{" "}
+            concluídas
+          </p>
+          <p>
+            <span className="font-medium tabular-nums text-foreground">
+              {formatCurrency(summary.valorFechado)}
+            </span>{" "}
+            valor fechado
           </p>
         </div>
 
@@ -206,60 +230,94 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
         </p>
 
         <div className="mt-5 space-y-3">
-          {selectedFestas.map((festa) => (
-            <article
-              key={festa.id}
-              className="rounded-xl border border-border/60 bg-background/25 p-3.5"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-medium text-foreground">
-                    {festa.cliente.nome}
-                  </p>
-                  <p className="text-sm text-champagne">{festa.tema}</p>
-                </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium",
-                    statusBadge[festa.status]
-                  )}
-                >
-                  {statusLabel[festa.status]}
-                </span>
-              </div>
+          {selectedFestas.map((festa) => {
+            const isFechado = festa.status === "FECHADO";
 
-              <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  <Clock3 className="size-3.5 shrink-0 text-champagne/80" />
-                  Montagem{" "}
-                  <span className="font-medium text-foreground">
-                    {format(parseISO(festa.horarioMontagem), "HH:mm")}
+            return (
+              <article
+                key={festa.id}
+                className={cn(
+                  "rounded-xl border bg-background/25 p-3.5",
+                  isFechado
+                    ? "border-status-closed/45 bg-status-closed/[0.06]"
+                    : "border-border/60"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {festa.cliente.nome}
+                    </p>
+                    <p className="text-sm text-champagne">{festa.tema}</p>
+                  </div>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium",
+                      statusBadge[festa.status],
+                      isFechado && "ring-1 ring-status-closed/35"
+                    )}
+                  >
+                    {statusLabel[festa.status]}
                   </span>
-                  <span className="text-muted-foreground/50">·</span>
-                  Festa{" "}
-                  <span className="font-medium text-foreground">
-                    {format(parseISO(festa.dataEvento), "HH:mm")}
-                  </span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Package className="size-3.5 shrink-0 text-champagne/80" />
-                  Tamanho{" "}
-                  <span className="font-medium text-foreground">
-                    {festa.tamanhoDecoracao}
-                  </span>
-                  {festa.itensExtras?.length ? (
-                    <span className="truncate">
-                      · {festa.itensExtras.join(", ")}
+                </div>
+
+                <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <Clock3 className="size-3.5 shrink-0 text-champagne/80" />
+                    Montagem{" "}
+                    <span className="font-medium text-foreground">
+                      {format(parseISO(festa.horarioMontagem), "HH:mm")}
                     </span>
-                  ) : null}
-                </li>
-                <li className="flex items-start gap-2">
-                  <MapPin className="mt-0.5 size-3.5 shrink-0 text-champagne/80" />
-                  <span>{festa.endereco}</span>
-                </li>
-              </ul>
-            </article>
-          ))}
+                    <span className="text-muted-foreground/50">·</span>
+                    Festa{" "}
+                    <span className="font-medium text-foreground">
+                      {format(parseISO(festa.dataEvento), "HH:mm")}
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Phone className="size-3.5 shrink-0 text-champagne/80" />
+                    <span className="font-medium text-foreground">
+                      {festa.cliente.telefone || "—"}
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <UserRound className="size-3.5 shrink-0 text-champagne/80" />
+                    Vendedor{" "}
+                    <span className="font-medium text-foreground">
+                      {festa.vendedor?.nome ?? "—"}
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Wallet className="size-3.5 shrink-0 text-champagne/80" />
+                    <span
+                      className={cn(
+                        "font-medium tabular-nums",
+                        isFechado ? "text-status-closed" : "text-foreground"
+                      )}
+                    >
+                      {formatCurrency(festa.valor)}
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Package className="size-3.5 shrink-0 text-champagne/80" />
+                    Tamanho{" "}
+                    <span className="font-medium text-foreground">
+                      {festa.tamanhoDecoracao}
+                    </span>
+                    {festa.itensExtras?.length ? (
+                      <span className="truncate">
+                        · {festa.itensExtras.join(", ")}
+                      </span>
+                    ) : null}
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <MapPin className="mt-0.5 size-3.5 shrink-0 text-champagne/80" />
+                    <span>{festa.endereco}</span>
+                  </li>
+                </ul>
+              </article>
+            );
+          })}
         </div>
       </aside>
     </div>

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   Hammer,
-  LayoutDashboard,
   PartyPopper,
   PlusCircle,
   Sparkles,
@@ -17,8 +16,7 @@ import { roleLabel } from "@/lib/auth";
 import type { User } from "@/types/auth";
 
 const DEFAULT_NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/calendario", label: "Calendário", icon: CalendarDays },
+  { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
   { href: "/perfil", label: "Perfil", icon: UserRound },
@@ -26,7 +24,7 @@ const DEFAULT_NAV = [
 
 const MONTADOR_NAV = [
   { href: "/montagem", label: "Montagem", icon: Hammer },
-  { href: "/calendario", label: "Calendário", icon: CalendarDays },
+  { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/perfil", label: "Perfil", icon: UserRound },
 ] as const;
 
@@ -35,8 +33,13 @@ interface SidebarProps {
 }
 
 function isNavActive(pathname: string, href: string): boolean {
-  if (href === "/calendario") {
-    return pathname === "/calendario" || pathname.startsWith("/calendario/");
+  if (href === "/dashboard") {
+    return (
+      pathname === "/dashboard" ||
+      pathname.startsWith("/dashboard/") ||
+      pathname === "/calendario" ||
+      pathname.startsWith("/calendario/")
+    );
   }
   if (href === "/montagem") {
     return pathname === "/montagem" || pathname.startsWith("/montagem/");

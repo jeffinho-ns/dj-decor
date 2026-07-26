@@ -119,7 +119,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
         },
         token
       );
-      router.push("/calendario");
+      router.push("/dashboard");
       router.refresh();
     } catch (error) {
       setSubmitError(

@@ -96,8 +96,8 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
 | Rota | Acesso |
 |------|--------|
 | `/login` | Público |
-| `/dashboard` | Autenticado (visão por role) |
-| `/calendario` | Autenticado — agenda mensal + detalhe do dia |
+| `/dashboard` | Autenticado — agenda mensal (home pós-login) com status e valores |
+| `/calendario` | Redireciona para `/dashboard` |
 | `/vendas` | Autenticado |
 | `/vendas/nova` | Autenticado |
 | `/perfil` | Autenticado (todos os roles, incluindo Montador) — trocar e-mail/senha |

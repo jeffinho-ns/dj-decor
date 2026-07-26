@@ -61,7 +61,7 @@ export function MontagemHoje({ festas, token }: MontagemHojeProps) {
           </p>
         </div>
         <Link
-          href="/calendario"
+          href="/dashboard"
           className="inline-flex shrink-0 items-center gap-1.5 text-sm text-champagne transition-colors hover:text-champagne/80"
         >
           <CalendarDays className="size-4" />

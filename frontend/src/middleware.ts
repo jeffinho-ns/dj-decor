@@ -10,7 +10,7 @@ const PROTECTED_PREFIXES = [
   "/montagem",
   "/perfil",
 ];
-const VENDEDOR_ONLY_PREFIXES = ["/dashboard", "/vendas"];
+const VENDEDOR_ONLY_PREFIXES = ["/vendas"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
