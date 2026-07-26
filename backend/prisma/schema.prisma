@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  GERENTE
+  VENDEDOR
+}
+
+enum StatusFesta {
+  ORCAMENTO
+  FECHADO
+  CONCLUIDO
+}
+
+model User {
+  id     String @id @default(cuid())
+  nome   String
+  email  String @unique
+  senha  String
+  role   Role   @default(VENDEDOR)
+  festas Festa[]
+
+  @@map("users")
+}
+
+model Cliente {
+  id       String  @id @default(cuid())
+  nome     String
+  telefone String
+  festas   Festa[]
+
+  @@map("clientes")
+}
+
+model Festa {
+  id          String      @id @default(cuid())
+  dataEvento  DateTime    @map("data_evento")
+  status      StatusFesta @default(ORCAMENTO)
+  valor       Decimal     @db.Decimal(10, 2)
+  tema        String
+  endereco    String
+  criadoEm    DateTime    @default(now()) @map("criado_em")
+
+  clienteId  String @map("cliente_id")
+  cliente    Cliente @relation(fields: [clienteId], references: [id])
+
+  vendedorId String @map("vendedor_id")
+  vendedor   User   @relation(fields: [vendedorId], references: [id])
+
+  @@map("festas")
+}
