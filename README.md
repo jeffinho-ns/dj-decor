@@ -77,7 +77,7 @@ Opcional: `X-User-Id` para associar a um `User` existente.
 1. Crie um PostgreSQL no Render e copie a `DATABASE_URL` (Internal ou External).
 2. Crie um Web Service apontando para este repositório:
    - **Root Directory:** `back-end`
-   - **Build Command:** `npm install && npx prisma generate && npm run build`
+   - **Build Command:** `npm install --include=dev && npx prisma generate && npm run build`
    - **Start Command:** `npx prisma migrate deploy && npm start`
    - **Environment:**
      - `DATABASE_URL`

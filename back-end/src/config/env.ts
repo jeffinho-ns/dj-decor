@@ -12,11 +12,20 @@ const envSchema = z.object({
     .default("development"),
 });
 
-const parsed = envSchema.safeParse(process.env);
+type Env = z.infer<typeof envSchema>;
 
-if (!parsed.success) {
-  console.error("Variáveis de ambiente inválidas:", parsed.error.flatten().fieldErrors);
-  process.exit(1);
+function loadEnv(): Env {
+  const parsed = envSchema.safeParse(process.env);
+
+  if (!parsed.success) {
+    console.error(
+      "Variáveis de ambiente inválidas:",
+      parsed.error.flatten().fieldErrors
+    );
+    process.exit(1);
+  }
+
+  return parsed.data;
 }
 
-export const env = parsed.data;
+export const env: Env = loadEnv();
