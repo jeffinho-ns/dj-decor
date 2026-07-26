@@ -11,8 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Festa, StatusFesta } from "@/types/festa";
+import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { Festa, StatusFesta } from "@/types/festa";
 
 const statusLabel: Record<StatusFesta, string> = {
   ORCAMENTO: "Orçamento",
@@ -21,18 +22,10 @@ const statusLabel: Record<StatusFesta, string> = {
 };
 
 const statusClass: Record<StatusFesta, string> = {
-  ORCAMENTO: "bg-amber-100 text-amber-800",
-  FECHADO: "bg-sky-100 text-sky-800",
-  CONCLUIDO: "bg-emerald-100 text-emerald-800",
+  ORCAMENTO: "bg-champagne/12 text-champagne",
+  FECHADO: "bg-status-closed/14 text-status-closed",
+  CONCLUIDO: "bg-status-done/14 text-status-done",
 };
-
-function formatCurrency(value: string | number): string {
-  const amount = typeof value === "string" ? Number(value) : value;
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(Number.isFinite(amount) ? amount : 0);
-}
 
 interface FestasTableProps {
   festas: Festa[];
@@ -41,8 +34,10 @@ interface FestasTableProps {
 export function FestasTable({ festas }: FestasTableProps) {
   if (festas.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-background px-6 py-16 text-center">
-        <p className="text-sm font-medium">Nenhuma venda encontrada</p>
+      <div className="rounded-xl border border-dashed border-border px-6 py-16 text-center">
+        <p className="text-sm font-medium text-foreground">
+          Nenhuma venda encontrada
+        </p>
         <p className="mt-1 text-sm text-muted-foreground">
           Cadastre a primeira festa em Nova Venda.
         </p>
@@ -51,10 +46,10 @@ export function FestasTable({ festas }: FestasTableProps) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-background">
+    <div className="overflow-hidden rounded-xl border border-border/70 bg-card/40">
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="hover:bg-transparent">
             <TableHead>Cliente</TableHead>
             <TableHead>Telefone</TableHead>
             <TableHead>Tema</TableHead>
@@ -65,11 +60,17 @@ export function FestasTable({ festas }: FestasTableProps) {
         </TableHeader>
         <TableBody>
           {festas.map((festa) => (
-            <TableRow key={festa.id}>
-              <TableCell className="font-medium">{festa.cliente.nome}</TableCell>
-              <TableCell>{festa.cliente.telefone}</TableCell>
-              <TableCell>{festa.tema}</TableCell>
-              <TableCell>
+            <TableRow key={festa.id} className="border-border/60 hover:bg-champagne/[0.03]">
+              <TableCell className="font-medium text-foreground">
+                {festa.cliente.nome}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {festa.cliente.telefone}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {festa.tema}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
                 {format(new Date(festa.dataEvento), "dd/MM/yyyy", {
                   locale: ptBR,
                 })}
@@ -84,7 +85,7 @@ export function FestasTable({ festas }: FestasTableProps) {
                   {statusLabel[festa.status]}
                 </span>
               </TableCell>
-              <TableCell className="text-right tabular-nums">
+              <TableCell className="text-right tabular-nums text-foreground">
                 {formatCurrency(festa.valor)}
               </TableCell>
             </TableRow>

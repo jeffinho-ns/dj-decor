@@ -1,6 +1,6 @@
 import type { NextFunction, Response } from "express";
 import { ZodError } from "zod";
-import type { AuthenticatedRequest } from "../middlewares/authVendedor";
+import type { AuthenticatedRequest } from "../middlewares/auth";
 import {
   FestaNotFoundError,
   festasService,

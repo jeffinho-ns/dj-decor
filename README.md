@@ -29,9 +29,10 @@ dj-decor/
 ```bash
 cd back-end
 cp .env.example .env
-# Edite DATABASE_URL e FRONTEND_URL
+# Edite DATABASE_URL, FRONTEND_URL e JWT_SECRET
 npm install
 npx prisma migrate dev --name init
+npm run prisma:seed
 npm run dev
 ```
 
@@ -47,50 +48,74 @@ npm install
 npm run dev
 ```
 
-App em `http://localhost:3000` (redireciona para `/vendas`)
+App em `http://localhost:3000` → redireciona para `/login`
 
-## Autenticação mock (Vendedor)
+## Autenticação
 
-Nas rotas de festas, envie um dos headers:
+Login real com JWT (`Authorization: Bearer <token>`).
 
-- `Authorization: Bearer mock-vendedor`
-- `X-User-Role: VENDEDOR`
+### Contas de demonstração (após seed)
 
-Opcional: `X-User-Id` para associar a um `User` existente.
+| Papel | E-mail | Senha |
+|-------|--------|-------|
+| Admin | `admin@djdecor.com` | `admin123` |
+| Gerente | `gerente@djdecor.com` | `gerente123` |
+| Vendedor | `vendedor@djdecor.com` | `vendedor123` |
+
+### Endpoints de auth
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | `/api/auth/login` | `{ email, senha }` → `{ token, user }` |
+| GET | `/api/auth/me` | Usuário do token |
+| POST | `/api/auth/logout` | Encerramento (stateless) |
+
+Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibilidade.
 
 ## Endpoints principais
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | GET | `/api/health` | Health check |
-| GET | `/api/festas` | Listar festas (vendedor) |
+| GET | `/api/festas` | Listar festas (autenticado) |
 | GET | `/api/festas/:id` | Detalhe |
 | POST | `/api/festas` | Criar venda |
 | PUT | `/api/festas/:id` | Atualizar |
 | DELETE | `/api/festas/:id` | Remover |
 | POST | `/api/webhooks/atendimento-ia` | Webhook IA/WhatsApp (200) |
 
+## Rotas do frontend
+
+| Rota | Acesso |
+|------|--------|
+| `/login` | Público |
+| `/dashboard` | Autenticado (visão por role) |
+| `/vendas` | Autenticado |
+| `/vendas/nova` | Autenticado |
+
 ## Deploy
 
 ### Backend (Render)
 
-1. Crie um PostgreSQL no Render e copie a `DATABASE_URL` (Internal ou External).
-2. Crie um Web Service apontando para este repositório:
+1. Crie um PostgreSQL no Render e copie a `DATABASE_URL`.
+2. Web Service apontando para este repositório:
    - **Root Directory:** `back-end`
-   - **Build Command:** `npm install --include=dev && npx prisma generate && npm run build`
-   - **Start Command:** `npx prisma migrate deploy && npm start`
+   - **Build:** `npm install --include=dev && npx prisma generate && npm run build`
+   - **Start:** `npx prisma migrate deploy && npx prisma db seed && npm start`
    - **Environment:**
      - `DATABASE_URL`
-     - `FRONTEND_URL` = URL da Vercel (ex: `https://dj-decor.vercel.app`)
+     - `FRONTEND_URL` = URL da Vercel (ex: `https://dj-decor-r.vercel.app`)
+     - `JWT_SECRET` (gere um valor forte; o `render.yaml` pode gerar automaticamente)
+     - `JWT_EXPIRES_IN` = `7d`
      - `NODE_ENV` = `production`
-   - Porta: use `process.env.PORT` (já configurado)
 
 ### Frontend (Vercel)
 
 1. Importe o repositório na Vercel.
 2. **Root Directory:** `frontend`
 3. Environment:
-   - `NEXT_PUBLIC_API_URL` = URL do Web Service no Render (ex: `https://dj-decor-api.onrender.com`)
+   - `NEXT_PUBLIC_API_URL` = URL do Web Service no Render (ex: `https://dj-decor.onrender.com`)
+4. Redeploy após alterar variáveis `NEXT_PUBLIC_*`.
 
 ## Modelo de dados (Prisma)
 

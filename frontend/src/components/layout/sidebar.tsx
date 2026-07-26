@@ -2,54 +2,55 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  CalendarDays,
-  LayoutDashboard,
-  PartyPopper,
-  PlusCircle,
-} from "lucide-react";
+import { LayoutDashboard, PartyPopper, PlusCircle, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { roleLabel } from "@/lib/auth";
+import type { User } from "@/types/auth";
 
 const navItems = [
-  {
-    href: "/vendas",
-    label: "Vendas",
-    icon: CalendarDays,
-  },
-  {
-    href: "/vendas/nova",
-    label: "Nova Venda",
-    icon: PlusCircle,
-  },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/vendas", label: "Vendas", icon: PartyPopper },
+  { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
 ] as const;
 
-export function Sidebar() {
+interface SidebarProps {
+  user: User;
+}
+
+export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
+  const isAdmin = user.role === "ADMIN";
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center gap-2 border-b border-sidebar-border px-5 py-5">
+      <div className="flex items-center gap-2.5 border-b border-sidebar-border px-5 py-6">
         <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-          <PartyPopper className="size-4" />
+          <Sparkles className="size-4" />
         </div>
         <div>
-          <p className="text-sm font-semibold tracking-tight">DJ Decor</p>
-          <p className="text-xs text-muted-foreground">Painel do Vendedor</p>
+          <p className="font-display text-base leading-none tracking-tight">
+            DJ Decor
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {isAdmin ? "Gestão" : `Painel do ${roleLabel(user.role)}`}
+          </p>
         </div>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 p-3">
         <p className="mb-1 px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          Menu
+          {isAdmin ? "Gestão" : "Menu"}
         </p>
         {navItems.map((item) => {
           const Icon = item.icon;
           const active =
-            pathname === item.href ||
-            (item.href !== "/vendas/nova" &&
-              pathname.startsWith(item.href) &&
-              !pathname.startsWith("/vendas/nova"));
+            item.href === "/dashboard"
+              ? pathname === "/dashboard"
+              : pathname === item.href ||
+                (item.href === "/vendas" &&
+                  pathname.startsWith("/vendas") &&
+                  !pathname.startsWith("/vendas/nova"));
 
           return (
             <Link
@@ -59,7 +60,7 @@ export function Sidebar() {
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
                 active
                   ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
               )}
             >
               <Icon className="size-4 shrink-0" />
@@ -70,12 +71,14 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-2 rounded-lg bg-sidebar-accent/60 px-3 py-2">
-          <LayoutDashboard className="size-4 text-muted-foreground" />
+        <div className="flex items-center gap-2 rounded-lg bg-sidebar-accent/50 px-3 py-2">
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-champagne/15 text-[11px] font-medium text-champagne">
+            {user.nome.charAt(0).toUpperCase()}
+          </div>
           <div className="min-w-0">
-            <p className="truncate text-xs font-medium">Vendedor</p>
+            <p className="truncate text-xs font-medium">{user.nome}</p>
             <p className="truncate text-[11px] text-muted-foreground">
-              vendedor@djdecor.com
+              {roleLabel(user.role)}
             </p>
           </div>
         </div>

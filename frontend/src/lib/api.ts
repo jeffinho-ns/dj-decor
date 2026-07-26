@@ -1,3 +1,4 @@
+import type { LoginResponse, MeResponse } from "@/types/auth";
 import type { CreateFestaPayload, Festa } from "@/types/festa";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -7,12 +8,6 @@ if (!API_URL) {
     "[api] NEXT_PUBLIC_API_URL não definida. Configure no .env.local"
   );
 }
-
-const VENDEDOR_HEADERS: HeadersInit = {
-  "Content-Type": "application/json",
-  Authorization: "Bearer mock-vendedor",
-  "X-User-Role": "VENDEDOR",
-};
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -45,20 +40,59 @@ function getBaseUrl(): string {
   return API_URL.replace(/\/$/, "");
 }
 
-export async function listFestas(): Promise<Festa[]> {
+function authHeaders(token: string): HeadersInit {
+  return {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+}
+
+export async function login(
+  email: string,
+  senha: string
+): Promise<LoginResponse> {
+  const response = await fetch(`${getBaseUrl()}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, senha }),
+  });
+  return handleResponse<LoginResponse>(response);
+}
+
+export async function me(token: string): Promise<MeResponse> {
+  const response = await fetch(`${getBaseUrl()}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  return handleResponse<MeResponse>(response);
+}
+
+export async function logout(token?: string | null): Promise<void> {
+  try {
+    await fetch(`${getBaseUrl()}/api/auth/logout`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+  } catch {
+    // Encerramento local do token não deve ser bloqueado por falha de rede.
+  }
+}
+
+export async function listFestas(token: string): Promise<Festa[]> {
   const response = await fetch(`${getBaseUrl()}/api/festas`, {
-    headers: VENDEDOR_HEADERS,
+    headers: authHeaders(token),
     cache: "no-store",
   });
   return handleResponse<Festa[]>(response);
 }
 
 export async function createFesta(
-  payload: CreateFestaPayload
+  payload: CreateFestaPayload,
+  token: string
 ): Promise<Festa> {
   const response = await fetch(`${getBaseUrl()}/api/festas`, {
     method: "POST",
-    headers: VENDEDOR_HEADERS,
+    headers: authHeaders(token),
     body: JSON.stringify(payload),
   });
   return handleResponse<Festa>(response);

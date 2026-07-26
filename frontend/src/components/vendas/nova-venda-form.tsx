@@ -7,15 +7,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { createFesta } from "@/lib/api";
 
 const novaVendaSchema = z.object({
@@ -35,7 +29,11 @@ const novaVendaSchema = z.object({
 
 type NovaVendaFormValues = z.infer<typeof novaVendaSchema>;
 
-export function NovaVendaForm() {
+interface NovaVendaFormProps {
+  token: string;
+}
+
+export function NovaVendaForm({ token }: NovaVendaFormProps) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -58,14 +56,17 @@ export function NovaVendaForm() {
   async function onSubmit(data: NovaVendaFormValues) {
     setSubmitError(null);
     try {
-      await createFesta({
-        nomeCliente: data.nomeCliente,
-        telefone: data.telefone,
-        tema: data.tema,
-        dataEvento: new Date(data.dataEvento).toISOString(),
-        endereco: data.endereco,
-        valor: Number(data.valor.replace(",", ".")),
-      });
+      await createFesta(
+        {
+          nomeCliente: data.nomeCliente,
+          telefone: data.telefone,
+          tema: data.tema,
+          dataEvento: new Date(data.dataEvento).toISOString(),
+          endereco: data.endereco,
+          valor: Number(data.valor.replace(",", ".")),
+        },
+        token
+      );
       router.push("/vendas");
       router.refresh();
     } catch (error) {
@@ -78,15 +79,19 @@ export function NovaVendaForm() {
   }
 
   return (
-    <Card className="mx-auto max-w-2xl border-border shadow-sm">
-      <CardHeader>
-        <CardTitle>Nova Venda</CardTitle>
-        <CardDescription>
-          Preencha os dados do cliente e da festa para registrar o orçamento.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <div className="mx-auto max-w-2xl rounded-2xl border border-border/70 bg-card/40 p-6 sm:p-8">
+      <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+        Novo orçamento
+      </p>
+      <h2 className="mt-1 font-display text-2xl text-foreground">
+        Dados da festa
+      </h2>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6">
+        <div className="space-y-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-champagne/80">
+            Cliente
+          </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="nomeCliente">Nome do Cliente</Label>
@@ -118,7 +123,14 @@ export function NovaVendaForm() {
               ) : null}
             </div>
           </div>
+        </div>
 
+        <Separator className="bg-border/60" />
+
+        <div className="space-y-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-champagne/80">
+            Evento
+          </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="tema">Tema</Label>
@@ -129,7 +141,9 @@ export function NovaVendaForm() {
                 {...register("tema")}
               />
               {errors.tema ? (
-                <p className="text-xs text-destructive">{errors.tema.message}</p>
+                <p className="text-xs text-destructive">
+                  {errors.tema.message}
+                </p>
               ) : null}
             </div>
 
@@ -163,44 +177,46 @@ export function NovaVendaForm() {
               </p>
             ) : null}
           </div>
+        </div>
 
-          <div className="space-y-2 sm:max-w-xs">
-            <Label htmlFor="valor">Valor (R$)</Label>
-            <Input
-              id="valor"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="1500.00"
-              aria-invalid={Boolean(errors.valor)}
-              {...register("valor")}
-            />
-            {errors.valor ? (
-              <p className="text-xs text-destructive">{errors.valor.message}</p>
-            ) : null}
-          </div>
+        <Separator className="bg-border/60" />
 
-          {submitError ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {submitError}
-            </div>
+        <div className="space-y-2 sm:max-w-xs">
+          <Label htmlFor="valor">Valor (R$)</Label>
+          <Input
+            id="valor"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="1500.00"
+            aria-invalid={Boolean(errors.valor)}
+            {...register("valor")}
+          />
+          {errors.valor ? (
+            <p className="text-xs text-destructive">{errors.valor.message}</p>
           ) : null}
+        </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push("/vendas")}
-              disabled={isSubmitting}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Salvando..." : "Salvar venda"}
-            </Button>
+        {submitError ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {submitError}
           </div>
-        </form>
-      </CardContent>
-    </Card>
+        ) : null}
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/vendas")}
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Salvando..." : "Salvar venda"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }

@@ -1,10 +1,11 @@
 import { Router } from "express";
+import { Role } from "@prisma/client";
 import { festasController } from "../controllers/festas.controller";
-import { authVendedor } from "../middlewares/authVendedor";
+import { auth, requireRoles } from "../middlewares/auth";
 
 const festasRoutes = Router();
 
-festasRoutes.use(authVendedor);
+festasRoutes.use(auth, requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN));
 
 festasRoutes.get("/", (req, res, next) => festasController.list(req, res, next));
 festasRoutes.get("/:id", (req, res, next) =>

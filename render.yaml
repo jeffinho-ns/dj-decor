@@ -5,7 +5,7 @@ services:
     rootDir: back-end
     plan: free
     buildCommand: npm install --include=dev && npx prisma generate && npm run build
-    startCommand: npx prisma migrate deploy && npm start
+    startCommand: npx prisma migrate deploy && npx prisma db seed && npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -15,6 +15,10 @@ services:
           property: connectionString
       - key: FRONTEND_URL
         sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
 
 databases:
   - name: dj-decor-db

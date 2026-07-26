@@ -10,6 +10,10 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
+  JWT_SECRET: z
+    .string()
+    .min(16, "JWT_SECRET deve ter no mínimo 16 caracteres"),
+  JWT_EXPIRES_IN: z.string().default("7d"),
 });
 
 type Env = z.infer<typeof envSchema>;

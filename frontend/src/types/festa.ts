@@ -1,16 +1,11 @@
+import type { User } from "./auth";
+
 export type StatusFesta = "ORCAMENTO" | "FECHADO" | "CONCLUIDO";
 
 export interface Cliente {
   id: string;
   nome: string;
   telefone: string;
-}
-
-export interface VendedorResumo {
-  id: string;
-  nome: string;
-  email: string;
-  role: "ADMIN" | "GERENTE" | "VENDEDOR";
 }
 
 export interface Festa {
@@ -24,7 +19,7 @@ export interface Festa {
   clienteId: string;
   vendedorId: string;
   cliente: Cliente;
-  vendedor: VendedorResumo;
+  vendedor: User;
 }
 
 export interface CreateFestaPayload {
