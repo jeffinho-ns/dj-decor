@@ -24,7 +24,7 @@ const novaVendaSchema = z.object({
   horaEvento: z.string().min(1, "Informe o horário da festa"),
   horaMontagem: z.string().min(1, "Informe o horário de montagem"),
   tamanhoDecoracao: z.enum(["P", "M", "G", "GG"], {
-    required_error: "Selecione o tamanho",
+    message: "Selecione o tamanho",
   }),
   endereco: z.string().min(5, "Informe o endereço"),
   valor: z
