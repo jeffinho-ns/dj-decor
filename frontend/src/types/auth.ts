@@ -3,7 +3,7 @@ export type Role = "ADMIN" | "GERENTE" | "VENDEDOR";
 export interface User {
   id: string;
   nome: string;
-  email: string;
+  email: string | null;
   role: Role;
 }
 

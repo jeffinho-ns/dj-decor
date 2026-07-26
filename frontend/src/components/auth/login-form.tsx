@@ -14,17 +14,19 @@ import { login } from "@/lib/api";
 import { setClientToken } from "@/lib/auth";
 
 const loginSchema = z.object({
-  email: z.string().min(1, "Informe o e-mail").email("E-mail inválido"),
+  nome: z.string().trim().min(1, "Informe o nome"),
   senha: z.string().min(1, "Informe a senha"),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
 
-const DEMO_ACCOUNTS = [
-  { label: "Admin", email: "admin@djdecor.com", senha: "admin123" },
-  { label: "Gerente", email: "gerente@djdecor.com", senha: "gerente123" },
-  { label: "Vendedor", email: "vendedor@djdecor.com", senha: "vendedor123" },
+const ACESSO_RAPIDO = [
+  { label: "SuperAdmin", nome: "Jefferson" },
+  { label: "Gerente", nome: "Debora" },
+  { label: "Vendedor", nome: "Vitória" },
 ] as const;
+
+const SENHA_TEMPORARIA = "@123Mudar";
 
 export function LoginForm() {
   const router = useRouter();
@@ -39,13 +41,13 @@ export function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", senha: "" },
+    defaultValues: { nome: "", senha: "" },
   });
 
   async function onSubmit(values: LoginValues) {
     setFormError(null);
     try {
-      const { token } = await login(values.email, values.senha);
+      const { token } = await login(values.nome, values.senha);
       setClientToken(token);
       const redirectTo = searchParams.get("from") || "/dashboard";
       router.push(redirectTo);
@@ -57,9 +59,9 @@ export function LoginForm() {
     }
   }
 
-  function fillDemo(email: string, senha: string) {
-    setValue("email", email);
-    setValue("senha", senha);
+  function fillAcesso(nome: string) {
+    setValue("nome", nome);
+    setValue("senha", SENHA_TEMPORARIA);
     setFormError(null);
   }
 
@@ -75,22 +77,22 @@ export function LoginForm() {
         Bem-vindo de volta
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Entre com suas credenciais para continuar.
+        Entre com seu nome e senha para continuar.
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">E-mail</Label>
+          <Label htmlFor="nome">Nome</Label>
           <Input
-            id="email"
-            type="email"
-            placeholder="voce@djdecor.com"
-            autoComplete="email"
-            aria-invalid={Boolean(errors.email)}
-            {...register("email")}
+            id="nome"
+            type="text"
+            placeholder="Seu nome"
+            autoComplete="username"
+            aria-invalid={Boolean(errors.nome)}
+            {...register("nome")}
           />
-          {errors.email ? (
-            <p className="text-xs text-destructive">{errors.email.message}</p>
+          {errors.nome ? (
+            <p className="text-xs text-destructive">{errors.nome.message}</p>
           ) : null}
         </div>
 
@@ -146,20 +148,20 @@ export function LoginForm() {
 
       <div className="mt-8 rounded-lg border border-border/70 bg-white/[0.02] px-4 py-3">
         <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          Contas de demonstração
+          Acesso rápido · senha {SENHA_TEMPORARIA}
         </p>
         <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
-          {DEMO_ACCOUNTS.map((account) => (
-            <li key={account.email}>
+          {ACESSO_RAPIDO.map((account) => (
+            <li key={account.nome}>
               <button
                 type="button"
-                onClick={() => fillDemo(account.email, account.senha)}
+                onClick={() => fillAcesso(account.nome)}
                 className="text-left transition-colors hover:text-champagne"
               >
                 <span className="font-medium text-foreground/80">
                   {account.label}:
                 </span>{" "}
-                {account.email} · {account.senha}
+                {account.nome}
               </button>
             </li>
           ))}

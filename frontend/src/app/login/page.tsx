@@ -32,7 +32,7 @@ export default function LoginPage() {
             className="animate-fade-up mt-5 text-balance font-display text-6xl leading-[0.95] text-foreground sm:text-7xl lg:text-8xl"
             style={{ animationDelay: "0.15s" }}
           >
-            DJ <span className="text-champagne">Decor</span>
+            DJ <span className="text-champagne">Decoradora</span>
           </h1>
           <p
             className="animate-fade-up mt-6 max-w-md text-lg leading-relaxed text-foreground/70"

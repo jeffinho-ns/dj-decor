@@ -7,14 +7,14 @@ import { prisma } from "../prisma/client";
 export interface AuthUser {
   id: string;
   nome: string;
-  email: string;
+  email: string | null;
   role: Role;
 }
 
 export interface JwtPayload {
   sub: string;
   nome: string;
-  email: string;
+  email: string | null;
   role: Role;
 }
 
@@ -26,8 +26,14 @@ export class InvalidCredentialsError extends Error {
 }
 
 export class AuthService {
-  async login(email: string, senha: string): Promise<{ token: string; user: AuthUser }> {
-    const user = await prisma.user.findUnique({ where: { email } });
+  async login(nome: string, senha: string): Promise<{ token: string; user: AuthUser }> {
+    const nomeNormalizado = nome.trim();
+
+    const user = await prisma.user.findFirst({
+      where: {
+        nome: { equals: nomeNormalizado, mode: "insensitive" },
+      },
+    });
 
     if (!user) {
       throw new InvalidCredentialsError();

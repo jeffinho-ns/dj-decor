@@ -20,11 +20,11 @@ enum StatusFesta {
 }
 
 model User {
-  id     String @id @default(cuid())
-  nome   String
-  email  String @unique
+  id     String  @id @default(cuid())
+  nome   String  @unique
+  email  String? @unique
   senha  String
-  role   Role   @default(VENDEDOR)
+  role   Role    @default(VENDEDOR)
   festas Festa[]
 
   @@map("users")

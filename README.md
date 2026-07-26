@@ -52,21 +52,23 @@ App em `http://localhost:3000` → redireciona para `/login`
 
 ## Autenticação
 
-Login real com JWT (`Authorization: Bearer <token>`).
+Login com **nome + senha** (JWT). O e-mail fica reservado para a página de perfil futura.
 
-### Contas de demonstração (após seed)
+### Equipe (após seed)
 
-| Papel | E-mail | Senha |
-|-------|--------|-------|
-| Admin | `admin@djdecor.com` | `admin123` |
-| Gerente | `gerente@djdecor.com` | `gerente123` |
-| Vendedor | `vendedor@djdecor.com` | `vendedor123` |
+Senha temporária de todos: `@123Mudar`
+
+| Cargo (UI) | Role | Nomes |
+|------------|------|-------|
+| SuperAdmin | `ADMIN` | Jefferson, Jonathan |
+| Gerente | `GERENTE` | Debora, Suellem, Lorena |
+| Vendedor | `VENDEDOR` | Vitória, Lais, Rodrigo |
 
 ### Endpoints de auth
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| POST | `/api/auth/login` | `{ email, senha }` → `{ token, user }` |
+| POST | `/api/auth/login` | `{ nome, senha }` → `{ token, user }` |
 | GET | `/api/auth/me` | Usuário do token |
 | POST | `/api/auth/logout` | Encerramento (stateless) |
 
@@ -119,7 +121,7 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
 
 ## Modelo de dados (Prisma)
 
-- **User** — ADMIN | GERENTE | VENDEDOR
+- **User** — nome (login), senha, role ADMIN (SuperAdmin) | GERENTE | VENDEDOR; e-mail opcional (perfil futuro)
 - **Cliente** — nome, telefone
 - **Festa** — data, status (ORCAMENTO | FECHADO | CONCLUIDO), valor, tema, endereço; relaciona Cliente + User (vendedor)
 

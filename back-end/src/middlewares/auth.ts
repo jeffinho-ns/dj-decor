@@ -6,7 +6,7 @@ import { authService } from "../services/auth.service";
 export interface AuthUser {
   id: string;
   nome: string;
-  email: string;
+  email: string | null;
   role: Role;
 }
 

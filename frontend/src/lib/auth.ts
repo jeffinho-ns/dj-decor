@@ -32,7 +32,7 @@ export function getClientToken(): string | null {
 }
 
 const ROLE_LABELS: Record<Role, string> = {
-  ADMIN: "Administrador",
+  ADMIN: "SuperAdmin",
   GERENTE: "Gerente",
   VENDEDOR: "Vendedor",
 };

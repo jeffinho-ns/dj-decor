@@ -4,15 +4,15 @@ import type { AuthenticatedRequest } from "../middlewares/auth";
 import { authService, InvalidCredentialsError } from "../services/auth.service";
 
 const loginSchema = z.object({
-  email: z.string().email("E-mail inválido"),
+  nome: z.string().trim().min(1, "Nome é obrigatório"),
   senha: z.string().min(1, "Senha é obrigatória"),
 });
 
 export class AuthController {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, senha } = loginSchema.parse(req.body);
-      const { token, user } = await authService.login(email, senha);
+      const { nome, senha } = loginSchema.parse(req.body);
+      const { token, user } = await authService.login(nome, senha);
       res.status(200).json({ token, user });
     } catch (error) {
       if (error instanceof ZodError || error instanceof InvalidCredentialsError) {

@@ -48,13 +48,13 @@ function authHeaders(token: string): HeadersInit {
 }
 
 export async function login(
-  email: string,
+  nome: string,
   senha: string
 ): Promise<LoginResponse> {
   const response = await fetch(`${getBaseUrl()}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, senha }),
+    body: JSON.stringify({ nome, senha }),
   });
   return handleResponse<LoginResponse>(response);
 }

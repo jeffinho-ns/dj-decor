@@ -17,10 +17,10 @@ import type { Role } from "@/types/auth";
 export const dynamic = "force-dynamic";
 
 const ROLE_DESCRIPTION: Record<Role, string> = {
+  ADMIN: "Visão SuperAdmin: métricas gerais e acessos de gestão.",
+  GERENTE: "Panorama das operações: totais e status de todas as festas.",
   VENDEDOR:
     "Seu resumo de vendas e o caminho mais rápido para o próximo orçamento.",
-  GERENTE: "Panorama das operações: totais e status de todas as festas.",
-  ADMIN: "Métricas gerais do negócio e acessos rápidos de gestão.",
 };
 
 export default async function DashboardPage() {
