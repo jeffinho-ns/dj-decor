@@ -25,6 +25,9 @@ const seedUsers: SeedUser[] = [
   { nome: "Vitória", role: Role.VENDEDOR },
   { nome: "Lais", role: Role.VENDEDOR },
   { nome: "Rodrigo", role: Role.VENDEDOR },
+  // Montadores (placeholder)
+  { nome: "Carlos", role: Role.MONTADOR },
+  { nome: "Bruno", role: Role.MONTADOR },
 ];
 
 const nomesEquipe = seedUsers.map((u) => u.nome);

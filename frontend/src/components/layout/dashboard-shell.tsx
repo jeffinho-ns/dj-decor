@@ -45,7 +45,7 @@ export function DashboardShell({
               <LogoutButton />
             </div>
           </div>
-          <MobileNav />
+          <MobileNav user={user} />
         </header>
 
         <main className="flex-1 px-4 py-6 md:px-8">{children}</main>

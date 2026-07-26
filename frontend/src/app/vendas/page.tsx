@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PlusCircle } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
@@ -13,6 +14,10 @@ export const dynamic = "force-dynamic";
 
 export default async function VendasPage() {
   const { token, user } = await requireSession();
+
+  if (user.role === "MONTADOR") {
+    redirect("/montagem");
+  }
 
   let festas: Festa[] = [];
   let error: string | null = null;

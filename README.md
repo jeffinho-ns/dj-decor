@@ -63,6 +63,9 @@ Senha temporária de todos: `@123Mudar`
 | SuperAdmin | `ADMIN` | Jefferson, Jonathan |
 | Gerente | `GERENTE` | Debora, Suellem, Lorena |
 | Vendedor | `VENDEDOR` | Vitória, Lais, Rodrigo |
+| Montador | `MONTADOR` | Carlos, Bruno |
+
+Montador tem acesso apenas de leitura às festas (agenda de montagem); não pode criar, editar ou remover vendas.
 
 ### Endpoints de auth
 
@@ -79,11 +82,11 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | GET | `/api/health` | Health check |
-| GET | `/api/festas` | Listar festas (autenticado) |
-| GET | `/api/festas/:id` | Detalhe |
-| POST | `/api/festas` | Criar venda (inclui horário festa/montagem, tamanho, extras) |
-| PUT | `/api/festas/:id` | Atualizar |
-| DELETE | `/api/festas/:id` | Remover |
+| GET | `/api/festas` | Listar festas (VENDEDOR, GERENTE, ADMIN, MONTADOR) |
+| GET | `/api/festas/:id` | Detalhe (VENDEDOR, GERENTE, ADMIN, MONTADOR) |
+| POST | `/api/festas` | Criar venda — inclui horário festa/montagem, tamanho, extras (VENDEDOR, GERENTE, ADMIN) |
+| PUT | `/api/festas/:id` | Atualizar (VENDEDOR, GERENTE, ADMIN) |
+| DELETE | `/api/festas/:id` | Remover (VENDEDOR, GERENTE, ADMIN) |
 | POST | `/api/webhooks/atendimento-ia` | Webhook IA/WhatsApp (200) |
 
 ## Rotas do frontend
@@ -122,7 +125,7 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
 
 ## Modelo de dados (Prisma)
 
-- **User** — nome (login), senha, role ADMIN (SuperAdmin) | GERENTE | VENDEDOR; e-mail opcional (perfil futuro)
+- **User** — nome (login), senha, role ADMIN (SuperAdmin) | GERENTE | VENDEDOR | MONTADOR; e-mail opcional (perfil futuro)
 - **Cliente** — nome, telefone
 - **Festa** — `dataEvento` (data + horário da festa), `horarioMontagem`, `tamanhoDecoracao` (P|M|G|GG), `itensExtras`, tema, endereço, status (ORCAMENTO | FECHADO | CONCLUIDO), valor; relaciona Cliente + User (vendedor)
 

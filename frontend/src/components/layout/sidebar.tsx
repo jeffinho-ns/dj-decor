@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,
+  Hammer,
   LayoutDashboard,
   PartyPopper,
   PlusCircle,
@@ -14,20 +15,42 @@ import { cn } from "@/lib/utils";
 import { roleLabel } from "@/lib/auth";
 import type { User } from "@/types/auth";
 
-const navItems = [
+const DEFAULT_NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/calendario", label: "Calendário", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
 ] as const;
 
+const MONTADOR_NAV = [
+  { href: "/montagem", label: "Montagem", icon: Hammer },
+  { href: "/calendario", label: "Calendário", icon: CalendarDays },
+] as const;
+
 interface SidebarProps {
   user: User;
+}
+
+function isNavActive(pathname: string, href: string): boolean {
+  if (href === "/calendario") {
+    return pathname === "/calendario" || pathname.startsWith("/calendario/");
+  }
+  if (href === "/montagem") {
+    return pathname === "/montagem" || pathname.startsWith("/montagem/");
+  }
+  if (href === "/vendas") {
+    return (
+      pathname.startsWith("/vendas") && !pathname.startsWith("/vendas/nova")
+    );
+  }
+  return pathname === href;
 }
 
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const isAdmin = user.role === "ADMIN";
+  const isMontador = user.role === "MONTADOR";
+  const navItems = isMontador ? MONTADOR_NAV : DEFAULT_NAV;
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
@@ -51,16 +74,7 @@ export function Sidebar({ user }: SidebarProps) {
         </p>
         {navItems.map((item) => {
           const Icon = item.icon;
-          const active =
-            item.href === "/dashboard"
-              ? pathname === "/dashboard"
-              : item.href === "/calendario"
-                ? pathname === "/calendario" ||
-                  pathname.startsWith("/calendario/")
-                : pathname === item.href ||
-                  (item.href === "/vendas" &&
-                    pathname.startsWith("/vendas") &&
-                    !pathname.startsWith("/vendas/nova"));
+          const active = isNavActive(pathname, item.href);
 
           return (
             <Link

@@ -24,6 +24,7 @@ const ACESSO_RAPIDO = [
   { label: "SuperAdmin", nome: "Jefferson" },
   { label: "Gerente", nome: "Debora" },
   { label: "Vendedor", nome: "Vitória" },
+  { label: "Montador", nome: "Carlos" },
 ] as const;
 
 const SENHA_TEMPORARIA = "@123Mudar";
@@ -47,9 +48,16 @@ export function LoginForm() {
   async function onSubmit(values: LoginValues) {
     setFormError(null);
     try {
-      const { token } = await login(values.nome, values.senha);
+      const { token, user } = await login(values.nome, values.senha);
       setClientToken(token);
-      const redirectTo = searchParams.get("from") || "/dashboard";
+      const defaultRoute = user.role === "MONTADOR" ? "/montagem" : "/dashboard";
+      const from = searchParams.get("from");
+      const blockedForMontador =
+        user.role === "MONTADOR" &&
+        from !== null &&
+        (from.startsWith("/vendas") || from.startsWith("/dashboard"));
+      const redirectTo =
+        from && !blockedForMontador ? from : defaultRoute;
       router.push(redirectTo);
       router.refresh();
     } catch (error) {

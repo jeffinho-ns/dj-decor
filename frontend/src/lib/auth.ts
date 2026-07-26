@@ -35,6 +35,7 @@ const ROLE_LABELS: Record<Role, string> = {
   ADMIN: "SuperAdmin",
   GERENTE: "Gerente",
   VENDEDOR: "Vendedor",
+  MONTADOR: "Montador",
 };
 
 export function roleLabel(role: Role): string {

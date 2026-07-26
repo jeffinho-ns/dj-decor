@@ -11,6 +11,7 @@ enum Role {
   ADMIN
   GERENTE
   VENDEDOR
+  MONTADOR
 }
 
 enum StatusFesta {

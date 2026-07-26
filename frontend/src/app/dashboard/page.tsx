@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CalendarClock, CalendarDays, PartyPopper, Sparkles, Wallet } from "lucide-react";
 
 import { CtaBanner } from "@/components/dashboard/cta-banner";
@@ -21,10 +22,15 @@ const ROLE_DESCRIPTION: Record<Role, string> = {
   GERENTE: "Panorama das operações: totais e status de todas as festas.",
   VENDEDOR:
     "Seu resumo de vendas e o caminho mais rápido para o próximo orçamento.",
+  MONTADOR: "Painel de montagens do dia.",
 };
 
 export default async function DashboardPage() {
   const { token, user } = await requireSession();
+
+  if (user.role === "MONTADOR") {
+    redirect("/montagem");
+  }
 
   let festas: Festa[] = [];
   let loadError: string | null = null;
