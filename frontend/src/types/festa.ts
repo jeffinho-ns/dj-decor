@@ -18,6 +18,7 @@ export interface Festa {
   tema: string;
   tamanhoDecoracao: TamanhoDecoracao;
   itensExtras: string[];
+  itensExtrasConcluidos: string[];
   endereco: string;
   criadoEm: string;
   clienteId: string;

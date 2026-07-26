@@ -17,6 +17,11 @@ festasRoutes.get(
   requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN, Role.MONTADOR),
   (req, res, next) => festasController.getById(req, res, next)
 );
+festasRoutes.patch(
+  "/:id/checklist",
+  requireRoles(Role.MONTADOR, Role.GERENTE, Role.ADMIN, Role.VENDEDOR),
+  (req, res, next) => festasController.updateChecklist(req, res, next)
+);
 festasRoutes.post(
   "/",
   requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),

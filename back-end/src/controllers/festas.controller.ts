@@ -78,6 +78,27 @@ export class FestasController {
     }
   }
 
+  async updateChecklist(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const id = getParamId(req.params.id);
+      if (!id) {
+        res.status(400).json({ error: "ID é obrigatório" });
+        return;
+      }
+      const festa = await festasService.updateChecklist(
+        id,
+        req.body?.itensExtrasConcluidos
+      );
+      res.status(200).json(festa);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
   private handleError(error: unknown, res: Response, next: NextFunction) {
     if (error instanceof ZodError) {
       res.status(400).json({

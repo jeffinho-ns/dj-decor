@@ -13,6 +13,7 @@ import {
   Package,
 } from "lucide-react";
 
+import { updateFestaChecklist } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Festa, StatusFesta } from "@/types/festa";
 
@@ -39,9 +40,10 @@ function safeTime(value: string | null | undefined): string {
 
 interface MontagemHojeProps {
   festas: Festa[];
+  token: string;
 }
 
-export function MontagemHoje({ festas }: MontagemHojeProps) {
+export function MontagemHoje({ festas, token }: MontagemHojeProps) {
   const hoje = new Date();
 
   return (
@@ -79,7 +81,7 @@ export function MontagemHoje({ festas }: MontagemHojeProps) {
       ) : (
         <div className="space-y-4">
           {festas.map((festa) => (
-            <MontagemCard key={festa.id} festa={festa} />
+            <MontagemCard key={festa.id} festa={festa} token={token} />
           ))}
         </div>
       )}
@@ -87,12 +89,31 @@ export function MontagemHoje({ festas }: MontagemHojeProps) {
   );
 }
 
-function MontagemCard({ festa }: { festa: Festa }) {
+function MontagemCard({ festa, token }: { festa: Festa; token: string }) {
   const itens = festa.itensExtras ?? [];
-  const [checked, setChecked] = useState<Record<number, boolean>>({});
+  const [checked, setChecked] = useState<Set<string>>(
+    () => new Set(festa.itensExtrasConcluidos ?? [])
+  );
+  const [erro, setErro] = useState<string | null>(null);
 
-  function toggle(index: number) {
-    setChecked((prev) => ({ ...prev, [index]: !prev[index] }));
+  async function toggle(item: string) {
+    const eraChecked = checked.has(item);
+    const proximo = new Set(checked);
+    if (eraChecked) {
+      proximo.delete(item);
+    } else {
+      proximo.add(item);
+    }
+
+    setErro(null);
+    setChecked(proximo);
+
+    try {
+      await updateFestaChecklist(festa.id, Array.from(proximo), token);
+    } catch {
+      setChecked(checked);
+      setErro("Não foi possível salvar. Tente novamente.");
+    }
   }
 
   return (
@@ -151,12 +172,12 @@ function MontagemCard({ festa }: { festa: Festa }) {
           </p>
           <ul className="mt-2 space-y-1">
             {itens.map((item, index) => {
-              const isChecked = Boolean(checked[index]);
+              const isChecked = checked.has(item);
               return (
                 <li key={`${item}-${index}`}>
                   <button
                     type="button"
-                    onClick={() => toggle(index)}
+                    onClick={() => toggle(item)}
                     className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-foreground/5"
                   >
                     {isChecked ? (
@@ -178,6 +199,9 @@ function MontagemCard({ festa }: { festa: Festa }) {
               );
             })}
           </ul>
+          {erro ? (
+            <p className="mt-2 text-xs text-destructive">{erro}</p>
+          ) : null}
         </div>
       ) : null}
     </article>

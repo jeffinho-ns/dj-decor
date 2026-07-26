@@ -9,6 +9,7 @@ import {
   PartyPopper,
   PlusCircle,
   Sparkles,
+  UserRound,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -20,11 +21,13 @@ const DEFAULT_NAV = [
   { href: "/calendario", label: "Calendário", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
+  { href: "/perfil", label: "Perfil", icon: UserRound },
 ] as const;
 
 const MONTADOR_NAV = [
   { href: "/montagem", label: "Montagem", icon: Hammer },
   { href: "/calendario", label: "Calendário", icon: CalendarDays },
+  { href: "/perfil", label: "Perfil", icon: UserRound },
 ] as const;
 
 interface SidebarProps {

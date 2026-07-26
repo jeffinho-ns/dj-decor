@@ -37,8 +37,13 @@ const updateFestaSchema = z.object({
   telefone: z.string().min(8).optional(),
 });
 
+const updateChecklistSchema = z.object({
+  itensExtrasConcluidos: z.array(z.string().min(1)),
+});
+
 export type CreateFestaInput = z.infer<typeof createFestaSchema>;
 export type UpdateFestaInput = z.infer<typeof updateFestaSchema>;
+export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;
 
 export class FestasService {
   async list() {
@@ -148,6 +153,31 @@ export class FestasService {
   async remove(id: string) {
     await this.getById(id);
     return prisma.festa.delete({ where: { id } });
+  }
+
+  async updateChecklist(id: string, rawItensExtrasConcluidos: unknown) {
+    const data = updateChecklistSchema.parse({
+      itensExtrasConcluidos: rawItensExtrasConcluidos,
+    });
+    const festa = await this.getById(id);
+
+    const validos = new Set(festa.itensExtras);
+    const itensFiltrados = data.itensExtrasConcluidos.filter((item) =>
+      validos.has(item)
+    );
+
+    return prisma.festa.update({
+      where: { id },
+      data: {
+        itensExtrasConcluidos: itensFiltrados,
+      },
+      include: {
+        cliente: true,
+        vendedor: {
+          select: { id: true, nome: true, email: true, role: true },
+        },
+      },
+    });
   }
 
   private async ensureVendedorExists(vendedorId: string) {

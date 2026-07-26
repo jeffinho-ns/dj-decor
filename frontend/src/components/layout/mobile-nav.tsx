@@ -11,11 +11,13 @@ const DEFAULT_ITEMS = [
   { href: "/calendario", label: "Calendário" },
   { href: "/vendas", label: "Vendas" },
   { href: "/vendas/nova", label: "Nova Venda" },
+  { href: "/perfil", label: "Perfil" },
 ] as const;
 
 const MONTADOR_ITEMS = [
   { href: "/montagem", label: "Montagem" },
   { href: "/calendario", label: "Calendário" },
+  { href: "/perfil", label: "Perfil" },
 ] as const;
 
 interface MobileNavProps {

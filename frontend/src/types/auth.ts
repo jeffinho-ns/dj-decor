@@ -15,3 +15,13 @@ export interface LoginResponse {
 export interface MeResponse {
   user: User;
 }
+
+export interface UpdatePerfilPayload {
+  email?: string | null;
+  senhaAtual?: string;
+  novaSenha?: string;
+}
+
+export interface UpdatePerfilResponse {
+  user: User;
+}

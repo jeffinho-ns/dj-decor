@@ -1,4 +1,9 @@
-import type { LoginResponse, MeResponse } from "@/types/auth";
+import type {
+  LoginResponse,
+  MeResponse,
+  UpdatePerfilPayload,
+  UpdatePerfilResponse,
+} from "@/types/auth";
 import type { CreateFestaPayload, Festa } from "@/types/festa";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -67,6 +72,18 @@ export async function me(token: string): Promise<MeResponse> {
   return handleResponse<MeResponse>(response);
 }
 
+export async function updatePerfil(
+  payload: UpdatePerfilPayload,
+  token: string
+): Promise<UpdatePerfilResponse> {
+  const response = await fetch(`${getBaseUrl()}/api/auth/perfil`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<UpdatePerfilResponse>(response);
+}
+
 export async function logout(token?: string | null): Promise<void> {
   try {
     await fetch(`${getBaseUrl()}/api/auth/logout`, {
@@ -94,6 +111,19 @@ export async function createFesta(
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(payload),
+  });
+  return handleResponse<Festa>(response);
+}
+
+export async function updateFestaChecklist(
+  id: string,
+  itensExtrasConcluidos: string[],
+  token: string
+): Promise<Festa> {
+  const response = await fetch(`${getBaseUrl()}/api/festas/${id}/checklist`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ itensExtrasConcluidos }),
   });
   return handleResponse<Festa>(response);
 }

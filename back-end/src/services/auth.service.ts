@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt, { type SignOptions } from "jsonwebtoken";
-import { Role } from "@prisma/client";
+import { Prisma, Role } from "@prisma/client";
 import { env } from "../config/env";
 import { prisma } from "../prisma/client";
 
@@ -23,6 +23,33 @@ export class InvalidCredentialsError extends Error {
     super("Credenciais inválidas");
     this.name = "InvalidCredentialsError";
   }
+}
+
+export class UserNotFoundError extends Error {
+  constructor() {
+    super("Usuário não encontrado");
+    this.name = "UserNotFoundError";
+  }
+}
+
+export class InvalidCurrentPasswordError extends Error {
+  constructor() {
+    super("Senha atual incorreta");
+    this.name = "InvalidCurrentPasswordError";
+  }
+}
+
+export class EmailInUseError extends Error {
+  constructor() {
+    super("E-mail já está em uso");
+    this.name = "EmailInUseError";
+  }
+}
+
+export interface UpdateProfileInput {
+  email?: string | null;
+  senhaAtual?: string;
+  novaSenha?: string;
 }
 
 export class AuthService {
@@ -63,6 +90,59 @@ export class AuthService {
     }
 
     return { id: user.id, nome: user.nome, email: user.email, role: user.role };
+  }
+
+  async updateProfile(
+    userId: string,
+    { email, senhaAtual, novaSenha }: UpdateProfileInput
+  ): Promise<AuthUser> {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new UserNotFoundError();
+    }
+
+    const data: { email?: string | null; senha?: string } = {};
+
+    if (email !== undefined) {
+      const emailNormalizado = email && email.trim().length > 0 ? email.trim() : null;
+      data.email = emailNormalizado;
+    }
+
+    if (novaSenha !== undefined) {
+      if (!senhaAtual) {
+        throw new InvalidCurrentPasswordError();
+      }
+
+      const senhaValida = await bcrypt.compare(senhaAtual, user.senha);
+      if (!senhaValida) {
+        throw new InvalidCurrentPasswordError();
+      }
+
+      data.senha = await bcrypt.hash(novaSenha, 10);
+    }
+
+    try {
+      const updated = await prisma.user.update({
+        where: { id: userId },
+        data,
+      });
+
+      return {
+        id: updated.id,
+        nome: updated.nome,
+        email: updated.email,
+        role: updated.role,
+      };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new EmailInUseError();
+      }
+      throw error;
+    }
   }
 
   generateToken(user: AuthUser): string {

@@ -32,16 +32,18 @@ export default async function CalendarioPage() {
       title="Calendário"
       description="Veja quantas festas há em cada dia, horários de montagem e início."
       actions={
-        <Link
-          href="/vendas/nova"
-          className={cn(
-            buttonVariants({ variant: "default", size: "sm" }),
-            "gap-1.5"
-          )}
-        >
-          <PlusCircle className="size-4" />
-          Nova Venda
-        </Link>
+        user.role === "MONTADOR" ? undefined : (
+          <Link
+            href="/vendas/nova"
+            className={cn(
+              buttonVariants({ variant: "default", size: "sm" }),
+              "gap-1.5"
+            )}
+          >
+            <PlusCircle className="size-4" />
+            Nova Venda
+          </Link>
+        )
       }
     >
       {loadError ? (

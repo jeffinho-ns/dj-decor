@@ -52,7 +52,7 @@ App em `http://localhost:3000` → redireciona para `/login`
 
 ## Autenticação
 
-Login com **nome + senha** (JWT). O e-mail fica reservado para a página de perfil futura.
+Login com **nome + senha** (JWT). O e-mail é opcional e pode ser definido/atualizado em `/perfil`, junto com a troca de senha.
 
 ### Equipe (após seed)
 
@@ -73,6 +73,7 @@ Montador tem acesso apenas de leitura às festas (agenda de montagem); não pode
 |--------|------|-----------|
 | POST | `/api/auth/login` | `{ nome, senha }` → `{ token, user }` |
 | GET | `/api/auth/me` | Usuário do token |
+| PATCH | `/api/auth/perfil` | Atualiza e-mail e/ou senha do usuário autenticado — `{ email?, senhaAtual?, novaSenha? }` → `{ user }` |
 | POST | `/api/auth/logout` | Encerramento (stateless) |
 
 Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibilidade.
@@ -86,6 +87,7 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
 | GET | `/api/festas/:id` | Detalhe (VENDEDOR, GERENTE, ADMIN, MONTADOR) |
 | POST | `/api/festas` | Criar venda — inclui horário festa/montagem, tamanho, extras (VENDEDOR, GERENTE, ADMIN) |
 | PUT | `/api/festas/:id` | Atualizar (VENDEDOR, GERENTE, ADMIN) |
+| PATCH | `/api/festas/:id/checklist` | Atualizar checklist de itens extras — `{ itensExtrasConcluidos: string[] }` (VENDEDOR, GERENTE, ADMIN, MONTADOR) |
 | DELETE | `/api/festas/:id` | Remover (VENDEDOR, GERENTE, ADMIN) |
 | POST | `/api/webhooks/atendimento-ia` | Webhook IA/WhatsApp (200) |
 
@@ -98,6 +100,7 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
 | `/calendario` | Autenticado — agenda mensal + detalhe do dia |
 | `/vendas` | Autenticado |
 | `/vendas/nova` | Autenticado |
+| `/perfil` | Autenticado (todos os roles, incluindo Montador) — trocar e-mail/senha |
 
 ## Deploy
 
@@ -125,7 +128,7 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
 
 ## Modelo de dados (Prisma)
 
-- **User** — nome (login), senha, role ADMIN (SuperAdmin) | GERENTE | VENDEDOR | MONTADOR; e-mail opcional (perfil futuro)
+- **User** — nome (login), senha, role ADMIN (SuperAdmin) | GERENTE | VENDEDOR | MONTADOR; e-mail opcional (editável em `/perfil`)
 - **Cliente** — nome, telefone
 - **Festa** — `dataEvento` (data + horário da festa), `horarioMontagem`, `tamanhoDecoracao` (P|M|G|GG), `itensExtras`, tema, endereço, status (ORCAMENTO | FECHADO | CONCLUIDO), valor; relaciona Cliente + User (vendedor)
 

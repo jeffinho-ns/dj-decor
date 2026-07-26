@@ -3,7 +3,13 @@ import type { NextRequest } from "next/server";
 
 import { TOKEN_COOKIE } from "@/lib/auth";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/vendas", "/calendario", "/montagem"];
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/vendas",
+  "/calendario",
+  "/montagem",
+  "/perfil",
+];
 const VENDEDOR_ONLY_PREFIXES = ["/dashboard", "/vendas"];
 
 function isProtected(pathname: string): boolean {
@@ -69,6 +75,8 @@ export const config = {
     "/calendario/:path*",
     "/montagem",
     "/montagem/:path*",
+    "/perfil",
+    "/perfil/:path*",
     "/login",
   ],
 };
