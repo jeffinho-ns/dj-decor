@@ -13,7 +13,7 @@ Sistema de gestão de agendamento de decorações de festas.
 ```
 dj-decor/
 ├── frontend/   # Next.js → Vercel
-└── backend/    # API Express → Render
+└── back-end/   # API Express → Render
 ```
 
 ## Pré-requisitos
@@ -27,7 +27,7 @@ dj-decor/
 ### 1. Backend
 
 ```bash
-cd backend
+cd back-end
 cp .env.example .env
 # Edite DATABASE_URL e FRONTEND_URL
 npm install
@@ -76,7 +76,7 @@ Opcional: `X-User-Id` para associar a um `User` existente.
 
 1. Crie um PostgreSQL no Render e copie a `DATABASE_URL` (Internal ou External).
 2. Crie um Web Service apontando para este repositório:
-   - **Root Directory:** `backend`
+   - **Root Directory:** `back-end`
    - **Build Command:** `npm install && npx prisma generate && npm run build`
    - **Start Command:** `npx prisma migrate deploy && npm start`
    - **Environment:**

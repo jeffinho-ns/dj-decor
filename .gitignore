@@ -25,5 +25,5 @@ Thumbs.db
 *.swp
 
 # Prisma
-backend/prisma/*.db
-backend/prisma/*.db-journal
+back-end/prisma/*.db
+back-end/prisma/*.db-journal
