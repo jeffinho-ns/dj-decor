@@ -19,6 +19,9 @@ export interface Festa {
   tamanhoDecoracao: TamanhoDecoracao;
   itensExtras: string[];
   itensExtrasConcluidos: string[];
+  kitCatalogo?: string | null;
+  pegueEMonte?: boolean;
+  observacoes?: string | null;
   endereco: string;
   criadoEm: string;
   clienteId: string;
@@ -35,6 +38,9 @@ export interface CreateFestaPayload {
   horarioMontagem: string;
   tamanhoDecoracao: TamanhoDecoracao;
   itensExtras?: string[];
+  kitCatalogo?: string | null;
+  pegueEMonte?: boolean;
+  observacoes?: string | null;
   endereco: string;
   valor: number;
 }

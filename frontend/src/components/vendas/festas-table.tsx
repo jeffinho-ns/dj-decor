@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/format";
+import { nomeDoKit } from "@/lib/catalogo-kits";
 import { cn } from "@/lib/utils";
 import type { Festa, StatusFesta, TamanhoDecoracao } from "@/types/festa";
 
@@ -82,9 +83,20 @@ export function FestasTable({ festas }: FestasTableProps) {
               </TableCell>
               <TableCell className="text-muted-foreground">
                 <p>{festa.tema}</p>
+                {festa.kitCatalogo || festa.pegueEMonte ? (
+                  <p className="mt-0.5 text-xs text-champagne/90">
+                    {nomeDoKit(festa.kitCatalogo) ?? "Kit personalizado"}
+                    {festa.pegueEMonte ? " · Pegue e monte" : ""}
+                  </p>
+                ) : null}
                 {festa.itensExtras?.length ? (
                   <p className="mt-0.5 text-xs text-muted-foreground/80">
                     + {festa.itensExtras.join(", ")}
+                  </p>
+                ) : null}
+                {festa.observacoes ? (
+                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/70">
+                    Obs.: {festa.observacoes}
                   </p>
                 ) : null}
               </TableCell>

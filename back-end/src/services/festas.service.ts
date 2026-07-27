@@ -18,6 +18,9 @@ const createFestaSchema = z.object({
     required_error: "Tamanho da decoração é obrigatório",
   }),
   itensExtras: z.array(z.string().min(1)).optional().default([]),
+  kitCatalogo: z.string().min(1).nullable().optional(),
+  pegueEMonte: z.boolean().optional().default(false),
+  observacoes: z.string().max(2000).nullable().optional(),
   endereco: z.string().min(5, "Endereço é obrigatório"),
   valor: z.coerce.number().positive("Valor deve ser positivo"),
   status: z.nativeEnum(StatusFesta).optional().default(StatusFesta.ORCAMENTO),
@@ -30,6 +33,9 @@ const updateFestaSchema = z.object({
   horarioMontagem: z.coerce.date().optional(),
   tamanhoDecoracao: z.nativeEnum(TamanhoDecoracao).optional(),
   itensExtras: z.array(z.string().min(1)).optional(),
+  kitCatalogo: z.string().min(1).nullable().optional(),
+  pegueEMonte: z.boolean().optional(),
+  observacoes: z.string().max(2000).nullable().optional(),
   endereco: z.string().min(5).optional(),
   valor: z.coerce.number().positive().optional(),
   status: z.nativeEnum(StatusFesta).optional(),
@@ -98,6 +104,9 @@ export class FestasService {
         tema: data.tema,
         tamanhoDecoracao: data.tamanhoDecoracao,
         itensExtras: data.itensExtras,
+        kitCatalogo: data.kitCatalogo ?? null,
+        pegueEMonte: data.pegueEMonte,
+        observacoes: data.observacoes?.trim() ? data.observacoes.trim() : null,
         endereco: data.endereco,
         clienteId: cliente.id,
         vendedorId,
@@ -137,6 +146,19 @@ export class FestasService {
           ? { tamanhoDecoracao: data.tamanhoDecoracao }
           : {}),
         ...(data.itensExtras !== undefined ? { itensExtras: data.itensExtras } : {}),
+        ...(data.kitCatalogo !== undefined
+          ? { kitCatalogo: data.kitCatalogo }
+          : {}),
+        ...(data.pegueEMonte !== undefined
+          ? { pegueEMonte: data.pegueEMonte }
+          : {}),
+        ...(data.observacoes !== undefined
+          ? {
+              observacoes: data.observacoes?.trim()
+                ? data.observacoes.trim()
+                : null,
+            }
+          : {}),
         ...(data.endereco !== undefined ? { endereco: data.endereco } : {}),
         ...(data.valor !== undefined ? { valor: data.valor } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),

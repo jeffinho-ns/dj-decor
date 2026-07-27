@@ -29,6 +29,7 @@ import {
   toDayKey,
 } from "@/lib/calendario";
 import { formatCurrency } from "@/lib/format";
+import { nomeDoKit } from "@/lib/catalogo-kits";
 import { cn } from "@/lib/utils";
 import type { Festa, StatusFesta } from "@/types/festa";
 
@@ -249,6 +250,12 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
                       {festa.cliente.nome}
                     </p>
                     <p className="text-sm text-champagne">{festa.tema}</p>
+                    {festa.kitCatalogo || festa.pegueEMonte ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {nomeDoKit(festa.kitCatalogo) ?? "Kit personalizado"}
+                        {festa.pegueEMonte ? " · Pegue e monte" : ""}
+                      </p>
+                    ) : null}
                   </div>
                   <span
                     className={cn(
@@ -314,6 +321,11 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
                     <MapPin className="mt-0.5 size-3.5 shrink-0 text-champagne/80" />
                     <span>{festa.endereco}</span>
                   </li>
+                  {festa.observacoes ? (
+                    <li className="pt-1 text-xs text-muted-foreground/90">
+                      Obs.: {festa.observacoes}
+                    </li>
+                  ) : null}
                 </ul>
               </article>
             );
