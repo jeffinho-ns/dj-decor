@@ -1,5 +1,6 @@
 import {
   Prisma,
+  Role,
   StatusFesta,
   StatusOS,
   TipoMidia,
@@ -31,10 +32,15 @@ const fotoFinalSchema = z.object({
   midiaId: z.string().min(1),
 });
 
+const assignMontadorSchema = z.object({
+  montadorId: z.string().min(1),
+});
+
 export type AddRomaneioItemInput = z.infer<typeof addRomaneioItemSchema>;
 export type UpdateRomaneioItemInput = z.infer<typeof updateRomaneioItemSchema>;
 export type CheckinInput = z.infer<typeof checkinSchema>;
 export type FotoFinalInput = z.infer<typeof fotoFinalSchema>;
+export type AssignMontadorInput = z.infer<typeof assignMontadorSchema>;
 
 const osInclude = {
   festa: {
@@ -110,6 +116,26 @@ export class OsService {
 
   parseFotoFinal(body: unknown): FotoFinalInput {
     return fotoFinalSchema.parse(body);
+  }
+
+  parseAssignMontador(body: unknown): AssignMontadorInput {
+    return assignMontadorSchema.parse(body);
+  }
+
+  async assignMontador(osId: string, rawInput: unknown) {
+    const { montadorId } = this.parseAssignMontador(rawInput);
+    await this.getById(osId);
+
+    const montador = await prisma.user.findUnique({ where: { id: montadorId } });
+    if (!montador || montador.role !== Role.MONTADOR) {
+      throw new OsValidationError("Montador inválido");
+    }
+
+    return prisma.ordemServico.update({
+      where: { id: osId },
+      data: { montadorId },
+      include: osInclude,
+    });
   }
 
   async ensureForFesta(festaId: string) {

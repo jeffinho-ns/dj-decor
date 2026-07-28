@@ -167,6 +167,37 @@ export class OsController {
     }
   }
 
+  async assignMontador(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const os = await osService.assignMontador(
+        req.params.id as string,
+        req.body
+      );
+      res.status(200).json(os);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          message: "Dados inválidos",
+          details: error.flatten().fieldErrors,
+        });
+        return;
+      }
+      if (error instanceof OsNotFoundError) {
+        res.status(404).json({ message: error.message });
+        return;
+      }
+      if (error instanceof OsValidationError) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
   async fotoFinal(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) {

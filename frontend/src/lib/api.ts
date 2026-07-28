@@ -23,6 +23,13 @@ import type {
 } from "@/types/festa";
 import type { Midia, TipoMidia } from "@/types/midia";
 import type { Contrato, MensagemWhatsApp } from "@/types/contrato";
+import type { FestaDescontoPendente, SolicitarDescontoPayload } from "@/types/desconto";
+import type {
+  AgendaOs,
+  AssignMontadorPayload,
+  Montador,
+} from "@/types/equipe";
+import type { FinanceiroResumo } from "@/types/financeiro";
 import type {
   CheckinPayload,
   FestaMontagemHoje,
@@ -521,7 +528,74 @@ export async function downloadContratoPdf(
   URL.revokeObjectURL(url);
 }
 
-/** Log de mensagens WhatsApp da festa (GET /api/whatsapp/mensagens?festaId=). */
+function toNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
+/** Resumo financeiro do dono (GET /api/financeiro/resumo). */
+export async function getFinanceiroResumo(
+  token: string
+): Promise<FinanceiroResumo> {
+  const response = await fetch(`${getBaseUrl()}/api/financeiro/resumo`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  const raw = await handleResponse<Record<string, unknown>>(response);
+
+  const rentabilidadeRaw = Array.isArray(raw.rentabilidadePorTema)
+    ? raw.rentabilidadePorTema
+    : [];
+  const rankingRaw = Array.isArray(raw.rankingVendedores)
+    ? raw.rankingVendedores
+    : undefined;
+
+  return {
+    entradasConfirmadas: toNumber(raw.entradasConfirmadas),
+    recebiveis: toNumber(
+      raw.recebiveis ?? raw.recebiveisPendentes
+    ),
+    comissoesPendentes: toNumber(raw.comissoesPendentes),
+    comissoesPagas: toNumber(raw.comissoesPagas),
+    rentabilidadePorTema: rentabilidadeRaw.map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        tema: typeof row.tema === "string" ? row.tema : "Sem tema",
+        receita: toNumber(row.receita ?? row.totalValor),
+        custo: row.custo != null ? toNumber(row.custo) : undefined,
+        margem: row.margem != null ? toNumber(row.margem) : undefined,
+        quantidade:
+          row.quantidade != null ? toNumber(row.quantidade) : undefined,
+      };
+    }),
+    rankingVendedores: rankingRaw?.map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        vendedorId:
+          typeof row.vendedorId === "string" ? row.vendedorId : String(row.id ?? ""),
+        vendedorNome:
+          typeof row.vendedorNome === "string"
+            ? row.vendedorNome
+            : typeof row.nome === "string"
+              ? row.nome
+              : "Vendedor",
+        totalComissao: toNumber(row.totalComissao ?? row.total),
+        comissoesPagas:
+          row.comissoesPagas != null ? toNumber(row.comissoesPagas) : undefined,
+        comissoesPendentes:
+          row.comissoesPendentes != null
+            ? toNumber(row.comissoesPendentes)
+            : undefined,
+      };
+    }),
+  };
+}
+
+/** Lista mensagens WhatsApp da festa (GET /api/whatsapp/mensagens?festaId=). */
 export async function listMensagensWhatsApp(
   festaId: string,
   token: string
@@ -535,4 +609,101 @@ export async function listMensagensWhatsApp(
     }
   );
   return handleResponse<MensagemWhatsApp[]>(response);
+}
+
+/** Montadores disponíveis (GET /api/equipe/montadores). */
+export async function listMontadores(token: string): Promise<Montador[]> {
+  const response = await fetch(`${getBaseUrl()}/api/equipe/montadores`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<Montador[]>(response);
+}
+
+/** Agenda de OS no período (GET /api/equipe/agenda?inicio&fim). */
+export async function listEquipeAgenda(
+  params: { inicio: string; fim: string },
+  token: string
+): Promise<AgendaOs[]> {
+  const qs = new URLSearchParams({
+    inicio: params.inicio,
+    fim: params.fim,
+  }).toString();
+  const response = await fetch(`${getBaseUrl()}/api/equipe/agenda?${qs}`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<AgendaOs[]>(response);
+}
+
+/** Atribui montador à OS (PATCH /api/os/:id/montador). */
+export async function assignMontadorOs(
+  osId: string,
+  payload: AssignMontadorPayload,
+  token: string
+): Promise<OrdemServico> {
+  const response = await fetch(`${getBaseUrl()}/api/os/${osId}/montador`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<OrdemServico>(response);
+}
+
+/** Descontos pendentes de aprovação (GET /api/festas/descontos/pendentes). */
+export async function listDescontosPendentes(
+  token: string
+): Promise<FestaDescontoPendente[]> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/festas/descontos/pendentes`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  return handleResponse<FestaDescontoPendente[]>(response);
+}
+
+/** Aprova desconto (POST /api/festas/:id/desconto/aprovar). */
+export async function aprovarDesconto(
+  festaId: string,
+  token: string
+): Promise<FestaDescontoPendente> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/festas/${festaId}/desconto/aprovar`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+    }
+  );
+  return handleResponse<FestaDescontoPendente>(response);
+}
+
+/** Recusa desconto (POST /api/festas/:id/desconto/recusar). */
+export async function recusarDesconto(
+  festaId: string,
+  token: string
+): Promise<FestaDescontoPendente> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/festas/${festaId}/desconto/recusar`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+    }
+  );
+  return handleResponse<FestaDescontoPendente>(response);
+}
+
+/** Solicita desconto (POST /api/festas/:id/desconto). */
+export async function solicitarDesconto(
+  festaId: string,
+  payload: SolicitarDescontoPayload,
+  token: string
+): Promise<FestaDescontoPendente> {
+  const response = await fetch(`${getBaseUrl()}/api/festas/${festaId}/desconto`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<FestaDescontoPendente>(response);
 }

@@ -47,6 +47,12 @@ osRoutes.get(
   (req, res, next) => osController.listMine(req, res, next)
 );
 
+osRoutes.patch(
+  "/:id/montador",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => osController.assignMontador(req, res, next)
+);
+
 osRoutes.get(
   "/:id",
   requireRoles(...montagemRoles),

@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { authRoutes } from "./auth.routes";
 import { contratosRoutes } from "./contratos.routes";
+import { equipeRoutes } from "./equipe.routes";
 import { estoqueRoutes } from "./estoque.routes";
 import { festasRoutes } from "./festas.routes";
+import { financeiroRoutes } from "./financeiro.routes";
 import { midiasRoutes } from "./midias.routes";
 import { osRoutes } from "./os.routes";
 import { pagamentosRoutes } from "./pagamentos.routes";
@@ -19,7 +21,9 @@ routes.get("/health", (_req, res) => {
 
 routes.use("/auth", authRoutes);
 routes.use("/festas", festasRoutes);
+routes.use("/financeiro", financeiroRoutes);
 routes.use("/produtos", produtosRoutes);
+routes.use("/equipe", equipeRoutes);
 routes.use("/estoque", estoqueRoutes);
 routes.use("/midias", midiasRoutes);
 routes.use("/os", osRoutes);

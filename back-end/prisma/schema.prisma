@@ -84,6 +84,13 @@ enum StatusMensagemWhatsApp {
   FALHA
 }
 
+enum StatusDesconto {
+  NENHUM
+  PENDENTE
+  APROVADO
+  RECUSADO
+}
+
 model User {
   id     String  @id @default(cuid())
   nome   String  @unique
@@ -91,11 +98,13 @@ model User {
   senha  String
   role   Role    @default(VENDEDOR)
 
-  festas           Festa[]
-  midiasUploaded   Midia[]            @relation("MidiaUploadedBy")
-  ordensServico    OrdemServico[]     @relation("OsMontador")
-  comissoes        Comissao[]
-  movimentacoesQr  MovimentacaoQr[]
+  festas                    Festa[]            @relation("FestaVendedor")
+  midiasUploaded            Midia[]            @relation("MidiaUploadedBy")
+  ordensServico             OrdemServico[]     @relation("OsMontador")
+  comissoes                 Comissao[]
+  movimentacoesQr           MovimentacaoQr[]
+  descontosSolicitados      Festa[]            @relation("DescontoSolicitadoPor")
+  descontosAprovados        Festa[]            @relation("DescontoAprovadoPor")
 
   @@map("users")
 }
@@ -129,7 +138,15 @@ model Festa {
   cliente    Cliente @relation(fields: [clienteId], references: [id])
 
   vendedorId String @map("vendedor_id")
-  vendedor   User   @relation(fields: [vendedorId], references: [id])
+  vendedor   User   @relation("FestaVendedor", fields: [vendedorId], references: [id])
+
+  valorOriginal           Decimal?       @map("valor_original") @db.Decimal(10, 2)
+  descontoPercentual      Decimal?       @map("desconto_percentual") @db.Decimal(5, 2)
+  descontoStatus          StatusDesconto @default(NENHUM) @map("desconto_status")
+  descontoSolicitadoPorId String?        @map("desconto_solicitado_por_id")
+  descontoSolicitadoPor   User?          @relation("DescontoSolicitadoPor", fields: [descontoSolicitadoPorId], references: [id])
+  descontoAprovadoPorId   String?        @map("desconto_aprovado_por_id")
+  descontoAprovadoPor     User?          @relation("DescontoAprovadoPor", fields: [descontoAprovadoPorId], references: [id])
 
   reservasEstoque   ReservaEstoque[]
   pagamentos        Pagamento[]

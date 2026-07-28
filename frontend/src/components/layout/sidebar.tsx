@@ -4,12 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,
+  CheckCircle2,
   Hammer,
   Package,
   PartyPopper,
   PlusCircle,
   Sparkles,
   UserRound,
+  Users,
+  Wallet,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -28,6 +31,19 @@ const GESTAO_NAV = [
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
   { href: "/estoque", label: "Estoque", icon: Package },
+  { href: "/equipe", label: "Equipe", icon: Users },
+  { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
+  { href: "/perfil", label: "Perfil", icon: UserRound },
+] as const;
+
+const ADMIN_NAV = [
+  { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/vendas", label: "Vendas", icon: PartyPopper },
+  { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
+  { href: "/estoque", label: "Estoque", icon: Package },
+  { href: "/equipe", label: "Equipe", icon: Users },
+  { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
+  { href: "/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/perfil", label: "Perfil", icon: UserRound },
 ] as const;
 
@@ -61,6 +77,15 @@ function isNavActive(pathname: string, href: string): boolean {
   if (href === "/estoque") {
     return pathname === "/estoque" || pathname.startsWith("/estoque/");
   }
+  if (href === "/financeiro") {
+    return pathname === "/financeiro" || pathname.startsWith("/financeiro/");
+  }
+  if (href === "/equipe") {
+    return pathname === "/equipe" || pathname.startsWith("/equipe/");
+  }
+  if (href === "/aprovacoes") {
+    return pathname === "/aprovacoes" || pathname.startsWith("/aprovacoes/");
+  }
   return pathname === href;
 }
 
@@ -71,9 +96,11 @@ export function Sidebar({ user }: SidebarProps) {
   const isMontador = user.role === "MONTADOR";
   const navItems = isMontador
     ? MONTADOR_NAV
-    : isGestao
-      ? GESTAO_NAV
-      : DEFAULT_NAV;
+    : isAdmin
+      ? ADMIN_NAV
+      : isGestao
+        ? GESTAO_NAV
+        : DEFAULT_NAV;
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">

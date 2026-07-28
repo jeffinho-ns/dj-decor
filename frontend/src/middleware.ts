@@ -10,9 +10,13 @@ const PROTECTED_PREFIXES = [
   "/montagem",
   "/perfil",
   "/estoque",
+  "/financeiro",
+  "/equipe",
+  "/aprovacoes",
 ];
 const VENDEDOR_ONLY_PREFIXES = ["/vendas"];
-const GESTAO_ONLY_PREFIXES = ["/estoque"];
+const GESTAO_ONLY_PREFIXES = ["/estoque", "/equipe", "/aprovacoes"];
+const ADMIN_ONLY_PREFIXES = ["/financeiro"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
@@ -28,6 +32,12 @@ function isVendedorArea(pathname: string): boolean {
 
 function isGestaoArea(pathname: string): boolean {
   return GESTAO_ONLY_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
+function isAdminArea(pathname: string): boolean {
+  return ADMIN_ONLY_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 }
@@ -79,6 +89,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(homeForRole(role), request.url));
   }
 
+  if (token && isAdminArea(pathname) && role !== "ADMIN") {
+    return NextResponse.redirect(new URL(homeForRole(role), request.url));
+  }
+
   return NextResponse.next();
 }
 
@@ -96,6 +110,12 @@ export const config = {
     "/perfil/:path*",
     "/estoque",
     "/estoque/:path*",
+    "/financeiro",
+    "/financeiro/:path*",
+    "/equipe",
+    "/equipe/:path*",
+    "/aprovacoes",
+    "/aprovacoes/:path*",
     "/login",
   ],
 };
