@@ -11,6 +11,7 @@ import {
   Package,
   PartyPopper,
   PlusCircle,
+  Settings,
   UserRound,
   Users,
   Wallet,
@@ -33,6 +34,7 @@ const DEFAULT_ITEMS: NavItem[] = [
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", shortLabel: "Nova", icon: PlusCircle },
   { href: "/perfil", label: "Perfil", icon: UserRound },
+  { href: "/configuracoes", label: "Configurações", shortLabel: "Ajustes", icon: Settings },
 ];
 
 const GESTAO_ITEMS: NavItem[] = [
@@ -43,6 +45,7 @@ const GESTAO_ITEMS: NavItem[] = [
   { href: "/equipe", label: "Equipe", icon: Users },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
   { href: "/perfil", label: "Perfil", icon: UserRound },
+  { href: "/configuracoes", label: "Configurações", shortLabel: "Ajustes", icon: Settings },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
@@ -54,12 +57,14 @@ const ADMIN_ITEMS: NavItem[] = [
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
   { href: "/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/perfil", label: "Perfil", icon: UserRound },
+  { href: "/configuracoes", label: "Configurações", shortLabel: "Ajustes", icon: Settings },
 ];
 
 const MONTADOR_ITEMS: NavItem[] = [
   { href: "/montagem", label: "Montagem", icon: Hammer },
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/perfil", label: "Perfil", icon: UserRound },
+  { href: "/configuracoes", label: "Configurações", shortLabel: "Ajustes", icon: Settings },
 ];
 
 const PRIMARY_HREFS = new Set(["/dashboard", "/vendas", "/vendas/nova", "/montagem"]);

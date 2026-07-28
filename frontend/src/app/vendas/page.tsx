@@ -25,19 +25,23 @@ export default async function VendasPage() {
   let comissaoRanking: ComissaoRanking | null = null;
   let error: string | null = null;
   try {
-    const results = await Promise.all([
-      listFestas(token),
-      user.role === "VENDEDOR" ||
-      user.role === "GERENTE" ||
-      user.role === "ADMIN"
-        ? getComissaoRanking(token, "semana")
-        : Promise.resolve(null),
-    ]);
-    festas = results[0];
-    comissaoRanking = results[1];
+    festas = await listFestas(token);
   } catch (err) {
     error =
       err instanceof Error ? err.message : "Falha ao carregar vendas da API";
+  }
+
+  if (
+    !error &&
+    (user.role === "VENDEDOR" ||
+      user.role === "GERENTE" ||
+      user.role === "ADMIN")
+  ) {
+    try {
+      comissaoRanking = await getComissaoRanking(token, "semana");
+    } catch {
+      comissaoRanking = null;
+    }
   }
 
   return (

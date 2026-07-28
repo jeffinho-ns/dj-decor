@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Fredoka, Nunito } from "next/font/google";
+
+import { ThemeProvider } from "@/components/theme/theme-provider";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const fredoka = Fredoka({
@@ -23,7 +26,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#e9edf5",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#e9edf5" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1f2e" },
+  ],
 };
 
 export default function RootLayout({
@@ -32,8 +38,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${fredoka.variable} ${nunito.variable}`}>
-      <body className="relative z-0 antialiased">{children}</body>
+    <html
+      lang="pt-BR"
+      className={`${fredoka.variable} ${nunito.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
+        />
+      </head>
+      <body className="relative z-0 antialiased">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

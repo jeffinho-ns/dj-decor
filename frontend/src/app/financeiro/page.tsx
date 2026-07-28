@@ -30,16 +30,25 @@ export default async function FinanceiroPage() {
   let error: string | null = null;
 
   try {
-    [resumo, previsao, comissaoRanking] = await Promise.all([
+    const results = await Promise.all([
       getFinanceiroResumo(token),
       getFinanceiroPrevisao(token, 30),
-      getComissaoRanking(token, "semana"),
     ]);
+    resumo = results[0];
+    previsao = results[1];
   } catch (err) {
     error =
       err instanceof Error
         ? err.message
         : "Falha ao carregar resumo financeiro da API";
+  }
+
+  if (!error) {
+    try {
+      comissaoRanking = await getComissaoRanking(token, "semana");
+    } catch {
+      comissaoRanking = null;
+    }
   }
 
   return (

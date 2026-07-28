@@ -18,7 +18,12 @@ import { whatsappRoutes } from "./whatsapp.routes";
 const routes = Router();
 
 routes.get("/health", (_req, res) => {
-  res.status(200).json({ status: "ok", service: "dj-decor-api" });
+  res.status(200).json({
+    status: "ok",
+    service: "dj-decor-api",
+    version: "1.1.0",
+    routes: ["festas", "comissoes", "financeiro", "estoque", "equipe", "os"],
+  });
 });
 
 routes.use("/auth", authRoutes);

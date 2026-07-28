@@ -146,6 +146,85 @@
     linear-gradient(165deg, #eef2f9 0%, #e9edf5 45%, #e4e9f4 100%);
 }
 
+.dark {
+  --neo-bg: #1e2433;
+  --neo-dark: #121722;
+  --neo-light: #2c3448;
+
+  --balloon-pink: #ff6b95;
+  --balloon-sky: #4fc3f7;
+  --balloon-sun: #ffd54f;
+  --balloon-mint: #3ee0b5;
+  --balloon-lilac: #b49cff;
+  --coral: #ff8a6a;
+  --champagne: #ffd54f;
+
+  --background: #1a1f2e;
+  --foreground: #eef1f8;
+  --card: #1e2433;
+  --card-foreground: #eef1f8;
+  --popover: #232a3c;
+  --popover-foreground: #eef1f8;
+  --primary: #ff6b95;
+  --primary-foreground: #ffffff;
+  --secondary: #4fc3f7;
+  --secondary-foreground: #0a2030;
+  --muted: #2a3145;
+  --muted-foreground: #9aa3b8;
+  --accent: #ffd54f;
+  --accent-foreground: #2a2208;
+  --destructive: #ff5c74;
+  --border: rgba(238, 241, 248, 0.08);
+  --input: #1e2433;
+  --ring: #ff6b95;
+  --chart-1: #ff6b95;
+  --chart-2: #4fc3f7;
+  --chart-3: #ffd54f;
+  --chart-4: #3ee0b5;
+  --chart-5: #b49cff;
+  --sidebar: #1e2433;
+  --sidebar-foreground: #eef1f8;
+  --sidebar-primary: #ff6b95;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2a3145;
+  --sidebar-accent-foreground: #eef1f8;
+  --sidebar-border: rgba(238, 241, 248, 0.08);
+  --sidebar-ring: #ff6b95;
+
+  --status-open: #ffd54f;
+  --status-closed: #4fc3f7;
+  --status-done: #3ee0b5;
+
+  --shadow-neo: 8px 8px 18px var(--neo-dark), -6px -6px 16px var(--neo-light);
+  --shadow-neo-sm: 4px 4px 10px var(--neo-dark), -3px -3px 8px var(--neo-light);
+  --shadow-neo-inset: inset 5px 5px 12px var(--neo-dark),
+    inset -4px -4px 10px var(--neo-light);
+  --shadow-neo-pressed: inset 3px 3px 8px var(--neo-dark),
+    inset -2px -2px 6px var(--neo-light);
+
+  --gradient-festa: radial-gradient(
+      ellipse 90% 55% at 8% -5%,
+      rgba(255, 107, 149, 0.18),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 70% 50% at 95% 5%,
+      rgba(79, 195, 247, 0.14),
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 60% 45% at 50% 110%,
+      rgba(255, 213, 79, 0.1),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 40% 35% at 80% 70%,
+      rgba(62, 224, 181, 0.08),
+      transparent 50%
+    ),
+    linear-gradient(165deg, #1f2536 0%, #1a1f2e 45%, #161b28 100%);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -155,6 +234,10 @@
     @apply font-sans;
     color-scheme: light;
     overflow-x: hidden;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   body {
@@ -181,6 +264,15 @@
       radial-gradient(circle at 72% 78%, rgba(255, 201, 60, 0.14) 0 5rem, transparent 5.5rem),
       radial-gradient(circle at 18% 82%, rgba(45, 212, 168, 0.12) 0 3rem, transparent 3.5rem),
       radial-gradient(circle at 48% 42%, rgba(155, 123, 255, 0.1) 0 2.5rem, transparent 3rem);
+  }
+
+  html.dark body::before {
+    background:
+      radial-gradient(circle at 12% 22%, rgba(255, 107, 149, 0.2) 0 4.5rem, transparent 5rem),
+      radial-gradient(circle at 88% 18%, rgba(79, 195, 247, 0.16) 0 3.5rem, transparent 4rem),
+      radial-gradient(circle at 72% 78%, rgba(255, 213, 79, 0.12) 0 5rem, transparent 5.5rem),
+      radial-gradient(circle at 18% 82%, rgba(62, 224, 181, 0.1) 0 3rem, transparent 3.5rem),
+      radial-gradient(circle at 48% 42%, rgba(180, 156, 255, 0.12) 0 2.5rem, transparent 3rem);
   }
 
   h1,
@@ -239,11 +331,21 @@
       -4px -4px 12px rgba(255, 255, 255, 0.7);
   }
 
+  .dark .neo-pink {
+    box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.35),
+      -3px -3px 10px rgba(255, 107, 149, 0.2);
+  }
+
   .neo-sky {
     background: linear-gradient(145deg, #62c9f8, #3db9f5);
     color: #fff;
     box-shadow: 6px 6px 14px rgba(61, 185, 245, 0.35),
       -4px -4px 12px rgba(255, 255, 255, 0.7);
+  }
+
+  .dark .neo-sky {
+    box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.35),
+      -3px -3px 10px rgba(79, 195, 247, 0.2);
   }
 
   .neo-sun {
@@ -253,11 +355,21 @@
       -4px -4px 12px rgba(255, 255, 255, 0.7);
   }
 
+  .dark .neo-sun {
+    box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.35),
+      -3px -3px 10px rgba(255, 213, 79, 0.22);
+  }
+
   .neo-mint {
     background: linear-gradient(145deg, #55e0be, #2dd4a8);
     color: #063528;
     box-shadow: 6px 6px 14px rgba(45, 212, 168, 0.35),
       -4px -4px 12px rgba(255, 255, 255, 0.7);
+  }
+
+  .dark .neo-mint {
+    box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.35),
+      -3px -3px 10px rgba(62, 224, 181, 0.2);
   }
 
   .neo-lilac {
@@ -267,11 +379,21 @@
       -4px -4px 12px rgba(255, 255, 255, 0.7);
   }
 
+  .dark .neo-lilac {
+    box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.35),
+      -3px -3px 10px rgba(180, 156, 255, 0.22);
+  }
+
   .neo-coral {
     background: linear-gradient(145deg, #ff9478, #ff7a59);
     color: #fff;
     box-shadow: 6px 6px 14px rgba(255, 122, 89, 0.35),
       -4px -4px 12px rgba(255, 255, 255, 0.7);
+  }
+
+  .dark .neo-coral {
+    box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.35),
+      -3px -3px 10px rgba(255, 138, 106, 0.22);
   }
 
   .chip-pink {

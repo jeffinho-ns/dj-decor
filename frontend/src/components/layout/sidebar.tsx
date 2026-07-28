@@ -9,6 +9,7 @@ import {
   Package,
   PartyPopper,
   PlusCircle,
+  Settings,
   Sparkles,
   UserRound,
   Users,
@@ -24,6 +25,7 @@ const DEFAULT_NAV = [
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
   { href: "/perfil", label: "Perfil", icon: UserRound },
+  { href: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 
 const GESTAO_NAV = [
@@ -34,6 +36,7 @@ const GESTAO_NAV = [
   { href: "/equipe", label: "Equipe", icon: Users },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
   { href: "/perfil", label: "Perfil", icon: UserRound },
+  { href: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 
 const ADMIN_NAV = [
@@ -45,12 +48,14 @@ const ADMIN_NAV = [
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
   { href: "/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/perfil", label: "Perfil", icon: UserRound },
+  { href: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 
 const MONTADOR_NAV = [
   { href: "/montagem", label: "Montagem", icon: Hammer },
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/perfil", label: "Perfil", icon: UserRound },
+  { href: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 
 interface SidebarProps {
@@ -85,6 +90,11 @@ export function isNavActive(pathname: string, href: string): boolean {
   }
   if (href === "/aprovacoes") {
     return pathname === "/aprovacoes" || pathname.startsWith("/aprovacoes/");
+  }
+  if (href === "/configuracoes") {
+    return (
+      pathname === "/configuracoes" || pathname.startsWith("/configuracoes/")
+    );
   }
   return pathname === href;
 }
