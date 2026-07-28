@@ -1,5 +1,6 @@
 import { StatusFesta, StatusPagamento, TipoPagamento } from "@prisma/client";
 import { z } from "zod";
+import { dispatchWhatsAppSafe } from "../integrations/whatsapp";
 import { prisma } from "../prisma/client";
 import { comissoesService } from "./comissoes.service";
 
@@ -98,60 +99,82 @@ export class PagamentosService {
   async confirmar(pagamentoId: string, rawInput: unknown) {
     const data = this.parseConfirmar(rawInput);
 
-    return prisma.$transaction(async (tx) => {
-      const pagamento = await tx.pagamento.findUnique({
-        where: { id: pagamentoId },
-        include: {
-          festa: {
-            select: { id: true, status: true, vendedorId: true },
+    const { pagamento: pagamentoAtualizado, festa } = await prisma.$transaction(
+      async (tx) => {
+        const pagamento = await tx.pagamento.findUnique({
+          where: { id: pagamentoId },
+          include: {
+            festa: {
+              select: {
+                id: true,
+                status: true,
+                vendedorId: true,
+                tema: true,
+                dataEvento: true,
+                cliente: { select: { telefone: true } },
+              },
+            },
           },
-        },
-      });
-
-      if (!pagamento) {
-        throw new PagamentoNotFoundError(pagamentoId);
-      }
-
-      if (pagamento.status === StatusPagamento.CONFIRMADO) {
-        throw new PagamentoJaConfirmadoError(pagamentoId);
-      }
-
-      if (data.comprovanteMidiaId) {
-        const midia = await tx.midia.findUnique({
-          where: { id: data.comprovanteMidiaId },
-          select: { id: true },
         });
-        if (!midia) {
-          throw new MidiaNotFoundForPagamentoError(data.comprovanteMidiaId);
+
+        if (!pagamento) {
+          throw new PagamentoNotFoundError(pagamentoId);
         }
-      }
 
-      const pagamentoAtualizado = await tx.pagamento.update({
-        where: { id: pagamentoId },
-        data: {
-          status: StatusPagamento.CONFIRMADO,
-          confirmadoEm: new Date(),
-          ...(data.comprovanteMidiaId !== undefined
-            ? { comprovanteMidiaId: data.comprovanteMidiaId }
-            : {}),
-        },
-      });
+        if (pagamento.status === StatusPagamento.CONFIRMADO) {
+          throw new PagamentoJaConfirmadoError(pagamentoId);
+        }
 
-      await comissoesService.criarParaPagamento(tx, {
-        festaId: pagamento.festa.id,
-        vendedorId: pagamento.festa.vendedorId,
-        valorPagamento: pagamento.valor,
-      });
+        if (data.comprovanteMidiaId) {
+          const midia = await tx.midia.findUnique({
+            where: { id: data.comprovanteMidiaId },
+            select: { id: true },
+          });
+          if (!midia) {
+            throw new MidiaNotFoundForPagamentoError(data.comprovanteMidiaId);
+          }
+        }
 
-      if (pagamento.festa.status === StatusFesta.AGUARDANDO_PAGAMENTO) {
-        await tx.festa.update({
-          where: { id: pagamento.festa.id },
-          data: { status: StatusFesta.PAGO },
+        const pagamentoAtualizado = await tx.pagamento.update({
+          where: { id: pagamentoId },
+          data: {
+            status: StatusPagamento.CONFIRMADO,
+            confirmadoEm: new Date(),
+            ...(data.comprovanteMidiaId !== undefined
+              ? { comprovanteMidiaId: data.comprovanteMidiaId }
+              : {}),
+          },
         });
-      }
 
-      return pagamentoAtualizado;
+        await comissoesService.criarParaPagamento(tx, {
+          festaId: pagamento.festa.id,
+          vendedorId: pagamento.festa.vendedorId,
+          valorPagamento: pagamento.valor,
+        });
+
+        if (pagamento.festa.status === StatusFesta.AGUARDANDO_PAGAMENTO) {
+          await tx.festa.update({
+            where: { id: pagamento.festa.id },
+            data: { status: StatusFesta.PAGO },
+          });
+        }
+
+        return { pagamento: pagamentoAtualizado, festa: pagamento.festa };
+      }
+    );
+
+    dispatchWhatsAppSafe({
+      template: "pagamento_confirmado",
+      telefone: festa.cliente.telefone,
+      festaId: festa.id,
+      payload: {
+        tema: festa.tema,
+        data: festa.dataEvento.toISOString(),
+        valor: Number(pagamentoAtualizado.valor),
+      },
     });
+
+    return pagamentoAtualizado;
   }
 }
 

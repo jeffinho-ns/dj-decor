@@ -16,6 +16,12 @@ export interface WhatsAppDispatchResult {
 }
 
 /**
+ * Templates disparados automaticamente pelo backend:
+ *
+ * - `pagamento_confirmado` — após confirmar pagamento (payload: tema, data, valor)
+ * - `equipe_a_caminho` — após concluir romaneio / OS EM_TRANSITO (payload: tema, data, endereco)
+ * - `montagem_finalizada` — após foto final / OS FINALIZADA (payload: tema, data)
+ *
  * Adapter para o projeto paralelo de IA / WhatsApp.
  * Registra a mensagem no banco e, se WHATSAPP_IA_WEBHOOK_URL estiver
  * configurada, encaminha o payload para esse serviço.
@@ -112,3 +118,14 @@ export class WhatsAppAdapter {
 }
 
 export const whatsappAdapter = new WhatsAppAdapter();
+
+/** Fire-and-forget: falhas de dispatch não devem afetar o fluxo principal. */
+export function dispatchWhatsAppSafe(input: WhatsAppDispatchInput): void {
+  void whatsappAdapter.dispatch(input).catch((error) => {
+    console.error(
+      "[whatsapp] falha no dispatch automático:",
+      input.template,
+      error instanceof Error ? error.message : error
+    );
+  });
+}

@@ -22,6 +22,7 @@ import type {
   StatusFesta,
 } from "@/types/festa";
 import type { Midia, TipoMidia } from "@/types/midia";
+import type { Contrato, MensagemWhatsApp } from "@/types/contrato";
 import type {
   CheckinPayload,
   FestaMontagemHoje,
@@ -420,4 +421,118 @@ export async function scanQr(
     body: JSON.stringify(payload),
   });
   return handleResponse<QrScanResult>(response);
+}
+
+/** Gera ou retorna contrato existente (POST /api/festas/:id/contrato). */
+export async function gerarContrato(
+  festaId: string,
+  token: string
+): Promise<Contrato> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/festas/${festaId}/contrato`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+    }
+  );
+  const body = await handleResponse<{
+    id: string;
+    geradoEm: string;
+    festaId?: string;
+    pdfDisponivel?: boolean;
+  }>(response);
+  return {
+    id: body.id,
+    festaId: body.festaId ?? festaId,
+    geradoEm: body.geradoEm,
+    pdfDisponivel: body.pdfDisponivel,
+  };
+}
+
+/** Contrato da festa, ou null se ainda não existir (GET /api/festas/:id/contrato). */
+export async function getContrato(
+  festaId: string,
+  token: string
+): Promise<Contrato | null> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/festas/${festaId}/contrato`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  if (response.status === 404) {
+    return null;
+  }
+  const body = await handleResponse<{
+    id: string;
+    geradoEm: string;
+    festaId?: string;
+    pdfDisponivel?: boolean;
+  }>(response);
+  return {
+    id: body.id,
+    festaId: body.festaId ?? festaId,
+    geradoEm: body.geradoEm,
+    pdfDisponivel: body.pdfDisponivel,
+  };
+}
+
+/** Baixa PDF do contrato com Authorization bearer (GET /api/contratos/:id/pdf). */
+export async function downloadContratoPdf(
+  contratoId: string,
+  token: string,
+  filename = `contrato-${contratoId}.pdf`
+): Promise<void> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/contratos/${contratoId}/pdf`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  if (!response.ok) {
+    let message = `Erro HTTP ${response.status}`;
+    try {
+      const body = (await response.json()) as {
+        error?: string;
+        message?: string;
+      };
+      message = body.message ?? body.error ?? message;
+    } catch {
+      // resposta pode ser binária ou vazia
+    }
+    throw new Error(message);
+  }
+
+  const blob = await response.blob();
+  if (blob.size === 0) {
+    throw new Error("PDF vazio ou ainda não disponível");
+  }
+
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = "noopener";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Log de mensagens WhatsApp da festa (GET /api/whatsapp/mensagens?festaId=). */
+export async function listMensagensWhatsApp(
+  festaId: string,
+  token: string
+): Promise<MensagemWhatsApp[]> {
+  const qs = new URLSearchParams({ festaId }).toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/whatsapp/mensagens?${qs}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  return handleResponse<MensagemWhatsApp[]>(response);
 }

@@ -5,6 +5,7 @@ import {
   TipoMidia,
 } from "@prisma/client";
 import { z } from "zod";
+import { dispatchWhatsAppSafe } from "../integrations/whatsapp";
 import { prisma } from "../prisma/client";
 
 const addRomaneioItemSchema = z
@@ -327,7 +328,7 @@ export class OsService {
       );
     }
 
-    return prisma.ordemServico.update({
+    const osAtualizada = await prisma.ordemServico.update({
       where: { id: osId },
       data: {
         romaneioConcluido: true,
@@ -335,6 +336,19 @@ export class OsService {
       },
       include: osInclude,
     });
+
+    dispatchWhatsAppSafe({
+      template: "equipe_a_caminho",
+      telefone: osAtualizada.festa.cliente.telefone,
+      festaId: osAtualizada.festaId,
+      payload: {
+        tema: osAtualizada.festa.tema,
+        data: osAtualizada.festa.dataEvento.toISOString(),
+        endereco: osAtualizada.festa.endereco,
+      },
+    });
+
+    return osAtualizada;
   }
 
   async seedRomaneioFromReservas(osId: string) {
@@ -429,7 +443,7 @@ export class OsService {
       festaStatus === StatusFesta.EM_MONTAGEM ||
       festaStatus === StatusFesta.FECHADO;
 
-    return prisma.$transaction(async (tx) => {
+    const osFinalizada = await prisma.$transaction(async (tx) => {
       if (podeConcluirFesta) {
         await tx.festa.update({
           where: { id: os.festaId },
@@ -450,6 +464,18 @@ export class OsService {
         include: osInclude,
       });
     });
+
+    dispatchWhatsAppSafe({
+      template: "montagem_finalizada",
+      telefone: osFinalizada.festa.cliente.telefone,
+      festaId: osFinalizada.festaId,
+      payload: {
+        tema: osFinalizada.festa.tema,
+        data: osFinalizada.festa.dataEvento.toISOString(),
+      },
+    });
+
+    return osFinalizada;
   }
 }
 

@@ -6,6 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { ChevronDown, LayoutGrid, List, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { FestaContratoPanel } from "@/components/vendas/festa-contrato-panel";
 import { PagamentoForm } from "@/components/vendas/pagamento-form";
 import { FestasTable } from "@/components/vendas/festas-table";
 import {
@@ -129,7 +130,7 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Funil por status — clique no card para pagamentos PIX.
+          Funil por status — clique no card para pagamentos, contrato e WhatsApp.
         </p>
         <div className="flex gap-1 rounded-lg border border-border/60 p-0.5">
           <Button
@@ -279,32 +280,42 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
                                   Carregando pagamentos…
                                 </p>
                               ) : (
-                                <PagamentoForm
-                                  festaId={festa.id}
-                                  token={token}
-                                  pagamentos={pagamentosByFesta[festa.id] ?? []}
-                                  valorSugerido={Number(festa.valor)}
-                                  onPagamentosChange={(list) => {
-                                    setPagamentosByFesta((prev) => ({
-                                      ...prev,
-                                      [festa.id]: list,
-                                    }));
-                                    // Se confirmou e festa estava aguardando, backend sobe para PAGO
-                                    void listPagamentos(festa.id, token).then(
-                                      () => {
-                                        // refresh festa list status lightly
-                                        setFestas((prev) =>
-                                          prev.map((f) =>
-                                            f.id === festa.id &&
-                                            f.status === "AGUARDANDO_PAGAMENTO"
-                                              ? { ...f, status: "PAGO" }
-                                              : f
-                                          )
-                                        );
-                                      }
-                                    );
-                                  }}
-                                />
+                                <>
+                                  <PagamentoForm
+                                    festaId={festa.id}
+                                    token={token}
+                                    pagamentos={
+                                      pagamentosByFesta[festa.id] ?? []
+                                    }
+                                    valorSugerido={Number(festa.valor)}
+                                    onPagamentosChange={(list) => {
+                                      setPagamentosByFesta((prev) => ({
+                                        ...prev,
+                                        [festa.id]: list,
+                                      }));
+                                      // Se confirmou e festa estava aguardando, backend sobe para PAGO
+                                      void listPagamentos(festa.id, token).then(
+                                        () => {
+                                          setFestas((prev) =>
+                                            prev.map((f) =>
+                                              f.id === festa.id &&
+                                              f.status === "AGUARDANDO_PAGAMENTO"
+                                                ? { ...f, status: "PAGO" }
+                                                : f
+                                            )
+                                          );
+                                        }
+                                      );
+                                    }}
+                                  />
+                                  <div className="mt-4 border-t border-border/50 pt-3">
+                                    <FestaContratoPanel
+                                      festaId={festa.id}
+                                      token={token}
+                                      clienteNome={festa.cliente.nome}
+                                    />
+                                  </div>
+                                </>
                               )}
                             </div>
                           ) : null}

@@ -37,9 +37,13 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.2.0",
+    "pdfkit": "^0.19.1",
     "prisma": "^6.9.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/pdfkit": "^0.17.6"
   }
 }

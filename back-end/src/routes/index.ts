@@ -9,6 +9,7 @@ import { pagamentosRoutes } from "./pagamentos.routes";
 import { produtosRoutes } from "./produtos.routes";
 import { qrRoutes } from "./qr.routes";
 import { webhooksRoutes } from "./webhooks.routes";
+import { whatsappRoutes } from "./whatsapp.routes";
 
 const routes = Router();
 
@@ -25,6 +26,7 @@ routes.use("/os", osRoutes);
 routes.use("/qr", qrRoutes);
 routes.use(pagamentosRoutes);
 routes.use(contratosRoutes);
+routes.use("/whatsapp", whatsappRoutes);
 routes.use("/webhooks", webhooksRoutes);
 
 export { routes };
