@@ -6,6 +6,10 @@ import {
   festasService,
   InvalidStatusTransitionError,
 } from "../services/festas.service";
+import {
+  RiscoFestaNotFoundError,
+  riscoService,
+} from "../services/risco.service";
 
 function getParamId(value: string | string[] | undefined): string | null {
   if (typeof value === "string" && value.length > 0) {
@@ -118,6 +122,20 @@ export class FestasController {
     }
   }
 
+  async risco(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const id = getParamId(req.params.id);
+      if (!id) {
+        res.status(400).json({ error: "ID é obrigatório" });
+        return;
+      }
+      const risco = await riscoService.getByFestaId(id);
+      res.status(200).json(risco);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
   private handleError(error: unknown, res: Response, next: NextFunction) {
     if (error instanceof ZodError) {
       res.status(400).json({
@@ -128,6 +146,11 @@ export class FestasController {
     }
 
     if (error instanceof FestaNotFoundError) {
+      res.status(404).json({ error: error.message });
+      return;
+    }
+
+    if (error instanceof RiscoFestaNotFoundError) {
       res.status(404).json({ error: error.message });
       return;
     }

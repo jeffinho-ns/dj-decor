@@ -23,6 +23,19 @@ export class OsController {
     }
   }
 
+  async listTodayRota(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await osService.listTodayRota();
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async listMine(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) {
@@ -101,6 +114,64 @@ export class OsController {
       }
       if (error instanceof OsItemNotFoundError) {
         res.status(404).json({ message: error.message });
+        return;
+      }
+      if (error instanceof OsValidationError) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  async uploadItemFoto(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      if (!req.user) {
+        res.status(401).json({ message: "Não autorizado" });
+        return;
+      }
+
+      let midiaId: string;
+
+      if (req.file) {
+        const file = midiasService.validateFile(req.file);
+        const os = await osService.getById(req.params.id as string);
+        const midia = await midiasService.create(
+          file,
+          { tipo: TipoMidia.ITEM, festaId: os.festaId },
+          req.user.id
+        );
+        midiaId = midia.id;
+      } else {
+        const parsed = osService.parseFotoFinal(req.body);
+        midiaId = parsed.midiaId;
+      }
+
+      const item = await osService.uploadItemFoto(
+        req.params.id as string,
+        req.params.itemId as string,
+        midiaId
+      );
+      res.status(200).json(item);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          message: "Dados inválidos",
+          details: error.flatten().fieldErrors,
+        });
+        return;
+      }
+      if (
+        error instanceof OsNotFoundError ||
+        error instanceof OsItemNotFoundError ||
+        error instanceof OsValidationError ||
+        error instanceof MidiaValidationError
+      ) {
+        res.status(400).json({ message: error.message });
         return;
       }
       next(error);

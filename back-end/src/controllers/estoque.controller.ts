@@ -95,6 +95,19 @@ export class EstoqueController {
       next(error);
     }
   }
+
+  async alertasQr(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const alertas = await estoqueService.alertasQr();
+      res.status(200).json(alertas);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const estoqueController = new EstoqueController();

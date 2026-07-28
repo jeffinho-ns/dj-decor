@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Search } from "lucide-react";
+import { AlertTriangle, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import {
 import { disponibilidadeEstoque } from "@/lib/api";
 import { getClientToken } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import type { DisponibilidadeResult, Produto } from "@/types/estoque";
+import type { AlertaQr, DisponibilidadeResult, Produto } from "@/types/estoque";
 
 const STATUS_LABEL: Record<string, string> = {
   DISPONIVEL: "Disponível",
@@ -28,6 +28,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 interface EstoquePainelProps {
   produtos: Produto[];
+  alertasQr?: AlertaQr[];
 }
 
 function toLocalInputValue(date: Date): string {
@@ -91,7 +92,7 @@ function ProdutoCardMobile({ produto }: { produto: Produto }) {
   );
 }
 
-export function EstoquePainel({ produtos }: EstoquePainelProps) {
+export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) {
   const defaultInicio = useMemo(() => {
     const d = new Date();
     d.setMinutes(0, 0, 0);
@@ -144,6 +145,47 @@ export function EstoquePainel({ produtos }: EstoquePainelProps) {
 
   return (
     <div className="space-y-8">
+      {alertasQr.length > 0 ? (
+        <section className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <AlertTriangle className="size-4 text-amber-400" />
+            <p className="text-sm font-medium text-amber-100">
+              {alertasQr.length} alerta{alertasQr.length === 1 ? "" : "s"} QR
+            </p>
+            <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs tabular-nums text-amber-200">
+              peças sem retorno
+            </span>
+          </div>
+          <ul className="mt-3 space-y-2">
+            {alertasQr.slice(0, 5).map((a) => (
+              <li
+                key={a.unidade.id}
+                className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-amber-50/90"
+              >
+                <span>
+                  <span className="font-medium">{a.produto.nome}</span>
+                  {" · "}
+                  <span className="font-mono text-xs">{a.codigoQr}</span>
+                </span>
+                <span className="text-xs text-amber-200/80">
+                  saída{" "}
+                  {new Date(a.saidaEm).toLocaleString("pt-BR", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
+                  {a.festaTema ? ` · ${a.festaTema}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {alertasQr.length > 5 ? (
+            <p className="mt-2 text-xs text-amber-200/70">
+              +{alertasQr.length - 5} outros alertas
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
       <section className="space-y-4">
         <div>
           <h2 className="font-display text-xl text-foreground">Catálogo</h2>
@@ -228,7 +270,7 @@ export function EstoquePainel({ produtos }: EstoquePainelProps) {
             Disponibilidade
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Consulta anti-overbooking por janela de datas (montagem → retorno).
+            Consulta anti-overbooking por janela de datas (montagem → retorno + cura).
           </p>
         </div>
 

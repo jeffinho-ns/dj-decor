@@ -5,10 +5,12 @@ import type {
   UpdatePerfilResponse,
 } from "@/types/auth";
 import type {
+  AlertaQr,
   CreateProdutoPayload,
   CreateUnidadePayload,
   DisponibilidadeResult,
   Produto,
+  ProdutoSugestao,
   ReservaEstoque,
   ReservarEstoquePayload,
   UnidadeProduto,
@@ -19,6 +21,7 @@ import type {
   CreatePagamentoPayload,
   Festa,
   Pagamento,
+  RiscoOrcamento,
   StatusFesta,
 } from "@/types/festa";
 import type { Midia, TipoMidia } from "@/types/midia";
@@ -29,14 +32,16 @@ import type {
   AssignMontadorPayload,
   Montador,
 } from "@/types/equipe";
-import type { FinanceiroResumo } from "@/types/financeiro";
+import type { FinanceiroResumo, ComissaoRanking, PrevisaoCaixa } from "@/types/financeiro";
 import type {
   CheckinPayload,
   FestaMontagemHoje,
   ItemRomaneio,
   OrdemServico,
+  PortalFestaStatus,
   QrScanPayload,
   QrScanResult,
+  RotaDiaItem,
   UpdateRomaneioItemPayload,
 } from "@/types/os";
 
@@ -134,7 +139,43 @@ export async function listFestas(token: string): Promise<Festa[]> {
     headers: authHeaders(token),
     cache: "no-store",
   });
-  return handleResponse<Festa[]>(response);
+  const raw = await handleResponse<Array<Record<string, unknown>>>(response);
+  return raw.map(normalizeFesta);
+}
+
+function normalizeRisco(value: unknown): RiscoOrcamento | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const row = value as Record<string, unknown>;
+  const nivel = row.nivel;
+  if (nivel !== "BAIXO" && nivel !== "MEDIO" && nivel !== "ALTO") {
+    return undefined;
+  }
+  return {
+    score: toNumber(row.score),
+    nivel,
+    fatores: Array.isArray(row.fatores)
+      ? row.fatores.filter((f): f is string => typeof f === "string")
+      : [],
+  };
+}
+
+function normalizeFesta(raw: Record<string, unknown>): Festa {
+  return {
+    ...(raw as unknown as Festa),
+    risco: normalizeRisco(raw.risco),
+  };
+}
+
+/** Score de risco do orçamento (GET /api/festas/:id/risco). */
+export async function getFestaRisco(
+  festaId: string,
+  token: string
+): Promise<RiscoOrcamento> {
+  const response = await fetch(`${getBaseUrl()}/api/festas/${festaId}/risco`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<RiscoOrcamento>(response);
 }
 
 export async function createFesta(
@@ -320,6 +361,32 @@ export async function liberarReserva(
   return handleResponse<{ ok: true; reservaId: string }>(response);
 }
 
+/** Alertas de peça sumida (saída QR sem retorno). */
+export async function listAlertasQr(token: string): Promise<AlertaQr[]> {
+  const response = await fetch(`${getBaseUrl()}/api/estoque/alertas-qr`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<AlertaQr[]>(response);
+}
+
+/** Sugestões automáticas de produtos para um tema de festa. */
+export async function sugestoesProdutos(
+  params: { tema: string; tamanho?: string },
+  token: string
+): Promise<ProdutoSugestao[]> {
+  const qs = new URLSearchParams({ tema: params.tema });
+  if (params.tamanho) qs.set("tamanho", params.tamanho);
+  const response = await fetch(
+    `${getBaseUrl()}/api/produtos/sugestoes?${qs}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  return handleResponse<ProdutoSugestao[]>(response);
+}
+
 /** Festas/OS de montagem do dia (GET /api/os/today). */
 export async function listOsHoje(token: string): Promise<FestaMontagemHoje[]> {
   const response = await fetch(`${getBaseUrl()}/api/os/today`, {
@@ -327,6 +394,26 @@ export async function listOsHoje(token: string): Promise<FestaMontagemHoje[]> {
     cache: "no-store",
   });
   return handleResponse<FestaMontagemHoje[]>(response);
+}
+
+/** Rota sugerida do dia (GET /api/os/today/rota). */
+export async function listOsRotaHoje(token: string): Promise<RotaDiaItem[]> {
+  const response = await fetch(`${getBaseUrl()}/api/os/today/rota`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<RotaDiaItem[]>(response);
+}
+
+/** Status público da festa (GET /api/portal/:festaId/status). */
+export async function getPortalStatus(
+  festaId: string
+): Promise<PortalFestaStatus> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/portal/${festaId}/status`,
+    { cache: "no-store" }
+  );
+  return handleResponse<PortalFestaStatus>(response);
 }
 
 /** OS atribuídas ao montador logado (GET /api/os/mine). */
@@ -358,6 +445,26 @@ export async function updateRomaneioItem(
       method: "PATCH",
       headers: authHeaders(token),
       body: JSON.stringify(payload),
+    }
+  );
+  return handleResponse<ItemRomaneio>(response);
+}
+
+/** Upload de foto de item alto valor (POST /api/os/:id/romaneio/itens/:itemId/foto). */
+export async function uploadItemFotoRomaneio(
+  osId: string,
+  itemId: string,
+  file: File,
+  token: string
+): Promise<ItemRomaneio> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(
+    `${getBaseUrl()}/api/os/${osId}/romaneio/itens/${itemId}/foto`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
     }
   );
   return handleResponse<ItemRomaneio>(response);
@@ -590,6 +697,78 @@ export async function getFinanceiroResumo(
           row.comissoesPendentes != null
             ? toNumber(row.comissoesPendentes)
             : undefined,
+      };
+    }),
+  };
+}
+
+/** Ranking gamificado de comissões (GET /api/comissoes/ranking). */
+export async function getComissaoRanking(
+  token: string,
+  periodo: "semana" | "mes" = "semana"
+): Promise<ComissaoRanking> {
+  const qs = new URLSearchParams({ periodo }).toString();
+  const response = await fetch(`${getBaseUrl()}/api/comissoes/ranking?${qs}`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  const raw = await handleResponse<Record<string, unknown>>(response);
+
+  const rankingRaw = Array.isArray(raw.ranking) ? raw.ranking : [];
+
+  return {
+    periodo: raw.periodo === "mes" ? "mes" : "semana",
+    inicio: typeof raw.inicio === "string" ? raw.inicio : new Date().toISOString(),
+    meta: toNumber(raw.meta),
+    ranking: rankingRaw.map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        vendedorId:
+          typeof row.vendedorId === "string" ? row.vendedorId : String(row.id ?? ""),
+        vendedorNome:
+          typeof row.vendedorNome === "string"
+            ? row.vendedorNome
+            : typeof row.nome === "string"
+              ? row.nome
+              : "Vendedor",
+        totalComissao: toNumber(row.totalComissao ?? row.total),
+        posicao: row.posicao != null ? toNumber(row.posicao) : undefined,
+        atingiuMeta:
+          typeof row.atingiuMeta === "boolean" ? row.atingiuMeta : undefined,
+        progressoMeta:
+          row.progressoMeta != null ? toNumber(row.progressoMeta) : undefined,
+      };
+    }),
+  };
+}
+
+/** Previsão de caixa (GET /api/financeiro/previsao). */
+export async function getFinanceiroPrevisao(
+  token: string,
+  dias = 30
+): Promise<PrevisaoCaixa> {
+  const qs = new URLSearchParams({ dias: String(dias) }).toString();
+  const response = await fetch(`${getBaseUrl()}/api/financeiro/previsao?${qs}`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  const raw = await handleResponse<Record<string, unknown>>(response);
+  const periodosRaw = Array.isArray(raw.periodos) ? raw.periodos : [];
+
+  return {
+    dias: toNumber(raw.dias) || dias,
+    inicio: typeof raw.inicio === "string" ? raw.inicio : new Date().toISOString(),
+    fim: typeof raw.fim === "string" ? raw.fim : new Date().toISOString(),
+    totalPrevisto: toNumber(raw.totalPrevisto),
+    periodos: periodosRaw.map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        inicio: typeof row.inicio === "string" ? row.inicio : "",
+        fim: typeof row.fim === "string" ? row.fim : "",
+        confirmado: toNumber(row.confirmado),
+        pendente: toNumber(row.pendente),
+        saldoFesta: toNumber(row.saldoFesta),
+        total: toNumber(row.total),
       };
     }),
   };

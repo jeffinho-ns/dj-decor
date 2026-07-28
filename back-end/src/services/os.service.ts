@@ -21,6 +21,7 @@ const addRomaneioItemSchema = z
 const updateRomaneioItemSchema = z.object({
   carregado: z.boolean().optional(),
   conferido: z.boolean().optional(),
+  fotoMidiaId: z.string().min(1).nullable().optional(),
 });
 
 const checkinSchema = z.object({
@@ -59,7 +60,7 @@ const osInclude = {
       unidade: {
         include: {
           produto: {
-            select: { id: true, nome: true, categoria: true },
+            select: { id: true, nome: true, categoria: true, requerQr: true },
           },
         },
       },
@@ -67,6 +68,101 @@ const osInclude = {
     orderBy: { id: "asc" as const },
   },
 } satisfies Prisma.OrdemServicoInclude;
+
+function haversineKm(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export interface RotaDiaItem {
+  ordem: number;
+  osId: string;
+  festaId: string;
+  endereco: string;
+  horarioMontagem: string;
+  clienteNome: string;
+  tema: string;
+  checkinLat: number | null;
+  checkinLng: number | null;
+  criterio: "horario" | "proximidade";
+}
+
+function ordenarRotaDia(
+  items: Omit<RotaDiaItem, "ordem" | "criterio">[]
+): RotaDiaItem[] {
+  const porHorario = [...items].sort(
+    (a, b) =>
+      new Date(a.horarioMontagem).getTime() -
+      new Date(b.horarioMontagem).getTime()
+  );
+
+  const comCoords = porHorario.filter(
+    (i) => i.checkinLat != null && i.checkinLng != null
+  );
+
+  if (comCoords.length < 2) {
+    return porHorario.map((item, idx) => ({
+      ...item,
+      ordem: idx + 1,
+      criterio: "horario" as const,
+    }));
+  }
+
+  const restantes = new Set(comCoords.map((i) => i.osId));
+  const ordenados: Omit<RotaDiaItem, "ordem" | "criterio">[] = [];
+
+  let atual = comCoords[0];
+  restantes.delete(atual.osId);
+  ordenados.push(atual);
+
+  while (restantes.size > 0) {
+    let proximo: (typeof comCoords)[0] | null = null;
+    let menorDist = Infinity;
+
+    for (const candidato of comCoords) {
+      if (!restantes.has(candidato.osId)) continue;
+      const dist = haversineKm(
+        atual.checkinLat!,
+        atual.checkinLng!,
+        candidato.checkinLat!,
+        candidato.checkinLng!
+      );
+      if (dist < menorDist) {
+        menorDist = dist;
+        proximo = candidato;
+      }
+    }
+
+    if (!proximo) break;
+    restantes.delete(proximo.osId);
+    ordenados.push(proximo);
+    atual = proximo;
+  }
+
+  const ordenadosIds = new Set(ordenados.map((i) => i.osId));
+  const semCoords = porHorario.filter((i) => !ordenadosIds.has(i.osId));
+  const resultado = [...ordenados, ...semCoords];
+
+  return resultado.map((item, idx) => ({
+    ...item,
+    ordem: idx + 1,
+    criterio: comCoords.some((c) => c.osId === item.osId)
+      ? ("proximidade" as const)
+      : ("horario" as const),
+  }));
+}
 
 function startOfToday(): Date {
   const d = new Date();
@@ -222,6 +318,24 @@ export class OsService {
     return festas;
   }
 
+  async listTodayRota(): Promise<RotaDiaItem[]> {
+    const festas = await this.listToday();
+    const base = festas
+      .filter((f) => f.ordemServico)
+      .map((f) => ({
+        osId: f.ordemServico!.id,
+        festaId: f.id,
+        endereco: f.endereco,
+        horarioMontagem: f.horarioMontagem.toISOString(),
+        clienteNome: f.cliente.nome,
+        tema: f.tema,
+        checkinLat: f.ordemServico!.checkinLat,
+        checkinLng: f.ordemServico!.checkinLng,
+      }));
+
+    return ordenarRotaDia(base);
+  }
+
   async listMine(montadorId: string) {
     const inicio = startOfToday();
     const fim = endOfToday();
@@ -313,10 +427,35 @@ export class OsService {
 
     const item = await prisma.itemRomaneio.findFirst({
       where: { id: itemId, osId },
+      include: {
+        unidade: { include: { produto: { select: { requerQr: true } } } },
+      },
     });
 
     if (!item) {
       throw new OsItemNotFoundError(osId, itemId);
+    }
+
+    if (data.fotoMidiaId !== undefined && data.fotoMidiaId !== null) {
+      const os = await this.getById(osId);
+      const midia = await prisma.midia.findUnique({
+        where: { id: data.fotoMidiaId },
+      });
+      if (!midia) {
+        throw new OsValidationError(`Mídia não encontrada: ${data.fotoMidiaId}`);
+      }
+      if (midia.tipo !== TipoMidia.ITEM) {
+        throw new OsValidationError("Mídia deve ser do tipo ITEM");
+      }
+      if (midia.festaId && midia.festaId !== os.festaId) {
+        throw new OsValidationError("Mídia não pertence à festa desta OS");
+      }
+      if (!midia.festaId) {
+        await prisma.midia.update({
+          where: { id: data.fotoMidiaId },
+          data: { festaId: os.festaId },
+        });
+      }
     }
 
     return prisma.itemRomaneio.update({
@@ -324,17 +463,24 @@ export class OsService {
       data: {
         ...(data.carregado !== undefined ? { carregado: data.carregado } : {}),
         ...(data.conferido !== undefined ? { conferido: data.conferido } : {}),
+        ...(data.fotoMidiaId !== undefined
+          ? { fotoMidiaId: data.fotoMidiaId }
+          : {}),
       },
       include: {
         unidade: {
           include: {
             produto: {
-              select: { id: true, nome: true, categoria: true },
+              select: { id: true, nome: true, categoria: true, requerQr: true },
             },
           },
         },
       },
     });
+  }
+
+  async uploadItemFoto(osId: string, itemId: string, midiaId: string) {
+    return this.updateRomaneioItem(osId, itemId, { fotoMidiaId: midiaId });
   }
 
   async concluirRomaneio(osId: string) {
@@ -351,6 +497,17 @@ export class OsService {
     if (pendentes.length > 0) {
       throw new OsValidationError(
         "Todos os itens devem estar carregados e conferidos"
+      );
+    }
+
+    const altoValorSemFoto = os.itensRomaneio.filter(
+      (item) =>
+        item.unidade?.produto.requerQr === true && !item.fotoMidiaId
+    );
+
+    if (altoValorSemFoto.length > 0) {
+      throw new OsValidationError(
+        "Itens de alto valor exigem foto antes de concluir o romaneio"
       );
     }
 
@@ -493,6 +650,16 @@ export class OsService {
 
     dispatchWhatsAppSafe({
       template: "montagem_finalizada",
+      telefone: osFinalizada.festa.cliente.telefone,
+      festaId: osFinalizada.festaId,
+      payload: {
+        tema: osFinalizada.festa.tema,
+        data: osFinalizada.festa.dataEvento.toISOString(),
+      },
+    });
+
+    dispatchWhatsAppSafe({
+      template: "pos_venda_avaliacao",
       telefone: osFinalizada.festa.cliente.telefone,
       festaId: osFinalizada.festaId,
       payload: {

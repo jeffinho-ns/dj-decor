@@ -4,11 +4,13 @@ import { PlusCircle } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { ComissaoRankingWidget } from "@/components/vendas/comissao-ranking-widget";
 import { KanbanBoard } from "@/components/vendas/kanban-board";
-import { listFestas } from "@/lib/api";
+import { getComissaoRanking, listFestas } from "@/lib/api";
 import { requireSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import type { Festa } from "@/types/festa";
+import type { ComissaoRanking } from "@/types/financeiro";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +22,17 @@ export default async function VendasPage() {
   }
 
   let festas: Festa[] = [];
+  let comissaoRanking: ComissaoRanking | null = null;
   let error: string | null = null;
   try {
-    festas = await listFestas(token);
+    const results = await Promise.all([
+      listFestas(token),
+      user.role === "VENDEDOR"
+        ? getComissaoRanking(token, "semana")
+        : Promise.resolve(null),
+    ]);
+    festas = results[0];
+    comissaoRanking = results[1];
   } catch (err) {
     error =
       err instanceof Error ? err.message : "Falha ao carregar vendas da API";
@@ -54,6 +64,15 @@ export default async function VendasPage() {
             </code>{" "}
             está correta.
           </p>
+        </div>
+      ) : null}
+
+      {comissaoRanking ? (
+        <div className="mb-6">
+          <ComissaoRankingWidget
+            ranking={comissaoRanking}
+            vendedorId={user.id}
+          />
         </div>
       ) : null}
 

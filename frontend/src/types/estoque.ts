@@ -51,6 +51,26 @@ export interface DisponibilidadeResult {
   totalUnidades: number;
   disponiveis: number;
   unidades: UnidadeProduto[];
+  curaHoras?: number;
+}
+
+export interface AlertaQr {
+  unidade: {
+    id: string;
+    etiqueta: string | null;
+    status: StatusUnidade;
+  };
+  codigoQr: string;
+  produto: { id: string; nome: string };
+  saidaEm: string;
+  osId?: string;
+  festaTema?: string;
+}
+
+export interface ProdutoSugestao {
+  id: string;
+  nome: string;
+  reason: string;
 }
 
 export interface ReservarEstoquePayload {

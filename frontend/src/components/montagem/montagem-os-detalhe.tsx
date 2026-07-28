@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,7 +23,12 @@ import {
   scanQr,
   updateRomaneioItem,
   uploadFotoFinalOs,
+  uploadItemFotoRomaneio,
 } from "@/lib/api";
+import {
+  enqueueRomaneioToggle,
+  flushOfflineQueue,
+} from "@/lib/offline-queue";
 import { cn } from "@/lib/utils";
 import type { OrdemServico, StatusOS } from "@/types/os";
 
@@ -61,9 +66,17 @@ export function MontagemOsDetalhe({
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const fotoInputRef = useRef<HTMLInputElement>(null);
+  const itemFotoInputRef = useRef<HTMLInputElement>(null);
+  const [itemFotoAlvo, setItemFotoAlvo] = useState<string | null>(null);
 
   const festa = os.festa;
   const itens = os.itensRomaneio;
+
+  useEffect(() => {
+    void flushOfflineQueue(async (osId, itemId, payload) => {
+      await updateRomaneioItem(osId, itemId, payload, token);
+    });
+  }, [token]);
 
   const romaneioOk = os.romaneioConcluido;
   const checkinOk = Boolean(os.checkinAt);
@@ -77,7 +90,16 @@ export function MontagemOsDetalhe({
   }, [romaneioOk, checkinOk, fotoOk]);
 
   const todosItensOk =
-    itens.length > 0 && itens.every((i) => i.carregado && i.conferido);
+    itens.length > 0 &&
+    itens.every((i) => i.carregado && i.conferido) &&
+    itens.every(
+      (i) =>
+        !i.unidade?.produto?.requerQr || Boolean(i.fotoMidiaId)
+    );
+
+  function itemAltoValor(item: (typeof itens)[0]): boolean {
+    return item.unidade?.produto?.requerQr === true;
+  }
 
   async function toggleItem(
     itemId: string,
@@ -107,11 +129,38 @@ export function MontagemOsDetalhe({
         ),
       }));
     } catch (err) {
+      enqueueRomaneioToggle(os.id, itemId, { [campo]: valor });
       setOs((prev) => ({ ...prev, itensRomaneio: anterior }));
       setErro(
-        err instanceof Error ? err.message : "Erro ao atualizar item"
+        err instanceof Error
+          ? `${err.message} — alteração salva offline para reenvio.`
+          : "Erro ao atualizar item — salvo offline"
       );
     }
+  }
+
+  function itemFotoHandler(itemId: string, file: File) {
+    setErro(null);
+    startTransition(async () => {
+      try {
+        const atualizado = await uploadItemFotoRomaneio(
+          os.id,
+          itemId,
+          file,
+          token
+        );
+        setOs((prev) => ({
+          ...prev,
+          itensRomaneio: prev.itensRomaneio.map((item) =>
+            item.id === itemId ? { ...item, ...atualizado } : item
+          ),
+        }));
+      } catch (err) {
+        setErro(
+          err instanceof Error ? err.message : "Upload da foto do item falhou"
+        );
+      }
+    });
   }
 
   function concluirRomaneioHandler() {
@@ -317,6 +366,11 @@ export function MontagemOsDetalhe({
                   {item.descricao ??
                     item.unidade?.produto?.nome ??
                     "Item sem descrição"}
+                  {itemAltoValor(item) ? (
+                    <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase text-amber-600">
+                      Alto valor
+                    </span>
+                  ) : null}
                 </p>
                 {item.unidade?.codigoQr ? (
                   <p className="mt-0.5 text-xs text-muted-foreground">
@@ -337,6 +391,29 @@ export function MontagemOsDetalhe({
                     onChange={(v) => void toggleItem(item.id, "conferido", v)}
                   />
                 </div>
+                {itemAltoValor(item) && !romaneioOk ? (
+                  <div className="mt-2">
+                    {item.fotoMidiaId ? (
+                      <p className="text-xs text-status-done">
+                        Foto registrada
+                      </p>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={pending}
+                        onClick={() => {
+                          setItemFotoAlvo(item.id);
+                          itemFotoInputRef.current?.click();
+                        }}
+                      >
+                        <Camera className="size-3.5" />
+                        Foto obrigatória
+                      </Button>
+                    )}
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -362,6 +439,21 @@ export function MontagemOsDetalhe({
           </p>
         ) : null}
       </section>
+
+      <input
+        ref={itemFotoInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        disabled={pending}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && itemFotoAlvo) itemFotoHandler(itemFotoAlvo, file);
+          e.target.value = "";
+          setItemFotoAlvo(null);
+        }}
+      />
 
       <section
         className={cn(

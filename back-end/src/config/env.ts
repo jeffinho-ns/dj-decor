@@ -16,10 +16,16 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default("7d"),
   /** Percentual padrão de comissão ao confirmar pagamento (0–100). */
   COMISSAO_PERCENTUAL_DEFAULT: z.coerce.number().min(0).max(100).default(5),
+  /** Meta semanal de comissão confirmada para gamificação (R$). */
+  COMISSAO_META_SEMANAL: z.coerce.number().min(0).default(500),
   /** URL do projeto paralelo de IA / WhatsApp (opcional). */
   WHATSAPP_IA_WEBHOOK_URL: z
     .union([z.string().url(), z.literal("")])
     .optional(),
+  /** Horas de cura pós-festa antes da unidade voltar ao estoque (anti-overbooking). */
+  ESTOQUE_CURA_HORAS: z.coerce.number().min(0).default(12),
+  /** Horas sem retorno QR para gerar alerta de peça sumida. */
+  QR_ALERTA_HORAS: z.coerce.number().min(1).default(36),
 });
 
 type Env = z.infer<typeof envSchema> & {

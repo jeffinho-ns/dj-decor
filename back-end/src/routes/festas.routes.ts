@@ -19,6 +19,11 @@ festasRoutes.get(
   (req, res, next) => festasController.list(req, res, next)
 );
 festasRoutes.get(
+  "/:id/risco",
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  (req, res, next) => festasController.risco(req, res, next)
+);
+festasRoutes.get(
   "/:id",
   requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN, Role.MONTADOR),
   (req, res, next) => festasController.getById(req, res, next)

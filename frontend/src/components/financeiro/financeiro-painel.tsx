@@ -1,5 +1,7 @@
 import { Banknote, TrendingUp, Users, Wallet } from "lucide-react";
 
+import { PrevisaoCaixaSection } from "@/components/financeiro/previsao-caixa";
+import { ComissaoRankingSection } from "@/components/vendas/comissao-ranking-widget";
 import { StatCard } from "@/components/dashboard/stat-card";
 import {
   Table,
@@ -11,10 +13,12 @@ import {
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { FinanceiroResumo } from "@/types/financeiro";
+import type { ComissaoRanking, FinanceiroResumo, PrevisaoCaixa } from "@/types/financeiro";
 
 interface FinanceiroPainelProps {
   resumo: FinanceiroResumo;
+  previsao?: PrevisaoCaixa | null;
+  comissaoRanking?: ComissaoRanking | null;
 }
 
 function FluxoCaixaBar({
@@ -267,9 +271,15 @@ function ComissoesResumo({
   );
 }
 
-export function FinanceiroPainel({ resumo }: FinanceiroPainelProps) {
+export function FinanceiroPainel({
+  resumo,
+  previsao,
+  comissaoRanking,
+}: FinanceiroPainelProps) {
   const temRanking =
     resumo.rankingVendedores != null && resumo.rankingVendedores.length > 0;
+  const temRankingGamificado =
+    comissaoRanking != null && comissaoRanking.ranking.length > 0;
 
   return (
     <div className="min-w-0 space-y-6 sm:space-y-8">
@@ -320,11 +330,26 @@ export function FinanceiroPainel({ resumo }: FinanceiroPainelProps) {
         <RentabilidadeTemaList itens={resumo.rentabilidadePorTema} />
       </section>
 
+      {previsao ? (
+        <section>
+          <h2 className="mb-4 font-display text-lg text-foreground">
+            Previsão de caixa
+          </h2>
+          <PrevisaoCaixaSection previsao={previsao} />
+        </section>
+      ) : null}
+
       <section>
         <h2 className="mb-4 font-display text-lg text-foreground">
-          {temRanking ? "Ranking de vendedores" : "Resumo de comissões"}
+          {temRankingGamificado
+            ? "Ranking de comissões (gamificado)"
+            : temRanking
+              ? "Ranking de vendedores"
+              : "Resumo de comissões"}
         </h2>
-        {temRanking ? (
+        {temRankingGamificado ? (
+          <ComissaoRankingSection ranking={comissaoRanking!} />
+        ) : temRanking ? (
           <RankingVendedores ranking={resumo.rankingVendedores!} />
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-4">

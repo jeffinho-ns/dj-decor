@@ -111,6 +111,7 @@ export class PagamentosService {
                 vendedorId: true,
                 tema: true,
                 dataEvento: true,
+                itensExtras: true,
                 cliente: { select: { telefone: true } },
               },
             },
@@ -171,6 +172,17 @@ export class PagamentosService {
         tema: festa.tema,
         data: festa.dataEvento.toISOString(),
         valor: Number(pagamentoAtualizado.valor),
+      },
+    });
+
+    dispatchWhatsAppSafe({
+      template: "upsell_extras",
+      telefone: festa.cliente.telefone,
+      festaId: festa.id,
+      payload: {
+        tema: festa.tema,
+        data: festa.dataEvento.toISOString(),
+        itensExtras: festa.itensExtras ?? [],
       },
     });
 

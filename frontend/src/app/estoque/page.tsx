@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 
 import { EstoquePainel } from "@/components/estoque/estoque-painel";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { listProdutos } from "@/lib/api";
+import { listAlertasQr, listProdutos } from "@/lib/api";
 import { requireSession } from "@/lib/session";
-import type { Produto } from "@/types/estoque";
+import type { AlertaQr, Produto } from "@/types/estoque";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +21,13 @@ export default async function EstoquePage() {
   }
 
   let produtos: Produto[] = [];
+  let alertasQr: AlertaQr[] = [];
   let error: string | null = null;
   try {
-    produtos = await listProdutos(token);
+    [produtos, alertasQr] = await Promise.all([
+      listProdutos(token),
+      listAlertasQr(token),
+    ]);
   } catch (err) {
     error =
       err instanceof Error ? err.message : "Falha ao carregar estoque da API";
@@ -42,7 +46,7 @@ export default async function EstoquePage() {
         </div>
       ) : null}
 
-      <EstoquePainel produtos={produtos} />
+      <EstoquePainel produtos={produtos} alertasQr={alertasQr} />
     </DashboardShell>
   );
 }

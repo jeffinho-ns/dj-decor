@@ -3,9 +3,13 @@ import { redirect } from "next/navigation";
 
 import { FinanceiroPainel } from "@/components/financeiro/financeiro-painel";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { getFinanceiroResumo } from "@/lib/api";
+import {
+  getComissaoRanking,
+  getFinanceiroPrevisao,
+  getFinanceiroResumo,
+} from "@/lib/api";
 import { requireSession } from "@/lib/session";
-import type { FinanceiroResumo } from "@/types/financeiro";
+import type { ComissaoRanking, FinanceiroResumo, PrevisaoCaixa } from "@/types/financeiro";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +25,16 @@ export default async function FinanceiroPage() {
   }
 
   let resumo: FinanceiroResumo | null = null;
+  let previsao: PrevisaoCaixa | null = null;
+  let comissaoRanking: ComissaoRanking | null = null;
   let error: string | null = null;
 
   try {
-    resumo = await getFinanceiroResumo(token);
+    [resumo, previsao, comissaoRanking] = await Promise.all([
+      getFinanceiroResumo(token),
+      getFinanceiroPrevisao(token, 30),
+      getComissaoRanking(token, "semana"),
+    ]);
   } catch (err) {
     error =
       err instanceof Error
@@ -44,7 +54,11 @@ export default async function FinanceiroPage() {
           <p className="mt-1 opacity-90">{error}</p>
         </div>
       ) : resumo ? (
-        <FinanceiroPainel resumo={resumo} />
+        <FinanceiroPainel
+          resumo={resumo}
+          previsao={previsao}
+          comissaoRanking={comissaoRanking}
+        />
       ) : null}
     </DashboardShell>
   );

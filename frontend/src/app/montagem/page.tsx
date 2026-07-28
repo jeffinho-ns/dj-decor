@@ -53,7 +53,7 @@ export default async function MontagemPage() {
           <p className="mt-1 opacity-90">{loadError}</p>
         </div>
       ) : (
-        <MontagemHoje itens={itens} />
+        <MontagemHoje itens={itens} token={token} />
       )}
     </DashboardShell>
   );

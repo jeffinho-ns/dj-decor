@@ -8,6 +8,7 @@ import { ChevronDown, LayoutGrid, List, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FestaContratoPanel } from "@/components/vendas/festa-contrato-panel";
 import { PagamentoForm } from "@/components/vendas/pagamento-form";
+import { RiscoBadge } from "@/components/vendas/risco-badge";
 import { FestasTable } from "@/components/vendas/festas-table";
 import {
   listPagamentos,
@@ -114,12 +115,15 @@ function FestaCard({
           <p className="text-sm font-medium leading-snug text-foreground">
             {festa.cliente.nome}
           </p>
-          <ChevronDown
-            className={cn(
-              "size-4 shrink-0 text-muted-foreground transition-transform md:size-3.5",
-              expanded && "rotate-180"
-            )}
-          />
+          <div className="flex shrink-0 items-center gap-1">
+            <RiscoBadge risco={festa.risco} />
+            <ChevronDown
+              className={cn(
+                "size-4 shrink-0 text-muted-foreground transition-transform md:size-3.5",
+                expanded && "rotate-180"
+              )}
+            />
+          </div>
         </div>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {festa.tema}

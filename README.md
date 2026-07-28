@@ -278,7 +278,14 @@ Não mantenha um segundo projeto Vercel no mesmo repositório (ex.: `dj-decor-r`
 - **Pagamento / Comissao** — Fase 1: registro PIX, confirmação e comissão automática
 - **Midia** — imagens em `BYTEA` (máx. 2 MB); comprovante PIX vincula ao pagamento
 - **MovimentacaoQr / Contrato / MensagemWhatsApp** — Fase 2: scan QR saída/entrada; Fase 3: contrato PDF (stub) + adapter WhatsApp para projeto IA paralelo
-- **OrdemServico / ItemRomaneio** — Fase 2: romaneio, check-in geo, foto final
+- **OrdemServico / ItemRomaneio** — Fase 2: romaneio, check-in geo, foto final, `fotoMidiaId` em itens alto valor
+
+## Roadmap (próximas fases)
+
+- **Multi-tenant / contábil** — isolamento por tenant (schema ou `tenantId`), plano de contas, DRE por unidade de negócio, faturamento consolidado. Não implementado no MVP atual (single-tenant DJ Decor).
+- **Fila offline completa** — stub em `frontend/src/lib/offline-queue.ts`; expandir para check-in, foto e scan QR com Service Worker.
+- **Portal do cliente** — stub público em `/portal?id=` + `GET /api/portal/:festaId/status`; evoluir para link tokenizado, timeline de montagem e galeria.
+- **WhatsApp IA** — templates `upsell_extras` e `pos_venda_avaliacao` registrados; integração completa via `WHATSAPP_IA_WEBHOOK_URL`.
 
 ## Repositório
 

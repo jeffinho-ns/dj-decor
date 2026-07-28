@@ -8,6 +8,12 @@ const produtosRoutes = Router();
 produtosRoutes.use(auth);
 
 produtosRoutes.get(
+  "/sugestoes",
+  requireRoles(Role.ADMIN, Role.GERENTE, Role.VENDEDOR),
+  (req, res, next) => produtosController.sugestoes(req, res, next)
+);
+
+produtosRoutes.get(
   "/",
   requireRoles(Role.ADMIN, Role.GERENTE, Role.VENDEDOR),
   (req, res, next) => produtosController.list(req, res, next)

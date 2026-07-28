@@ -1,6 +1,22 @@
-import { Prisma, StatusUnidade, type ReservaEstoque } from "@prisma/client";
+import {
+  Prisma,
+  StatusFesta,
+  StatusUnidade,
+  TipoMovimentacao,
+  type ReservaEstoque,
+} from "@prisma/client";
 import { z } from "zod";
+import { env } from "../config/env";
 import { prisma } from "../prisma/client";
+
+function curaMs(): number {
+  return env.ESTOQUE_CURA_HORAS * 60 * 60 * 1000;
+}
+
+/** Início efetivo da janela de ocupação considerando cura da reserva anterior. */
+function inicioMenosCura(inicio: Date): Date {
+  return new Date(inicio.getTime() - curaMs());
+}
 
 const reservarSchema = z
   .object({
@@ -82,6 +98,19 @@ export class ProdutoNotFoundForEstoqueError extends Error {
   }
 }
 
+export type AlertaQr = {
+  unidade: {
+    id: string;
+    etiqueta: string | null;
+    status: StatusUnidade;
+  };
+  codigoQr: string;
+  produto: { id: string; nome: string };
+  saidaEm: Date;
+  osId?: string;
+  festaTema?: string;
+};
+
 type ReservaComRelacoes = ReservaEstoque & {
   unidade: {
     id: string;
@@ -129,7 +158,7 @@ export class EstoqueService {
       where: {
         unidade: { produtoId },
         inicio: { lt: fim },
-        fim: { gt: inicio },
+        fim: { gt: inicioMenosCura(inicio) },
       },
       select: { unidadeId: true },
     });
@@ -150,6 +179,7 @@ export class EstoqueService {
       totalUnidades: produto.unidades.length,
       disponiveis: livres.length,
       unidades: livres,
+      curaHoras: env.ESTOQUE_CURA_HORAS,
     };
   }
 
@@ -192,7 +222,7 @@ export class EstoqueService {
             where: {
               unidadeId,
               inicio: { lt: fim },
-              fim: { gt: inicio },
+              fim: { gt: inicioMenosCura(inicio) },
             },
             select: { id: true },
           });
@@ -280,7 +310,7 @@ export class EstoqueService {
       const outras = await tx.reservaEstoque.count({
         where: {
           unidadeId: reserva.unidadeId,
-          fim: { gt: new Date() },
+          fim: { gt: inicioMenosCura(new Date()) },
         },
       });
 
@@ -315,6 +345,72 @@ export class EstoqueService {
       },
       orderBy: { inicio: "asc" },
     });
+  }
+
+  async alertasQr(): Promise<AlertaQr[]> {
+    const cutoff = new Date(Date.now() - env.QR_ALERTA_HORAS * 60 * 60 * 1000);
+
+    const unidades = await prisma.unidadeProduto.findMany({
+      where: { movimentacoes: { some: {} } },
+      select: {
+        id: true,
+        codigoQr: true,
+        etiqueta: true,
+        status: true,
+        produto: { select: { id: true, nome: true } },
+        movimentacoes: {
+          orderBy: { criadoEm: "desc" },
+          take: 1,
+          select: {
+            tipo: true,
+            criadoEm: true,
+            osId: true,
+            os: {
+              select: {
+                id: true,
+                festa: { select: { tema: true, status: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const alertas: AlertaQr[] = [];
+
+    for (const unidade of unidades) {
+      const ultima = unidade.movimentacoes[0];
+      if (!ultima || ultima.tipo !== TipoMovimentacao.SAIDA_GALPAO) {
+        continue;
+      }
+
+      const festa = ultima.os?.festa;
+      const saidaAntiga = ultima.criadoEm < cutoff;
+      const festaConcluidaEmUso =
+        festa?.status === StatusFesta.CONCLUIDO &&
+        unidade.status === StatusUnidade.EM_USO;
+
+      if (!saidaAntiga && !festaConcluidaEmUso) {
+        continue;
+      }
+
+      alertas.push({
+        unidade: {
+          id: unidade.id,
+          etiqueta: unidade.etiqueta,
+          status: unidade.status,
+        },
+        codigoQr: unidade.codigoQr,
+        produto: unidade.produto,
+        saidaEm: ultima.criadoEm,
+        ...(ultima.osId ? { osId: ultima.osId } : {}),
+        ...(festa?.tema ? { festaTema: festa.tema } : {}),
+      });
+    }
+
+    return alertas.sort(
+      (a, b) => a.saidaEm.getTime() - b.saidaEm.getTime()
+    );
   }
 }
 

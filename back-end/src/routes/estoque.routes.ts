@@ -8,6 +8,12 @@ const estoqueRoutes = Router();
 estoqueRoutes.use(auth);
 
 estoqueRoutes.get(
+  "/alertas-qr",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => estoqueController.alertasQr(req, res, next)
+);
+
+estoqueRoutes.get(
   "/disponibilidade",
   requireRoles(Role.ADMIN, Role.GERENTE, Role.VENDEDOR),
   (req, res, next) => estoqueController.disponibilidade(req, res, next)

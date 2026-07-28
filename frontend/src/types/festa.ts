@@ -19,6 +19,14 @@ export interface Cliente {
   telefone: string;
 }
 
+export type NivelRisco = "BAIXO" | "MEDIO" | "ALTO";
+
+export interface RiscoOrcamento {
+  score: number;
+  nivel: NivelRisco;
+  fatores: string[];
+}
+
 export interface Festa {
   id: string;
   dataEvento: string;
@@ -38,6 +46,7 @@ export interface Festa {
   vendedorId: string;
   cliente: Cliente;
   vendedor: User;
+  risco?: RiscoOrcamento;
 }
 
 export interface Pagamento {

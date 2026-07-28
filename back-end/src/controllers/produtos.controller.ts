@@ -96,6 +96,23 @@ export class ProdutosController {
       next(error);
     }
   }
+
+  async sugestoes(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const query = produtosService.parseSugestoes(req.query);
+      const sugestoes = await produtosService.sugestoes(query);
+      res.status(200).json(sugestoes);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          message: "Parâmetros inválidos",
+          details: error.flatten().fieldErrors,
+        });
+        return;
+      }
+      next(error);
+    }
+  }
 }
 
 export const produtosController = new ProdutosController();

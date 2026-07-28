@@ -1,12 +1,26 @@
 import {
   Prisma,
   StatusUnidade,
+  TamanhoDecoracao,
   type Produto,
   type ReservaEstoque,
   type UnidadeProduto,
 } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
+
+const sugestoesSchema = z.object({
+  tema: z.string().trim().min(1, "tema é obrigatório"),
+  tamanho: z.nativeEnum(TamanhoDecoracao).optional(),
+});
+
+export type SugestoesQuery = z.infer<typeof sugestoesSchema>;
+
+export type ProdutoSugestao = {
+  id: string;
+  nome: string;
+  reason: string;
+};
 
 const createProdutoSchema = z.object({
   nome: z.string().trim().min(2, "Nome é obrigatório"),
@@ -63,6 +77,132 @@ export class ProdutosService {
 
   parseUnidade(body: unknown): CreateUnidadeInput {
     return createUnidadeSchema.parse(body);
+  }
+
+  parseSugestoes(query: unknown): SugestoesQuery {
+    return sugestoesSchema.parse(query);
+  }
+
+  async sugestoes({ tema, tamanho }: SugestoesQuery): Promise<ProdutoSugestao[]> {
+    const candidatos = new Map<
+      string,
+      { id: string; nome: string; reason: string; score: number }
+    >();
+
+    const add = (
+      produto: { id: string; nome: string },
+      reason: string,
+      score: number
+    ) => {
+      const atual = candidatos.get(produto.id);
+      if (!atual || score > atual.score) {
+        candidatos.set(produto.id, { ...produto, reason, score });
+      }
+    };
+
+    const porTema = await prisma.produto.findMany({
+      where: {
+        ativo: true,
+        OR: [
+          { tema: { contains: tema, mode: "insensitive" } },
+          { nome: { contains: tema, mode: "insensitive" } },
+          { categoria: { contains: tema, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, nome: true, tema: true },
+      take: 10,
+    });
+
+    for (const p of porTema) {
+      const campo =
+        p.tema?.toLowerCase().includes(tema.toLowerCase())
+          ? "tema"
+          : p.nome.toLowerCase().includes(tema.toLowerCase())
+            ? "nome"
+            : "categoria";
+      add(p, `Produto ativo com ${campo} compatível com "${tema}"`, 100);
+    }
+
+    const festaWhere: Prisma.FestaWhereInput = {
+      tema: { contains: tema, mode: "insensitive" },
+      ...(tamanho ? { tamanhoDecoracao: tamanho } : {}),
+    };
+
+    const reservas = await prisma.reservaEstoque.findMany({
+      where: { festa: festaWhere },
+      select: {
+        unidade: {
+          select: {
+            produto: {
+              select: { id: true, nome: true, ativo: true },
+            },
+          },
+        },
+      },
+    });
+
+    const usoPorProduto = new Map<string, { produto: { id: string; nome: string }; count: number }>();
+
+    for (const r of reservas) {
+      const produto = r.unidade.produto;
+      if (!produto.ativo) continue;
+
+      const entry = usoPorProduto.get(produto.id);
+      if (entry) {
+        entry.count += 1;
+      } else {
+        usoPorProduto.set(produto.id, { produto, count: 1 });
+      }
+    }
+
+    for (const { produto, count } of usoPorProduto.values()) {
+      const tamanhoLabel = tamanho ? ` (tamanho ${tamanho})` : "";
+      add(
+        produto,
+        `Usado em ${count} festa${count === 1 ? "" : "s"} com tema similar${tamanhoLabel}`,
+        50 + count
+      );
+    }
+
+    const festasComKit = await prisma.festa.findMany({
+      where: {
+        ...festaWhere,
+        kitCatalogo: { not: null },
+      },
+      select: {
+        kitCatalogo: true,
+        reservasEstoque: {
+          select: {
+            unidade: {
+              select: {
+                produto: {
+                  select: { id: true, nome: true, ativo: true },
+                },
+              },
+            },
+          },
+        },
+      },
+      take: 50,
+    });
+
+    for (const festa of festasComKit) {
+      for (const reserva of festa.reservasEstoque) {
+        const produto = reserva.unidade.produto;
+        if (!produto.ativo) continue;
+
+        add(
+          produto,
+          `Frequente no kit "${festa.kitCatalogo}" para festas com tema "${tema}"`,
+          60
+        );
+      }
+    }
+
+    return [...candidatos.values()]
+      .sort((a, b) => b.score - a.score || a.nome.localeCompare(b.nome, "pt-BR"))
+      .slice(0, 5)
+      .map(({ id, nome, reason }) => ({ id, nome, reason }));
   }
 
   async list(ativosOnly = false): Promise<ProdutoWithUnidades[]> {

@@ -36,6 +36,12 @@ const montagemRoles = [Role.ADMIN, Role.GERENTE, Role.MONTADOR] as const;
 osRoutes.use(auth);
 
 osRoutes.get(
+  "/today/rota",
+  requireRoles(...montagemRoles),
+  (req, res, next) => osController.listTodayRota(req, res, next)
+);
+
+osRoutes.get(
   "/today",
   requireRoles(...montagemRoles),
   (req, res, next) => osController.listToday(req, res, next)
@@ -69,6 +75,13 @@ osRoutes.patch(
   "/:id/romaneio/itens/:itemId",
   requireRoles(...montagemRoles),
   (req, res, next) => osController.updateRomaneioItem(req, res, next)
+);
+
+osRoutes.post(
+  "/:id/romaneio/itens/:itemId/foto",
+  requireRoles(...montagemRoles),
+  handleMulter,
+  (req, res, next) => osController.uploadItemFoto(req, res, next)
 );
 
 osRoutes.post(

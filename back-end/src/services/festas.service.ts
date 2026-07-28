@@ -2,6 +2,7 @@ import { StatusFesta, TamanhoDecoracao } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
 import { osService } from "./os.service";
+import { riscoService } from "./risco.service";
 
 const createFestaSchema = z.object({
   nomeCliente: z.string().min(2, "Nome do cliente é obrigatório"),
@@ -80,7 +81,7 @@ const STATUS_TRANSITIONS: Record<StatusFesta, StatusFesta[]> = {
 
 export class FestasService {
   async list() {
-    return prisma.festa.findMany({
+    const festas = await prisma.festa.findMany({
       include: {
         cliente: true,
         vendedor: {
@@ -89,6 +90,17 @@ export class FestasService {
       },
       orderBy: [{ dataEvento: "asc" }, { horarioMontagem: "asc" }],
     });
+
+    const riscoMap = await riscoService.computeForFestas(festas.map((f) => f.id));
+
+    return festas.map((festa) => ({
+      ...festa,
+      risco: riscoMap.get(festa.id) ?? {
+        score: 0,
+        nivel: "BAIXO" as const,
+        fatores: [],
+      },
+    }));
   }
 
   async getById(id: string) {

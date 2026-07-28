@@ -18,6 +18,7 @@ export interface UnidadeRomaneio {
     id: string;
     nome: string;
     categoria: string;
+    requerQr?: boolean;
   };
 }
 
@@ -28,6 +29,7 @@ export interface ItemRomaneio {
   conferido: boolean;
   osId: string;
   unidadeId: string | null;
+  fotoMidiaId: string | null;
   unidade?: UnidadeRomaneio | null;
 }
 
@@ -62,6 +64,28 @@ export interface FestaMontagemHoje {
 export interface UpdateRomaneioItemPayload {
   carregado?: boolean;
   conferido?: boolean;
+  fotoMidiaId?: string | null;
+}
+
+/** Resposta de GET /api/os/today/rota — ordem sugerida de visitas. */
+export interface RotaDiaItem {
+  ordem: number;
+  osId: string;
+  festaId: string;
+  endereco: string;
+  horarioMontagem: string;
+  clienteNome: string;
+  tema: string;
+  checkinLat: number | null;
+  checkinLng: number | null;
+  criterio: "horario" | "proximidade";
+}
+
+/** Status público do portal do cliente. */
+export interface PortalFestaStatus {
+  status: string;
+  dataEvento: string;
+  tema: string;
 }
 
 export interface CheckinPayload {

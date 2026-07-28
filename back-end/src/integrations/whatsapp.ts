@@ -19,8 +19,10 @@ export interface WhatsAppDispatchResult {
  * Templates disparados automaticamente pelo backend:
  *
  * - `pagamento_confirmado` — após confirmar pagamento (payload: tema, data, valor)
+ * - `upsell_extras` — após pagamento confirmado; oferta de itens extras (payload: tema, data, itensExtras[])
  * - `equipe_a_caminho` — após concluir romaneio / OS EM_TRANSITO (payload: tema, data, endereco)
  * - `montagem_finalizada` — após foto final / OS FINALIZADA (payload: tema, data)
+ * - `pos_venda_avaliacao` — após festa CONCLUIDO / foto final; pedido de avaliação (payload: tema, data)
  *
  * Adapter para o projeto paralelo de IA / WhatsApp.
  * Registra a mensagem no banco e, se WHATSAPP_IA_WEBHOOK_URL estiver

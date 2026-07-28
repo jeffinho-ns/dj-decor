@@ -277,6 +277,9 @@ model ItemRomaneio {
   unidadeId String?         @map("unidade_id")
   unidade   UnidadeProduto? @relation(fields: [unidadeId], references: [id])
 
+  fotoMidiaId String? @map("foto_midia_id")
+  fotoMidia   Midia?  @relation("ItemRomaneioFoto", fields: [fotoMidiaId], references: [id])
+
   @@index([osId])
   @@map("itens_romaneio")
 }
@@ -297,6 +300,7 @@ model Midia {
   uploadedBy   User   @relation("MidiaUploadedBy", fields: [uploadedById], references: [id])
 
   pagamentoComprovante Pagamento? @relation("PagamentoComprovante")
+  itemRomaneioFoto     ItemRomaneio[] @relation("ItemRomaneioFoto")
 
   @@index([festaId])
   @@map("midias")
