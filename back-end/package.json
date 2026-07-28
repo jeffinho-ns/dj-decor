@@ -31,6 +31,7 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/multer": "^2.2.0",
     "@types/node": "^22.15.30",
+    "@types/pdfkit": "^0.17.6",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -43,7 +44,5 @@
     "typescript": "^5.8.3",
     "zod": "^3.25.67"
   },
-  "devDependencies": {
-    "@types/pdfkit": "^0.17.6"
-  }
+  "devDependencies": {}
 }
