@@ -1,0 +1,456 @@
+import {
+  Prisma,
+  StatusFesta,
+  StatusOS,
+  TipoMidia,
+} from "@prisma/client";
+import { z } from "zod";
+import { prisma } from "../prisma/client";
+
+const addRomaneioItemSchema = z
+  .object({
+    unidadeId: z.string().min(1).optional(),
+    descricao: z.string().min(1).optional(),
+  })
+  .refine((data) => data.unidadeId || data.descricao, {
+    message: "Informe unidadeId ou descricao",
+  });
+
+const updateRomaneioItemSchema = z.object({
+  carregado: z.boolean().optional(),
+  conferido: z.boolean().optional(),
+});
+
+const checkinSchema = z.object({
+  lat: z.coerce.number(),
+  lng: z.coerce.number(),
+});
+
+const fotoFinalSchema = z.object({
+  midiaId: z.string().min(1),
+});
+
+export type AddRomaneioItemInput = z.infer<typeof addRomaneioItemSchema>;
+export type UpdateRomaneioItemInput = z.infer<typeof updateRomaneioItemSchema>;
+export type CheckinInput = z.infer<typeof checkinSchema>;
+export type FotoFinalInput = z.infer<typeof fotoFinalSchema>;
+
+const osInclude = {
+  festa: {
+    include: {
+      cliente: true,
+      vendedor: {
+        select: { id: true, nome: true, email: true, role: true },
+      },
+    },
+  },
+  montador: {
+    select: { id: true, nome: true, email: true, role: true },
+  },
+  itensRomaneio: {
+    include: {
+      unidade: {
+        include: {
+          produto: {
+            select: { id: true, nome: true, categoria: true },
+          },
+        },
+      },
+    },
+    orderBy: { id: "asc" as const },
+  },
+} satisfies Prisma.OrdemServicoInclude;
+
+function startOfToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function endOfToday(): Date {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+export class OsNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Ordem de serviço não encontrada: ${id}`);
+    this.name = "OsNotFoundError";
+  }
+}
+
+export class OsItemNotFoundError extends Error {
+  constructor(osId: string, itemId: string) {
+    super(`Item de romaneio ${itemId} não encontrado na OS ${osId}`);
+    this.name = "OsItemNotFoundError";
+  }
+}
+
+export class OsValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "OsValidationError";
+  }
+}
+
+export class OsService {
+  parseAddRomaneioItem(body: unknown): AddRomaneioItemInput {
+    return addRomaneioItemSchema.parse(body);
+  }
+
+  parseUpdateRomaneioItem(body: unknown): UpdateRomaneioItemInput {
+    return updateRomaneioItemSchema.parse(body);
+  }
+
+  parseCheckin(body: unknown): CheckinInput {
+    return checkinSchema.parse(body);
+  }
+
+  parseFotoFinal(body: unknown): FotoFinalInput {
+    return fotoFinalSchema.parse(body);
+  }
+
+  async ensureForFesta(festaId: string) {
+    const existing = await prisma.ordemServico.findUnique({
+      where: { festaId },
+      include: osInclude,
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    const festa = await prisma.festa.findUnique({
+      where: { id: festaId },
+      select: { id: true },
+    });
+
+    if (!festa) {
+      throw new OsValidationError(`Festa não encontrada: ${festaId}`);
+    }
+
+    return prisma.ordemServico.create({
+      data: {
+        festaId,
+        status: StatusOS.ABERTA,
+      },
+      include: osInclude,
+    });
+  }
+
+  async getById(id: string) {
+    const os = await prisma.ordemServico.findUnique({
+      where: { id },
+      include: osInclude,
+    });
+
+    if (!os) {
+      throw new OsNotFoundError(id);
+    }
+
+    return os;
+  }
+
+  async listToday() {
+    const inicio = startOfToday();
+    const fim = endOfToday();
+
+    const festas = await prisma.festa.findMany({
+      where: {
+        OR: [
+          { horarioMontagem: { gte: inicio, lte: fim } },
+          { dataEvento: { gte: inicio, lte: fim } },
+        ],
+        status: { not: StatusFesta.CANCELADO },
+      },
+      include: {
+        cliente: true,
+        vendedor: {
+          select: { id: true, nome: true, email: true, role: true },
+        },
+        ordemServico: {
+          include: {
+            montador: {
+              select: { id: true, nome: true, email: true, role: true },
+            },
+            itensRomaneio: {
+              include: {
+                unidade: {
+                  include: {
+                    produto: {
+                      select: { id: true, nome: true, categoria: true },
+                    },
+                  },
+                },
+              },
+              orderBy: { id: "asc" },
+            },
+          },
+        },
+      },
+      orderBy: [{ horarioMontagem: "asc" }, { dataEvento: "asc" }],
+    });
+
+    return festas;
+  }
+
+  async listMine(montadorId: string) {
+    const inicio = startOfToday();
+    const fim = endOfToday();
+
+    return prisma.ordemServico.findMany({
+      where: {
+        montadorId,
+        festa: {
+          OR: [
+            { horarioMontagem: { gte: inicio, lte: fim } },
+            { dataEvento: { gte: inicio, lte: fim } },
+          ],
+          status: { not: StatusFesta.CANCELADO },
+        },
+      },
+      include: osInclude,
+      orderBy: { festa: { horarioMontagem: "asc" } },
+    });
+  }
+
+  async addRomaneioItem(osId: string, rawInput: unknown) {
+    const data = this.parseAddRomaneioItem(rawInput);
+    const os = await this.getById(osId);
+
+    let descricao = data.descricao ?? null;
+    let unidadeId: string | null = data.unidadeId ?? null;
+
+    if (unidadeId) {
+      const unidade = await prisma.unidadeProduto.findUnique({
+        where: { id: unidadeId },
+        include: { produto: { select: { nome: true } } },
+      });
+
+      if (!unidade) {
+        throw new OsValidationError(`Unidade não encontrada: ${unidadeId}`);
+      }
+
+      const reserva = await prisma.reservaEstoque.findFirst({
+        where: { unidadeId, festaId: os.festaId },
+      });
+
+      if (!reserva) {
+        throw new OsValidationError(
+          "Unidade não está reservada para esta festa"
+        );
+      }
+
+      const duplicado = await prisma.itemRomaneio.findFirst({
+        where: { osId, unidadeId },
+      });
+
+      if (duplicado) {
+        throw new OsValidationError("Unidade já consta no romaneio");
+      }
+
+      if (!descricao) {
+        descricao = unidade.produto.nome;
+        if (unidade.etiqueta) {
+          descricao += ` (${unidade.etiqueta})`;
+        }
+      }
+    }
+
+    return prisma.itemRomaneio.create({
+      data: {
+        osId,
+        unidadeId,
+        descricao,
+      },
+      include: {
+        unidade: {
+          include: {
+            produto: {
+              select: { id: true, nome: true, categoria: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async updateRomaneioItem(
+    osId: string,
+    itemId: string,
+    rawInput: unknown
+  ) {
+    const data = this.parseUpdateRomaneioItem(rawInput);
+    await this.getById(osId);
+
+    const item = await prisma.itemRomaneio.findFirst({
+      where: { id: itemId, osId },
+    });
+
+    if (!item) {
+      throw new OsItemNotFoundError(osId, itemId);
+    }
+
+    return prisma.itemRomaneio.update({
+      where: { id: itemId },
+      data: {
+        ...(data.carregado !== undefined ? { carregado: data.carregado } : {}),
+        ...(data.conferido !== undefined ? { conferido: data.conferido } : {}),
+      },
+      include: {
+        unidade: {
+          include: {
+            produto: {
+              select: { id: true, nome: true, categoria: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async concluirRomaneio(osId: string) {
+    const os = await this.getById(osId);
+
+    if (os.itensRomaneio.length === 0) {
+      throw new OsValidationError("Romaneio vazio — adicione itens antes de concluir");
+    }
+
+    const pendentes = os.itensRomaneio.filter(
+      (item) => !item.carregado || !item.conferido
+    );
+
+    if (pendentes.length > 0) {
+      throw new OsValidationError(
+        "Todos os itens devem estar carregados e conferidos"
+      );
+    }
+
+    return prisma.ordemServico.update({
+      where: { id: osId },
+      data: {
+        romaneioConcluido: true,
+        status: StatusOS.EM_TRANSITO,
+      },
+      include: osInclude,
+    });
+  }
+
+  async seedRomaneioFromReservas(osId: string) {
+    const os = await this.getById(osId);
+
+    const reservas = await prisma.reservaEstoque.findMany({
+      where: { festaId: os.festaId },
+      include: {
+        unidade: {
+          include: { produto: { select: { nome: true } } },
+        },
+      },
+    });
+
+    const existentes = new Set(
+      os.itensRomaneio
+        .map((item) => item.unidadeId)
+        .filter((id): id is string => id !== null)
+    );
+
+    await prisma.$transaction(
+      reservas
+        .filter((r) => !existentes.has(r.unidadeId))
+        .map((reserva) => {
+          const { unidade } = reserva;
+          let descricao = unidade.produto.nome;
+          if (unidade.etiqueta) {
+            descricao += ` (${unidade.etiqueta})`;
+          }
+
+          return prisma.itemRomaneio.create({
+            data: {
+              osId,
+              unidadeId: reserva.unidadeId,
+              descricao,
+            },
+            include: {
+              unidade: {
+                include: {
+                  produto: {
+                    select: { id: true, nome: true, categoria: true },
+                  },
+                },
+              },
+            },
+          });
+        })
+    );
+
+    return this.getById(osId);
+  }
+
+  async checkin(osId: string, rawInput: unknown) {
+    const data = this.parseCheckin(rawInput);
+    await this.getById(osId);
+
+    return prisma.ordemServico.update({
+      where: { id: osId },
+      data: {
+        checkinLat: data.lat,
+        checkinLng: data.lng,
+        checkinAt: new Date(),
+        status: StatusOS.CHECKIN,
+      },
+      include: osInclude,
+    });
+  }
+
+  async fotoFinal(osId: string, midiaId: string) {
+    const os = await this.getById(osId);
+
+    const midia = await prisma.midia.findUnique({
+      where: { id: midiaId },
+    });
+
+    if (!midia) {
+      throw new OsValidationError(`Mídia não encontrada: ${midiaId}`);
+    }
+
+    if (midia.tipo !== TipoMidia.MONTAGEM_FINAL) {
+      throw new OsValidationError(
+        "Mídia deve ser do tipo MONTAGEM_FINAL"
+      );
+    }
+
+    if (midia.festaId && midia.festaId !== os.festaId) {
+      throw new OsValidationError("Mídia não pertence à festa desta OS");
+    }
+
+    const festaStatus = os.festa.status;
+    const podeConcluirFesta =
+      festaStatus === StatusFesta.EM_MONTAGEM ||
+      festaStatus === StatusFesta.FECHADO;
+
+    return prisma.$transaction(async (tx) => {
+      if (podeConcluirFesta) {
+        await tx.festa.update({
+          where: { id: os.festaId },
+          data: { status: StatusFesta.CONCLUIDO },
+        });
+      }
+
+      if (!midia.festaId) {
+        await tx.midia.update({
+          where: { id: midiaId },
+          data: { festaId: os.festaId },
+        });
+      }
+
+      return tx.ordemServico.update({
+        where: { id: osId },
+        data: { status: StatusOS.FINALIZADA },
+        include: osInclude,
+      });
+    });
+  }
+}
+
+export const osService = new OsService();

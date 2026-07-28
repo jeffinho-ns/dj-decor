@@ -105,6 +105,30 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
 | GET | `/api/midias/:id` | Stream da imagem autenticado |
 | POST | `/api/webhooks/atendimento-ia` | Webhook IA/WhatsApp (200); `dispatch:true` + `template` registra via adapter |
 
+### Fase 2 — OS, romaneio, check-in e QR (montagem)
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/api/os/hoje` | OS/festas de montagem do dia (MONTADOR, GERENTE, ADMIN) |
+| GET | `/api/os/:id` | Detalhe da OS com itens de romaneio e festa/cliente |
+| POST | `/api/os/:id/romaneio/itens` | Adicionar item — `{ unidadeId?, descricao? }` (MONTADOR+) |
+| PATCH | `/api/os/:id/romaneio/itens/:itemId` | Marcar `{ carregado?, conferido? }` (MONTADOR+) |
+| POST | `/api/os/:id/romaneio/concluir` | Concluir romaneio → status `ROMANEIO` / `EM_TRANSITO` |
+| POST | `/api/os/:id/checkin` | Check-in geolocalizado — `{ lat, lng }` → status `CHECKIN` |
+| POST | `/api/os/:id/foto-final` | Foto final — `{ midiaId }` ou multipart; finaliza OS/festa |
+| POST | `/api/qr/scan` | Scan QR — `{ codigoQr, tipo: SAIDA_GALPAO\|ENTRADA_RETORNO, osId?, lat?, lng? }` |
+
+A OS é criada automaticamente (`ABERTA`) quando a festa avança para `FECHADO` ou `EM_MONTAGEM`. O seed inclui uma OS demo com 2 itens de romaneio descritivos (sem unidade física).
+
+### Fase 3 — contrato PDF e WhatsApp (em breve)
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | `/api/festas/:id/contrato` | Gera/registra contrato de locação — **stub** retorna `{ id, geradoEm }`; PDF real via Puppeteer na Fase 3 |
+| POST | `/api/webhooks/atendimento-ia` | Já registra mensagens; envio real via `WHATSAPP_IA_WEBHOOK_URL` |
+
+Adapter PDF: `back-end/src/integrations/pdf.ts` (`PdfAdapter.gerarContratoLocacao`). Adapter WhatsApp: `back-end/src/integrations/whatsapp.ts`.
+
 ### Status da festa (Kanban)
 
 `ORCAMENTO` → `AGUARDANDO_PAGAMENTO` → `PAGO` → `FECHADO` → `EM_MONTAGEM` → `CONCLUIDO` (ou `CANCELADO` em qualquer etapa).
@@ -180,6 +204,39 @@ curl -s http://localhost:3333/api/festas \
 
 Passos 7–9 exigem a API de pagamentos da Fase 1 (`pagamentos.routes.ts`). Passos 4–6 funcionam após a Fase 0.
 
+### Smoke test Fase 2 — check-in e QR (curl)
+
+Requer backend Fase 2 (`os.routes.ts`, `qr.routes.ts`) e seed com OS demo. Use o montador **Carlos** (`@123Mudar`).
+
+```bash
+# Token montador
+TOKEN=$(curl -s -X POST http://localhost:3333/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"nome":"Carlos","senha":"@123Mudar"}' | jq -r .token)
+
+# OS demo (festa seed → OrdemServico ABERTA)
+OS_ID=$(curl -s http://localhost:3333/api/os/hoje \
+  -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id // .[0].ordemServico.id // empty')
+
+# Check-in geolocalizado — 200
+curl -s -X POST "http://localhost:3333/api/os/$OS_ID/checkin" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"lat":-23.5505,"lng":-46.6333}' | jq .
+
+# Scan QR saída do galpão (codigoQr do seed: DJ-MESA-001)
+curl -s -X POST http://localhost:3333/api/qr/scan \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d "{\"codigoQr\":\"DJ-MESA-001\",\"tipo\":\"SAIDA_GALPAO\",\"osId\":\"$OS_ID\",\"lat\":-23.55,\"lng\":-46.63}" | jq .
+
+# Contrato stub (Fase 3 foundation)
+FESTA_ID=$(curl -s http://localhost:3333/api/os/hoje \
+  -H "Authorization: Bearer $TOKEN" | jq -r '.[0].festaId // .[0].festa.id // empty')
+curl -s -X POST "http://localhost:3333/api/festas/$FESTA_ID/contrato" \
+  -H "Authorization: Bearer $TOKEN" | jq .
+```
+
+Se `OS_ID` vier vazio, rode `npm run prisma:seed` e confira que a festa demo tem `OrdemServico` vinculada.
+
 
 ## Deploy
 
@@ -220,7 +277,8 @@ Não mantenha um segundo projeto Vercel no mesmo repositório (ex.: `dj-decor-r`
 - **ReservaEstoque** — alocação por janela `inicio`/`fim` com anti-overbooking
 - **Pagamento / Comissao** — Fase 1: registro PIX, confirmação e comissão automática
 - **Midia** — imagens em `BYTEA` (máx. 2 MB); comprovante PIX vincula ao pagamento
-- **MovimentacaoQr / Contrato / MensagemWhatsApp** — schema + adapter WhatsApp para projeto IA paralelo
+- **MovimentacaoQr / Contrato / MensagemWhatsApp** — Fase 2: scan QR saída/entrada; Fase 3: contrato PDF (stub) + adapter WhatsApp para projeto IA paralelo
+- **OrdemServico / ItemRomaneio** — Fase 2: romaneio, check-in geo, foto final
 
 ## Repositório
 

@@ -1,6 +1,7 @@
 import { StatusFesta, TamanhoDecoracao } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
+import { osService } from "./os.service";
 
 const createFestaSchema = z.object({
   nomeCliente: z.string().min(2, "Nome do cliente é obrigatório"),
@@ -239,7 +240,7 @@ export class FestasService {
       }
     }
 
-    return prisma.festa.update({
+    const updated = await prisma.festa.update({
       where: { id },
       data: { status: data.status },
       include: {
@@ -249,6 +250,15 @@ export class FestasService {
         },
       },
     });
+
+    if (
+      data.status === StatusFesta.FECHADO ||
+      data.status === StatusFesta.EM_MONTAGEM
+    ) {
+      await osService.ensureForFesta(id);
+    }
+
+    return updated;
   }
 
   private async ensureVendedorExists(vendedorId: string) {

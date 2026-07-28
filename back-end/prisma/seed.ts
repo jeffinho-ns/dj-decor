@@ -3,6 +3,7 @@ import {
   PrismaClient,
   Role,
   StatusFesta,
+  StatusOS,
   StatusUnidade,
   TamanhoDecoracao,
 } from "@prisma/client";
@@ -216,10 +217,64 @@ async function seedFestaDemo() {
   );
 }
 
+const DEMO_ROMANEIO_ITENS = [
+  "Arco de Balões Premium — kit principal",
+  "Mesa Provençal + 6 cadeiras Tiffany",
+] as const;
+
+async function seedOrdemServicoDemo() {
+  const festa = await prisma.festa.findFirst({
+    where: { tema: DEMO_FESTA_TEMA },
+  });
+
+  if (!festa) {
+    console.log("[seed] OS demo ignorada: festa demo não encontrada");
+    return;
+  }
+
+  const montador = await prisma.user.findUnique({ where: { nome: "Carlos" } });
+
+  let os = await prisma.ordemServico.findUnique({
+    where: { festaId: festa.id },
+  });
+
+  if (!os) {
+    os = await prisma.ordemServico.create({
+      data: {
+        festaId: festa.id,
+        status: StatusOS.ABERTA,
+        montadorId: montador?.id ?? null,
+      },
+    });
+    console.log(`[seed] OS demo criada: ${os.id} (ABERTA, festa=${festa.id})`);
+  } else {
+    console.log(`[seed] OS demo já existe: ${os.id} (${os.status})`);
+  }
+
+  for (const descricao of DEMO_ROMANEIO_ITENS) {
+    const itemExistente = await prisma.itemRomaneio.findFirst({
+      where: { osId: os.id, descricao },
+    });
+
+    if (itemExistente) {
+      continue;
+    }
+
+    await prisma.itemRomaneio.create({
+      data: {
+        osId: os.id,
+        descricao,
+      },
+    });
+    console.log(`[seed] item romaneio demo: "${descricao}"`);
+  }
+}
+
 async function main() {
   await seedUsuarios();
   await seedCatalogoEstoque();
   await seedFestaDemo();
+  await seedOrdemServicoDemo();
 }
 
 main()

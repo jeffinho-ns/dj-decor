@@ -22,6 +22,15 @@ import type {
   StatusFesta,
 } from "@/types/festa";
 import type { Midia, TipoMidia } from "@/types/midia";
+import type {
+  CheckinPayload,
+  FestaMontagemHoje,
+  ItemRomaneio,
+  OrdemServico,
+  QrScanPayload,
+  QrScanResult,
+  UpdateRomaneioItemPayload,
+} from "@/types/os";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -301,4 +310,114 @@ export async function liberarReserva(
     }
   );
   return handleResponse<{ ok: true; reservaId: string }>(response);
+}
+
+/** Festas/OS de montagem do dia (GET /api/os/today). */
+export async function listOsHoje(token: string): Promise<FestaMontagemHoje[]> {
+  const response = await fetch(`${getBaseUrl()}/api/os/today`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<FestaMontagemHoje[]>(response);
+}
+
+/** OS atribuídas ao montador logado (GET /api/os/mine). */
+export async function listOsMine(token: string): Promise<OrdemServico[]> {
+  const response = await fetch(`${getBaseUrl()}/api/os/mine`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<OrdemServico[]>(response);
+}
+
+export async function getOs(id: string, token: string): Promise<OrdemServico> {
+  const response = await fetch(`${getBaseUrl()}/api/os/${id}`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<OrdemServico>(response);
+}
+
+export async function updateRomaneioItem(
+  osId: string,
+  itemId: string,
+  payload: UpdateRomaneioItemPayload,
+  token: string
+): Promise<ItemRomaneio> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/os/${osId}/romaneio/itens/${itemId}`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify(payload),
+    }
+  );
+  return handleResponse<ItemRomaneio>(response);
+}
+
+export async function concluirRomaneio(
+  osId: string,
+  token: string
+): Promise<OrdemServico> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/os/${osId}/romaneio/concluir`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+    }
+  );
+  return handleResponse<OrdemServico>(response);
+}
+
+export async function checkinOs(
+  osId: string,
+  payload: CheckinPayload,
+  token: string
+): Promise<OrdemServico> {
+  const response = await fetch(`${getBaseUrl()}/api/os/${osId}/checkin`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<OrdemServico>(response);
+}
+
+export async function uploadFotoFinalOs(
+  osId: string,
+  file: File,
+  token: string
+): Promise<OrdemServico> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(`${getBaseUrl()}/api/os/${osId}/foto-final`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  return handleResponse<OrdemServico>(response);
+}
+
+export async function fotoFinalOsByMidia(
+  osId: string,
+  midiaId: string,
+  token: string
+): Promise<OrdemServico> {
+  const response = await fetch(`${getBaseUrl()}/api/os/${osId}/foto-final`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ midiaId }),
+  });
+  return handleResponse<OrdemServico>(response);
+}
+
+export async function scanQr(
+  payload: QrScanPayload,
+  token: string
+): Promise<QrScanResult> {
+  const response = await fetch(`${getBaseUrl()}/api/qr/scan`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<QrScanResult>(response);
 }
