@@ -19,20 +19,27 @@ export function DashboardShell({
   user,
 }: DashboardShellProps) {
   return (
-    <div className="flex min-h-dvh">
+    <div className="relative z-10 flex min-h-dvh">
       <div className="sticky top-0 hidden h-dvh md:block">
         <Sidebar user={user} />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header
-          className="sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur-md md:px-8"
-          style={{ paddingTop: "max(0.625rem, env(safe-area-inset-top, 0px))" }}
+          className="sticky top-0 z-30 mx-3 mt-3 rounded-2xl neo-sm md:mx-6 md:mt-4"
+          style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))" }}
         >
-          <div className="flex items-start justify-between gap-3 px-4 pb-2.5 md:px-0 md:pb-4 md:pt-4">
+          <div className="flex items-start justify-between gap-3 px-4 py-3 md:px-5 md:py-4">
             <div className="min-w-0 flex-1">
-              <p className="font-display text-xs text-champagne md:hidden">DJ Decor</p>
-              <h1 className="truncate font-display text-lg tracking-tight text-foreground sm:text-2xl">
+              <div className="mb-1 flex items-center gap-1.5 md:hidden">
+                <span className="balloon-dot bg-balloon-pink" />
+                <span className="balloon-dot bg-balloon-sky" />
+                <span className="balloon-dot bg-balloon-sun" />
+                <p className="ml-1 font-display text-xs font-semibold text-balloon-pink">
+                  DJ Decor
+                </p>
+              </div>
+              <h1 className="truncate font-display text-xl tracking-tight text-foreground sm:text-2xl">
                 {title}
               </h1>
               {description ? (
@@ -41,14 +48,14 @@ export function DashboardShell({
                 </p>
               ) : null}
             </div>
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex shrink-0 items-center gap-2">
               {actions}
               <LogoutButton />
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-hidden px-4 py-4 pb-nav md:px-8 md:py-6 md:pb-6">
+        <main className="relative z-10 flex-1 overflow-x-hidden px-4 py-4 pb-nav md:px-8 md:py-6 md:pb-6">
           {children}
         </main>
 

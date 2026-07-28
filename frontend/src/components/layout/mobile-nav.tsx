@@ -109,7 +109,7 @@ export function MobileNav({ user }: MobileNavProps) {
     <>
       <nav
         aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/92 backdrop-blur-md md:hidden"
+        className="fixed inset-x-3 bottom-3 z-40 rounded-3xl neo md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div className="mx-auto flex h-14 max-w-lg items-stretch justify-around px-1">
@@ -123,14 +123,21 @@ export function MobileNav({ user }: MobileNavProps) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] transition-colors",
+                  "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1.5 text-[11px] font-semibold transition-all",
                   "min-h-[var(--touch-min,44px)]",
                   active
-                    ? "font-medium text-champagne"
+                    ? "text-balloon-pink"
                     : "text-muted-foreground active:text-foreground"
                 )}
               >
-                <Icon className={cn("size-5 shrink-0", active && "stroke-[2.25]")} />
+                <span
+                  className={cn(
+                    "flex size-9 items-center justify-center rounded-xl",
+                    active && "neo-pink text-white"
+                  )}
+                >
+                  <Icon className={cn("size-5 shrink-0", active && "stroke-[2.25]")} />
+                </span>
                 <span className="max-w-full truncate leading-none">{label}</span>
               </Link>
             );
@@ -143,19 +150,26 @@ export function MobileNav({ user }: MobileNavProps) {
               aria-expanded={moreOpen}
               aria-haspopup="dialog"
               className={cn(
-                "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] transition-colors",
+                "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1.5 text-[11px] font-semibold transition-all",
                 "min-h-[var(--touch-min,44px)]",
                 overflowActive || moreOpen
-                  ? "font-medium text-champagne"
+                  ? "text-balloon-sky"
                   : "text-muted-foreground active:text-foreground"
               )}
             >
-              <LayoutGrid
+              <span
                 className={cn(
-                  "size-5 shrink-0",
-                  (overflowActive || moreOpen) && "stroke-[2.25]"
+                  "flex size-9 items-center justify-center rounded-xl",
+                  (overflowActive || moreOpen) && "neo-sky text-white"
                 )}
-              />
+              >
+                <LayoutGrid
+                  className={cn(
+                    "size-5 shrink-0",
+                    (overflowActive || moreOpen) && "stroke-[2.25]"
+                  )}
+                />
+              </span>
               <span className="leading-none">Mais</span>
             </button>
           ) : null}
@@ -167,7 +181,7 @@ export function MobileNav({ user }: MobileNavProps) {
           <button
             type="button"
             aria-label="Fechar menu"
-            className="absolute inset-0 bg-black/55"
+            className="absolute inset-0 bg-[#2a3142]/35 backdrop-blur-[2px]"
             onClick={() => setMoreOpen(false)}
           />
 
@@ -175,22 +189,30 @@ export function MobileNav({ user }: MobileNavProps) {
             role="dialog"
             aria-modal="true"
             aria-label="Mais opções"
-            className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-border/70 bg-popover shadow-2xl"
+            className="absolute inset-x-3 bottom-3 rounded-3xl neo"
             style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
           >
-            <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-              <p className="font-display text-base text-foreground">Mais opções</p>
+            <div className="flex items-center justify-between px-4 py-3">
+              <div>
+                <p className="font-display text-base text-foreground">Mais opções</p>
+                <div className="mt-1 flex gap-1">
+                  <span className="balloon-dot bg-balloon-pink" />
+                  <span className="balloon-dot bg-balloon-sky" />
+                  <span className="balloon-dot bg-balloon-sun" />
+                  <span className="balloon-dot bg-balloon-mint" />
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setMoreOpen(false)}
                 aria-label="Fechar"
-                className="flex size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex size-11 items-center justify-center rounded-2xl neo-sm text-muted-foreground"
               >
                 <X className="size-5" />
               </button>
             </div>
 
-            <ul className="max-h-[min(50dvh,320px)] overflow-y-auto px-2 py-2">
+            <ul className="max-h-[min(50dvh,320px)] space-y-1 overflow-y-auto px-2 pb-3">
               {overflow.map((item) => {
                 const Icon = item.icon;
                 const active = isNavActive(pathname, item.href);
@@ -201,10 +223,10 @@ export function MobileNav({ user }: MobileNavProps) {
                       href={item.href}
                       onClick={() => setMoreOpen(false)}
                       className={cn(
-                        "flex min-h-[var(--touch-min,44px)] items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
+                        "flex min-h-[var(--touch-min,44px)] items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all",
                         active
-                          ? "bg-accent font-medium text-champagne"
-                          : "text-foreground/85 active:bg-muted"
+                          ? "neo-pink text-white"
+                          : "neo-inset text-foreground/85"
                       )}
                     >
                       <Icon className="size-5 shrink-0" />

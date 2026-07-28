@@ -144,7 +144,7 @@ export function LoginForm() {
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="group/cta h-11 min-h-[var(--touch-min,44px)] w-full gap-2 text-base font-medium shadow-[0_0_0_0_rgba(228,197,138,0)] transition-shadow duration-300 hover:shadow-[0_0_28px_-6px_rgba(228,197,138,0.55)] sm:text-sm"
+          className="group/cta w-full gap-2 text-base"
         >
           {isSubmitting ? (
             <Loader2 className="size-4 animate-spin" />
@@ -155,25 +155,28 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <div className="mt-8 rounded-lg border border-border/70 bg-white/[0.02] px-4 py-3">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+      <div className="mt-8 rounded-2xl neo-inset px-4 py-3">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           Acesso rápido · senha {SENHA_TEMPORARIA}
         </p>
-        <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-          {ACESSO_RAPIDO.map((account) => (
-            <li key={account.nome}>
-              <button
-                type="button"
-                onClick={() => fillAcesso(account.nome)}
-                className="flex min-h-[var(--touch-min,44px)] w-full items-center rounded-lg px-1 text-left transition-colors hover:bg-white/[0.03] hover:text-champagne"
-              >
-                <span className="font-medium text-foreground/80">
-                  {account.label}:
-                </span>{" "}
-                {account.nome}
-              </button>
-            </li>
-          ))}
+        <ul className="mt-2 grid grid-cols-2 gap-2">
+          {ACESSO_RAPIDO.map((account, index) => {
+            const tones = ["neo-pink", "neo-sky", "neo-sun", "neo-mint"] as const;
+            return (
+              <li key={account.nome}>
+                <button
+                  type="button"
+                  onClick={() => fillAcesso(account.nome)}
+                  className={`flex min-h-11 w-full flex-col items-start justify-center rounded-2xl px-3 py-2 text-left text-xs font-semibold ${tones[index % tones.length]}`}
+                >
+                  <span className="opacity-90">{account.label}</span>
+                  <span className="text-[11px] font-medium opacity-80">
+                    {account.nome}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>

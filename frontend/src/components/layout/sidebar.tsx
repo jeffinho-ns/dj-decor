@@ -103,23 +103,28 @@ export function Sidebar({ user }: SidebarProps) {
         : DEFAULT_NAV;
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center gap-2.5 border-b border-sidebar-border px-5 py-6">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-          <Sparkles className="size-4" />
+    <aside className="m-3 flex h-[calc(100%-1.5rem)] w-64 flex-col rounded-3xl neo text-sidebar-foreground">
+      <div className="flex items-center gap-3 px-5 py-6">
+        <div className="flex size-11 items-center justify-center rounded-2xl neo-pink">
+          <Sparkles className="size-5" />
         </div>
         <div>
-          <p className="font-display text-base leading-none tracking-tight">
-            DJ Decor
+          <p className="font-display text-lg leading-none tracking-tight">
+            DJ <span className="text-balloon-pink">Decor</span>
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            {isAdmin ? "Gestão" : `Painel do ${roleLabel(user.role)}`}
+          <p className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+            <span className="balloon-dot bg-balloon-pink" />
+            <span className="balloon-dot bg-balloon-sky" />
+            <span className="balloon-dot bg-balloon-sun" />
+            <span className="ml-1">
+              {isAdmin ? "Gestão festiva" : roleLabel(user.role)}
+            </span>
           </p>
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 p-3">
-        <p className="mb-1 px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+      <nav className="flex flex-1 flex-col gap-1.5 px-3 pb-3">
+        <p className="mb-1 px-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           {isAdmin ? "Gestão" : "Menu"}
         </p>
         {navItems.map((item) => {
@@ -131,10 +136,10 @@ export function Sidebar({ user }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+                "flex min-h-11 items-center gap-2.5 rounded-2xl px-3 py-2 text-sm font-medium transition-all neo-press",
                 active
-                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                  ? "neo-pink text-white"
+                  : "text-sidebar-foreground/80 hover:neo-sm"
               )}
             >
               <Icon className="size-4 shrink-0" />
@@ -144,13 +149,13 @@ export function Sidebar({ user }: SidebarProps) {
         })}
       </nav>
 
-      <div className="border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-2 rounded-lg bg-sidebar-accent/50 px-3 py-2">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-champagne/15 text-[11px] font-medium text-champagne">
+      <div className="p-4">
+        <div className="flex items-center gap-2.5 rounded-2xl neo-inset px-3 py-2.5">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full neo-sun text-sm font-bold">
             {user.nome.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-xs font-medium">{user.nome}</p>
+            <p className="truncate text-xs font-semibold">{user.nome}</p>
             <p className="truncate text-[11px] text-muted-foreground">
               {roleLabel(user.role)}
             </p>
