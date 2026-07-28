@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -60,6 +60,7 @@ export function MontagemOsDetalhe({
   const [geoStatus, setGeoStatus] = useState<string | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const fotoInputRef = useRef<HTMLInputElement>(null);
 
   const festa = os.festa;
   const itens = os.itensRomaneio;
@@ -218,7 +219,7 @@ export function MontagemOsDetalhe({
   );
 
   return (
-    <div className="mx-auto max-w-lg space-y-6 pb-8">
+    <div className="relative mx-auto max-w-lg space-y-5 pb-28 sm:space-y-6 md:pb-8">
       <Link
         href="/montagem"
         className="inline-flex items-center gap-1.5 text-sm text-champagne transition-colors hover:text-champagne/80"
@@ -227,7 +228,7 @@ export function MontagemOsDetalhe({
         Voltar
       </Link>
 
-      <header className="rounded-2xl border border-border/70 bg-card/40 p-5">
+      <header className="rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="font-medium text-foreground">
@@ -286,7 +287,7 @@ export function MontagemOsDetalhe({
 
       <section
         className={cn(
-          "rounded-2xl border border-border/70 bg-card/40 p-5",
+          "rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5",
           etapaAtiva === "romaneio" && "ring-1 ring-champagne/30"
         )}
       >
@@ -344,7 +345,7 @@ export function MontagemOsDetalhe({
         {!romaneioOk && itens.length > 0 ? (
           <Button
             type="button"
-            className="mt-4 w-full"
+            className="mt-4 hidden w-full md:inline-flex"
             disabled={!todosItensOk || pending}
             onClick={concluirRomaneioHandler}
           >
@@ -364,7 +365,7 @@ export function MontagemOsDetalhe({
 
       <section
         className={cn(
-          "rounded-2xl border border-border/70 bg-card/40 p-5",
+          "rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5",
           etapaAtiva === "checkin" && "ring-1 ring-champagne/30",
           !romaneioOk && "opacity-50"
         )}
@@ -399,7 +400,7 @@ export function MontagemOsDetalhe({
             </p>
             <Button
               type="button"
-              className="mt-4 w-full"
+              className="mt-4 hidden w-full md:inline-flex"
               disabled={!romaneioOk || pending}
               onClick={checkinHandler}
             >
@@ -421,7 +422,7 @@ export function MontagemOsDetalhe({
 
       <section
         className={cn(
-          "rounded-2xl border border-border/70 bg-card/40 p-5",
+          "rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5",
           etapaAtiva === "foto" && "ring-1 ring-champagne/30",
           !checkinOk && "opacity-50"
         )}
@@ -454,7 +455,20 @@ export function MontagemOsDetalhe({
                 className="mt-3 max-h-48 w-full rounded-xl object-cover"
               />
             ) : null}
-            <label className="mt-4 flex cursor-pointer">
+            <input
+              ref={fotoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              disabled={!checkinOk || pending}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) fotoHandler(file);
+                e.target.value = "";
+              }}
+            />
+            <label className="mt-4 hidden cursor-pointer md:flex">
               <input
                 type="file"
                 accept="image/*"
@@ -491,7 +505,7 @@ export function MontagemOsDetalhe({
 
       <section
         className={cn(
-          "rounded-2xl border border-border/70 bg-card/40 p-5",
+          "rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5",
           etapaAtiva === "qr" && "ring-1 ring-champagne/30",
           !romaneioOk && "opacity-50"
         )}
@@ -507,7 +521,7 @@ export function MontagemOsDetalhe({
           <span className="text-champagne">html5-qrcode</span>.
         </p>
 
-        <div className="mt-4 space-y-6">
+        <div className="mt-4 space-y-5 sm:space-y-6">
           <MontagemQrScanner
             osId={os.id}
             tipo="SAIDA_GALPAO"
@@ -531,6 +545,109 @@ export function MontagemOsDetalhe({
           {erro}
         </div>
       ) : null}
+
+      <MontagemStickyAction
+        etapaAtiva={etapaAtiva}
+        romaneioOk={romaneioOk}
+        checkinOk={checkinOk}
+        fotoOk={fotoOk}
+        itensLength={itens.length}
+        todosItensOk={todosItensOk}
+        pending={pending}
+        geoStatus={geoStatus}
+        onConcluirRomaneio={concluirRomaneioHandler}
+        onCheckin={checkinHandler}
+        onFotoClick={() => fotoInputRef.current?.click()}
+      />
+    </div>
+  );
+}
+
+function MontagemStickyAction({
+  etapaAtiva,
+  romaneioOk,
+  checkinOk,
+  fotoOk,
+  itensLength,
+  todosItensOk,
+  pending,
+  geoStatus,
+  onConcluirRomaneio,
+  onCheckin,
+  onFotoClick,
+}: {
+  etapaAtiva: Etapa;
+  romaneioOk: boolean;
+  checkinOk: boolean;
+  fotoOk: boolean;
+  itensLength: number;
+  todosItensOk: boolean;
+  pending: boolean;
+  geoStatus: string | null;
+  onConcluirRomaneio: () => void;
+  onCheckin: () => void;
+  onFotoClick: () => void;
+}) {
+  let action: React.ReactNode = null;
+
+  if (etapaAtiva === "romaneio" && !romaneioOk && itensLength > 0) {
+    action = (
+      <Button
+        type="button"
+        className="w-full"
+        disabled={!todosItensOk || pending}
+        onClick={onConcluirRomaneio}
+      >
+        {pending ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          "Concluir romaneio"
+        )}
+      </Button>
+    );
+  } else if (etapaAtiva === "checkin" && !checkinOk) {
+    action = (
+      <Button
+        type="button"
+        className="w-full"
+        disabled={!romaneioOk || pending}
+        onClick={onCheckin}
+      >
+        {pending || geoStatus ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <>
+            <Navigation data-icon="inline-start" />
+            Fazer check-in
+          </>
+        )}
+      </Button>
+    );
+  } else if (etapaAtiva === "foto" && !fotoOk) {
+    action = (
+      <Button
+        type="button"
+        className="w-full"
+        disabled={!checkinOk || pending}
+        onClick={onFotoClick}
+      >
+        {pending ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <>
+            <Camera data-icon="inline-start" />
+            Tirar / escolher foto
+          </>
+        )}
+      </Button>
+    );
+  }
+
+  if (!action) return null;
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border/70 bg-background/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md md:hidden">
+      {action}
     </div>
   );
 }

@@ -39,6 +39,89 @@ interface EquipePainelProps {
   defaultFim: string;
 }
 
+function MontadorSelect({
+  value,
+  options,
+  disabled,
+  onChange,
+  id,
+}: {
+  value: string;
+  options: { id: string; nome: string }[];
+  disabled?: boolean;
+  onChange: (montadorId: string) => void;
+  id?: string;
+}) {
+  return (
+    <select
+      id={id}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base font-medium sm:h-9 sm:text-sm"
+    >
+      {options.map((m) => (
+        <option key={m.id || "none"} value={m.id}>
+          {m.nome}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function AgendaCard({
+  item,
+  montadorOptions,
+  assigning,
+  onAssign,
+}: {
+  item: AgendaOs;
+  montadorOptions: { id: string; nome: string }[];
+  assigning: boolean;
+  onAssign: (montadorId: string) => void;
+}) {
+  return (
+    <article className="rounded-xl border border-border/60 bg-card/40 p-4">
+      <div className="space-y-1">
+        <p className="font-medium text-foreground">{item.festa.tema}</p>
+        <p className="text-sm text-muted-foreground">{item.festa.cliente.nome}</p>
+      </div>
+
+      <dl className="mt-3 space-y-2 text-sm">
+        <div className="flex justify-between gap-3">
+          <dt className="text-muted-foreground">Montagem</dt>
+          <dd className="text-right font-medium tabular-nums text-foreground">
+            {formatDateTime(item.festa.horarioMontagem)}
+          </dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt className="text-muted-foreground">Evento</dt>
+          <dd className="text-right font-medium tabular-nums text-foreground">
+            {formatDateTime(item.festa.dataEvento)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Endereço</dt>
+          <dd className="mt-0.5 text-foreground">{item.festa.endereco}</dd>
+        </div>
+      </dl>
+
+      <div className="mt-4 space-y-2">
+        <Label htmlFor={`montador-${item.id}`} className="text-sm">
+          Montador
+        </Label>
+        <MontadorSelect
+          id={`montador-${item.id}`}
+          value={item.montadorId ?? ""}
+          options={montadorOptions}
+          disabled={assigning}
+          onChange={onAssign}
+        />
+      </div>
+    </article>
+  );
+}
+
 export function EquipePainel({
   initialAgenda,
   montadores,
@@ -117,9 +200,15 @@ export function EquipePainel({
     });
   }
 
+  const emptyMessage = (
+    <p className="py-10 text-center text-sm text-muted-foreground">
+      Nenhuma OS no período selecionado.
+    </p>
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end gap-4 rounded-xl border border-border/60 bg-card/40 p-4">
+    <div className="min-w-0 space-y-6">
+      <div className="grid grid-cols-1 gap-4 rounded-xl border border-border/60 bg-card/40 p-4 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
         <div className="space-y-1.5">
           <Label htmlFor="equipe-inicio">Início</Label>
           <input
@@ -127,7 +216,7 @@ export function EquipePainel({
             type="date"
             value={inicio}
             onChange={(e) => setInicio(e.target.value)}
-            className="flex h-9 w-full min-w-[10rem] rounded-md border border-input bg-background px-3 py-1 text-sm"
+            className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base sm:h-9 sm:text-sm"
           />
         </div>
         <div className="space-y-1.5">
@@ -137,10 +226,15 @@ export function EquipePainel({
             type="date"
             value={fim}
             onChange={(e) => setFim(e.target.value)}
-            className="flex h-9 w-full min-w-[10rem] rounded-md border border-input bg-background px-3 py-1 text-sm"
+            className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base sm:h-9 sm:text-sm"
           />
         </div>
-        <Button type="button" onClick={carregar} disabled={pending}>
+        <Button
+          type="button"
+          className="h-11 w-full sm:h-9 lg:w-auto"
+          onClick={carregar}
+          disabled={pending}
+        >
           <CalendarDays className="mr-2 size-4" />
           {pending ? "Carregando…" : "Atualizar"}
         </Button>
@@ -152,7 +246,25 @@ export function EquipePainel({
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-border/60">
+      <div className="md:hidden">
+        {agenda.length === 0 ? (
+          emptyMessage
+        ) : (
+          <div className="space-y-3">
+            {agenda.map((item) => (
+              <AgendaCard
+                key={item.id}
+                item={item}
+                montadorOptions={montadorOptions}
+                assigning={pending && assigningId === item.id}
+                onAssign={(montadorId) => atribuirMontador(item.id, montadorId)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-xl border border-border/60 md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -189,18 +301,14 @@ export function EquipePainel({
                     {item.festa.endereco}
                   </TableCell>
                   <TableCell>
-                    <select
+                    <MontadorSelect
                       value={item.montadorId ?? ""}
+                      options={montadorOptions}
                       disabled={pending && assigningId === item.id}
-                      onChange={(e) => atribuirMontador(item.id, e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                    >
-                      {montadorOptions.map((m) => (
-                        <option key={m.id || "none"} value={m.id}>
-                          {m.nome}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(montadorId) =>
+                        atribuirMontador(item.id, montadorId)
+                      }
+                    />
                   </TableCell>
                 </TableRow>
               ))

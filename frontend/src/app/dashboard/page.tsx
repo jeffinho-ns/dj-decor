@@ -37,7 +37,7 @@ export default async function DashboardPage() {
             href="/vendas/nova"
             className={cn(
               buttonVariants({ variant: "default", size: "sm" }),
-              "gap-1.5"
+              "hidden gap-1.5 sm:inline-flex"
             )}
           >
             <PlusCircle className="size-4" />

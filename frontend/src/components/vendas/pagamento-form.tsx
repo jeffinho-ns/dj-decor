@@ -27,7 +27,7 @@ const tipoLabel: Record<TipoPagamento, string> = {
 const TIPOS: TipoPagamento[] = ["PIX", "DINHEIRO", "CARTAO", "OUTRO"];
 
 const selectClassName =
-  "flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "flex h-11 w-full rounded-lg border border-input bg-transparent px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9 md:px-2.5 md:text-sm";
 
 interface PagamentoFormProps {
   festaId: string;
@@ -116,16 +116,16 @@ export function PagamentoForm({
   return (
     <div className="space-y-4" onClick={(event) => event.stopPropagation()}>
       {pagamentos.length > 0 ? (
-        <div className="space-y-1.5">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Pagamentos registrados · {formatCurrency(totalConfirmado)}{" "}
             confirmado
           </p>
-          <ul className="space-y-1.5">
+          <ul className="space-y-2">
             {pagamentos.map((pagamento) => (
               <li
                 key={pagamento.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-background/30 px-2.5 py-1.5 text-xs"
+                className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/30 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="font-medium text-foreground">
@@ -134,35 +134,35 @@ export function PagamentoForm({
                       · {tipoLabel[pagamento.tipo]}
                     </span>
                   </p>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {format(parseISO(pagamento.criadoEm), "dd/MM/yyyy HH:mm", {
                       locale: ptBR,
                     })}
                     {pagamento.comprovanteMidiaId ? (
                       <span className="ml-1.5 inline-flex items-center gap-0.5 text-champagne">
-                        <Paperclip className="size-2.5" /> comprovante
+                        <Paperclip className="size-3" /> comprovante
                       </span>
                     ) : null}
                   </p>
                 </div>
                 {pagamento.status === "CONFIRMADO" ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-500/14 px-1.5 py-0.5 font-medium text-emerald-300">
-                    <CheckCircle2 className="size-3" /> Confirmado
+                  <span className="inline-flex shrink-0 items-center gap-1 self-start rounded-md bg-emerald-500/14 px-2 py-1 text-xs font-medium text-emerald-300 sm:self-auto">
+                    <CheckCircle2 className="size-3.5" /> Confirmado
                   </span>
                 ) : pagamento.status === "ESTORNADO" ? (
-                  <span className="inline-flex shrink-0 rounded-md bg-destructive/14 px-1.5 py-0.5 font-medium text-destructive">
+                  <span className="inline-flex shrink-0 self-start rounded-md bg-destructive/14 px-2 py-1 text-xs font-medium text-destructive sm:self-auto">
                     Estornado
                   </span>
                 ) : (
                   <Button
                     type="button"
-                    size="xs"
                     variant="outline"
+                    className="min-h-10 w-full sm:w-auto"
                     disabled={confirmandoId === pagamento.id}
                     onClick={() => confirmarSemComprovante(pagamento.id)}
                   >
                     {confirmandoId === pagamento.id ? (
-                      <Loader2 className="size-3 animate-spin" />
+                      <Loader2 className="size-4 animate-spin" />
                     ) : (
                       "Confirmar"
                     )}
@@ -174,13 +174,13 @@ export function PagamentoForm({
         </div>
       ) : null}
 
-      <div className="space-y-2 rounded-lg border border-dashed border-border/70 p-3">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-champagne/80">
+      <div className="space-y-3 rounded-lg border border-dashed border-border/70 p-4">
+        <p className="text-xs font-medium uppercase tracking-wider text-champagne/80">
           Registrar pagamento PIX
         </p>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <Label htmlFor={`valor-${festaId}`} className="text-[11px]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor={`valor-${festaId}`} className="text-xs">
               Valor (R$)
             </Label>
             <Input
@@ -188,14 +188,14 @@ export function PagamentoForm({
               type="number"
               step="0.01"
               min="0"
-              className="h-8"
+              className="h-11 text-base md:h-9 md:text-sm"
               placeholder="500.00"
               value={valor}
               onChange={(event) => setValor(event.target.value)}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`tipo-${festaId}`} className="text-[11px]">
+          <div className="space-y-1.5">
+            <Label htmlFor={`tipo-${festaId}`} className="text-xs">
               Tipo
             </Label>
             <select
@@ -213,18 +213,18 @@ export function PagamentoForm({
           </div>
         </div>
 
-        <div className="space-y-1">
-          <Label htmlFor={`comprovante-${festaId}`} className="text-[11px]">
+        <div className="space-y-1.5">
+          <Label htmlFor={`comprovante-${festaId}`} className="text-xs">
             Comprovante (opcional)
           </Label>
           <label
             htmlFor={`comprovante-${festaId}`}
             className={cn(
-              "flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-input bg-transparent px-2.5 text-xs text-muted-foreground transition-colors hover:border-ring",
+              "flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-input bg-transparent px-3 text-sm text-muted-foreground transition-colors hover:border-ring md:h-9 md:px-2.5 md:text-xs",
               file && "border-champagne/50 text-champagne"
             )}
           >
-            <Upload className="size-3.5 shrink-0" />
+            <Upload className="size-4 shrink-0" />
             <span className="truncate">
               {file ? file.name : "Anexar comprovante de PIX"}
             </span>
@@ -238,25 +238,24 @@ export function PagamentoForm({
             onChange={(event) => setFile(event.target.files?.[0] ?? null)}
           />
           {file ? (
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Ao registrar, o pagamento já será confirmado com este comprovante.
             </p>
           ) : null}
         </div>
 
         {error ? (
-          <p className="text-[11px] text-destructive">{error}</p>
+          <p className="text-sm text-destructive">{error}</p>
         ) : null}
 
         <Button
           type="button"
-          size="sm"
-          className="w-full"
+          className="min-h-11 w-full"
           disabled={pending}
           onClick={registrarPagamento}
         >
           {pending ? (
-            <Loader2 className="size-3.5 animate-spin" />
+            <Loader2 className="size-4 animate-spin" />
           ) : (
             "Registrar pagamento"
           )}

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Outfit } from "next/font/google";
 import "./globals.css";
 
@@ -18,6 +18,12 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "DJ Decor | Gestão de Festas",
   description: "Sistema de gestão de agendamento de decorações de festas",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

@@ -58,14 +58,143 @@ const columnAccent: Record<StatusFesta, string> = {
   CANCELADO: "border-t-destructive",
 };
 
+const pillAccent: Record<StatusFesta, string> = {
+  ORCAMENTO: "border-champagne/50 bg-champagne/15 text-champagne",
+  AGUARDANDO_PAGAMENTO: "border-amber-400/50 bg-amber-400/15 text-amber-200",
+  PAGO: "border-emerald-400/50 bg-emerald-400/15 text-emerald-200",
+  FECHADO: "border-status-closed/50 bg-status-closed/15 text-status-closed",
+  EM_MONTAGEM: "border-sky-400/50 bg-sky-400/15 text-sky-200",
+  CONCLUIDO: "border-status-done/50 bg-status-done/15 text-status-done",
+  CANCELADO: "border-destructive/50 bg-destructive/15 text-destructive",
+};
+
 interface KanbanBoardProps {
   festas: Festa[];
   token: string;
 }
 
+interface FestaCardProps {
+  festa: Festa;
+  expanded: boolean;
+  busy: boolean;
+  loadingPagamentos: boolean;
+  pagamentos: Pagamento[];
+  token: string;
+  onToggle: () => void;
+  onMove: (status: StatusFesta) => void;
+  onPagamentosChange: (list: Pagamento[]) => void;
+}
+
+function FestaCard({
+  festa,
+  expanded,
+  busy,
+  loadingPagamentos,
+  pagamentos,
+  token,
+  onToggle,
+  onMove,
+  onPagamentosChange,
+}: FestaCardProps) {
+  const next = STATUS_TRANSITIONS[festa.status];
+
+  return (
+    <article
+      className={cn(
+        "rounded-lg border border-border/60 bg-background/40 p-3 shadow-sm transition-colors md:p-2.5",
+        expanded && "border-champagne/40"
+      )}
+    >
+      <button
+        type="button"
+        className="w-full text-left"
+        onClick={onToggle}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-medium leading-snug text-foreground">
+            {festa.cliente.nome}
+          </p>
+          <ChevronDown
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform md:size-3.5",
+              expanded && "rotate-180"
+            )}
+          />
+        </div>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          {festa.tema}
+        </p>
+        <div className="mt-2 flex items-center justify-between gap-2 text-xs md:text-[11px]">
+          <span className="text-muted-foreground">
+            {format(parseISO(festa.dataEvento), "dd MMM", { locale: ptBR })}
+          </span>
+          <span className="font-medium text-champagne">
+            {formatCurrency(festa.valor)}
+          </span>
+        </div>
+      </button>
+
+      {next.length > 0 ? (
+        <div className="mt-2.5">
+          <select
+            className="flex h-11 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring md:h-7 md:rounded-md md:px-2 md:text-[11px]"
+            disabled={busy}
+            defaultValue=""
+            onChange={(event) => {
+              const value = event.target.value as StatusFesta;
+              if (!value) return;
+              onMove(value);
+              event.target.value = "";
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <option value="" disabled>
+              {busy ? "Movendo…" : "Mover para…"}
+            </option>
+            {next.map((s) => (
+              <option key={s} value={s} className="bg-background">
+                {statusLabel[s]}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+
+      {expanded ? (
+        <div className="mt-3 border-t border-border/50 pt-3">
+          {loadingPagamentos ? (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="size-3 animate-spin" />
+              Carregando pagamentos…
+            </p>
+          ) : (
+            <>
+              <PagamentoForm
+                festaId={festa.id}
+                token={token}
+                pagamentos={pagamentos}
+                valorSugerido={Number(festa.valor)}
+                onPagamentosChange={onPagamentosChange}
+              />
+              <div className="mt-4 border-t border-border/50 pt-3">
+                <FestaContratoPanel
+                  festaId={festa.id}
+                  token={token}
+                  clienteNome={festa.cliente.nome}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) {
   const [festas, setFestas] = useState(initialFestas);
   const [view, setView] = useState<"kanban" | "table">("kanban");
+  const [activeStatus, setActiveStatus] = useState<StatusFesta>("ORCAMENTO");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [pagamentosByFesta, setPagamentosByFesta] = useState<
     Record<string, Pagamento[]>
@@ -126,6 +255,46 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
     }
   }
 
+  function renderFestaCard(festa: Festa) {
+    const expanded = expandedId === festa.id;
+    const busy = movingId === festa.id;
+
+    return (
+      <FestaCard
+        key={festa.id}
+        festa={festa}
+        expanded={expanded}
+        busy={busy}
+        loadingPagamentos={loadingPagamentos === festa.id}
+        pagamentos={pagamentosByFesta[festa.id] ?? []}
+        token={token}
+        onToggle={() => {
+          startTransition(() => {
+            void toggleExpand(festa);
+          });
+        }}
+        onMove={(status) => void moverStatus(festa.id, status)}
+        onPagamentosChange={(list) => {
+          setPagamentosByFesta((prev) => ({
+            ...prev,
+            [festa.id]: list,
+          }));
+          void listPagamentos(festa.id, token).then(() => {
+            setFestas((prev) =>
+              prev.map((f) =>
+                f.id === festa.id && f.status === "AGUARDANDO_PAGAMENTO"
+                  ? { ...f, status: "PAGO" }
+                  : f
+              )
+            );
+          });
+        }}
+      />
+    );
+  }
+
+  const activeItems = byStatus[activeStatus];
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -138,7 +307,7 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
             size="xs"
             variant={view === "kanban" ? "secondary" : "ghost"}
             onClick={() => setView("kanban")}
-            className="gap-1"
+            className="min-h-10 gap-1 px-3 md:min-h-6 md:px-2"
           >
             <LayoutGrid className="size-3.5" />
             Kanban
@@ -148,7 +317,7 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
             size="xs"
             variant={view === "table" ? "secondary" : "ghost"}
             onClick={() => setView("table")}
-            className="gap-1"
+            className="min-h-10 gap-1 px-3 md:min-h-6 md:px-2"
           >
             <List className="size-3.5" />
             Tabela
@@ -165,169 +334,85 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
       {view === "table" ? (
         <FestasTable festas={festas} />
       ) : (
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {KANBAN_COLUMNS.map((status) => {
-            const items = byStatus[status];
-            return (
-              <section
-                key={status}
-                className={cn(
-                  "flex w-[min(100%,17.5rem)] shrink-0 flex-col rounded-xl border border-border/50 border-t-2 bg-card/30",
-                  columnAccent[status]
-                )}
-              >
-                <header className="flex items-center justify-between gap-2 px-3 py-2.5">
-                  <h3 className="text-xs font-medium tracking-wide text-foreground">
+        <>
+          {/* Mobile: status pills + filtered card list */}
+          <div className="space-y-3 md:hidden">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+              {KANBAN_COLUMNS.map((status) => {
+                const count = byStatus[status].length;
+                const active = activeStatus === status;
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setActiveStatus(status)}
+                    className={cn(
+                      "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors",
+                      active
+                        ? pillAccent[status]
+                        : "border-border/60 bg-muted/30 text-muted-foreground"
+                    )}
+                  >
                     {statusLabel[status]}
-                  </h3>
-                  <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
-                    {items.length}
-                  </span>
-                </header>
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
+                        active ? "bg-background/20" : "bg-muted/60"
+                      )}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
 
-                <div className="flex max-h-[min(70vh,36rem)] flex-col gap-2 overflow-y-auto px-2 pb-3">
-                  {items.length === 0 ? (
-                    <p className="px-1 py-4 text-center text-[11px] text-muted-foreground/70">
-                      Vazio
-                    </p>
-                  ) : (
-                    items.map((festa) => {
-                      const next = STATUS_TRANSITIONS[festa.status];
-                      const expanded = expandedId === festa.id;
-                      const busy = movingId === festa.id;
+            <div className="space-y-3">
+              {activeItems.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border/60 px-4 py-10 text-center text-sm text-muted-foreground">
+                  Nenhuma venda em {statusLabel[activeStatus].toLowerCase()}
+                </p>
+              ) : (
+                activeItems.map(renderFestaCard)
+              )}
+            </div>
+          </div>
 
-                      return (
-                        <article
-                          key={festa.id}
-                          className={cn(
-                            "rounded-lg border border-border/60 bg-background/40 p-2.5 shadow-sm transition-colors",
-                            expanded && "border-champagne/40"
-                          )}
-                        >
-                          <button
-                            type="button"
-                            className="w-full text-left"
-                            onClick={() => {
-                              startTransition(() => {
-                                void toggleExpand(festa);
-                              });
-                            }}
-                          >
-                            <div className="flex items-start justify-between gap-1">
-                              <p className="text-sm font-medium leading-snug text-foreground">
-                                {festa.cliente.nome}
-                              </p>
-                              <ChevronDown
-                                className={cn(
-                                  "size-3.5 shrink-0 text-muted-foreground transition-transform",
-                                  expanded && "rotate-180"
-                                )}
-                              />
-                            </div>
-                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {festa.tema}
-                            </p>
-                            <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
-                              <span className="text-muted-foreground">
-                                {format(
-                                  parseISO(festa.dataEvento),
-                                  "dd MMM",
-                                  { locale: ptBR }
-                                )}
-                              </span>
-                              <span className="font-medium text-champagne">
-                                {formatCurrency(festa.valor)}
-                              </span>
-                            </div>
-                          </button>
-
-                          {next.length > 0 ? (
-                            <div className="mt-2">
-                              <select
-                                className="flex h-7 w-full rounded-md border border-input bg-transparent px-2 text-[11px] outline-none focus-visible:border-ring"
-                                disabled={busy}
-                                defaultValue=""
-                                onChange={(event) => {
-                                  const value = event.target
-                                    .value as StatusFesta;
-                                  if (!value) return;
-                                  void moverStatus(festa.id, value);
-                                  event.target.value = "";
-                                }}
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                <option value="" disabled>
-                                  {busy ? "Movendo…" : "Mover para…"}
-                                </option>
-                                {next.map((s) => (
-                                  <option
-                                    key={s}
-                                    value={s}
-                                    className="bg-background"
-                                  >
-                                    {statusLabel[s]}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          ) : null}
-
-                          {expanded ? (
-                            <div className="mt-3 border-t border-border/50 pt-3">
-                              {loadingPagamentos === festa.id ? (
-                                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                  <Loader2 className="size-3 animate-spin" />
-                                  Carregando pagamentos…
-                                </p>
-                              ) : (
-                                <>
-                                  <PagamentoForm
-                                    festaId={festa.id}
-                                    token={token}
-                                    pagamentos={
-                                      pagamentosByFesta[festa.id] ?? []
-                                    }
-                                    valorSugerido={Number(festa.valor)}
-                                    onPagamentosChange={(list) => {
-                                      setPagamentosByFesta((prev) => ({
-                                        ...prev,
-                                        [festa.id]: list,
-                                      }));
-                                      // Se confirmou e festa estava aguardando, backend sobe para PAGO
-                                      void listPagamentos(festa.id, token).then(
-                                        () => {
-                                          setFestas((prev) =>
-                                            prev.map((f) =>
-                                              f.id === festa.id &&
-                                              f.status === "AGUARDANDO_PAGAMENTO"
-                                                ? { ...f, status: "PAGO" }
-                                                : f
-                                            )
-                                          );
-                                        }
-                                      );
-                                    }}
-                                  />
-                                  <div className="mt-4 border-t border-border/50 pt-3">
-                                    <FestaContratoPanel
-                                      festaId={festa.id}
-                                      token={token}
-                                      clienteNome={festa.cliente.nome}
-                                    />
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          ) : null}
-                        </article>
-                      );
-                    })
+          {/* Desktop: horizontal kanban columns */}
+          <div className="hidden gap-3 overflow-x-auto pb-2 md:flex">
+            {KANBAN_COLUMNS.map((status) => {
+              const items = byStatus[status];
+              return (
+                <section
+                  key={status}
+                  className={cn(
+                    "flex w-[min(100%,17.5rem)] shrink-0 flex-col rounded-xl border border-border/50 border-t-2 bg-card/30",
+                    columnAccent[status]
                   )}
-                </div>
-              </section>
-            );
-          })}
-        </div>
+                >
+                  <header className="flex items-center justify-between gap-2 px-3 py-2.5">
+                    <h3 className="text-xs font-medium tracking-wide text-foreground">
+                      {statusLabel[status]}
+                    </h3>
+                    <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+                      {items.length}
+                    </span>
+                  </header>
+
+                  <div className="flex max-h-[min(70vh,36rem)] flex-col gap-2 overflow-y-auto px-2 pb-3">
+                    {items.length === 0 ? (
+                      <p className="px-1 py-4 text-center text-[11px] text-muted-foreground/70">
+                        Vazio
+                      </p>
+                    ) : (
+                      items.map(renderFestaCard)
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

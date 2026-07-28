@@ -40,13 +40,13 @@ export function MontagemHoje({ itens }: MontagemHojeProps) {
   const hoje = new Date();
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="mx-auto max-w-lg space-y-5 px-0 sm:space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
             {format(hoje, "EEEE", { locale: ptBR })}
           </p>
-          <h2 className="mt-1 font-display text-3xl text-foreground">
+          <h2 className="mt-1 font-display text-2xl text-foreground sm:text-3xl">
             Montagem de hoje
           </h2>
           <p className="mt-1 text-sm capitalize text-muted-foreground">
@@ -63,7 +63,7 @@ export function MontagemHoje({ itens }: MontagemHojeProps) {
       </div>
 
       {itens.length === 0 ? (
-        <div className="rounded-2xl border border-border/70 bg-card/40 p-8 text-center">
+        <div className="rounded-2xl border border-border/70 bg-card/40 p-6 text-center sm:p-8">
           <p className="font-display text-lg text-foreground">
             Nenhuma montagem agendada para hoje
           </p>
@@ -92,7 +92,7 @@ function MontagemCard({ item }: { item: MontagemListaItem }) {
   const conteudo = (
     <article
       className={cn(
-        "rounded-2xl border border-border/70 bg-card/40 p-5 transition-colors",
+        "rounded-2xl border border-border/70 bg-card/40 p-4 transition-colors sm:p-5",
         item.osId && "hover:border-champagne/30 hover:bg-card/60"
       )}
     >

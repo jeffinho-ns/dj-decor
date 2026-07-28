@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import type { TamanhoDecoracao } from "@/types/festa";
 
 const selectClassName =
-  "flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "flex h-11 w-full rounded-lg border border-input bg-transparent px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9 md:text-sm";
 
 const TAMANHOS: TamanhoDecoracao[] = ["P", "M", "G", "GG"];
 
@@ -249,7 +249,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl rounded-2xl border border-border/70 bg-card/40 p-6 sm:p-8">
+    <div className="mx-auto max-w-3xl rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-6 md:p-8">
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
         Novo orçamento
       </p>
@@ -257,16 +257,17 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
         Dados da festa
       </h2>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6 pb-24 md:pb-0">
         <div className="space-y-4">
           <p className="text-xs font-medium uppercase tracking-wider text-champagne/80">
             Cliente
           </p>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <Label htmlFor="nomeCliente">Nome do Cliente</Label>
               <Input
                 id="nomeCliente"
+                className="h-11 text-base md:h-9 md:text-sm"
                 placeholder="Maria Silva"
                 aria-invalid={Boolean(errors.nomeCliente)}
                 {...register("nomeCliente")}
@@ -282,6 +283,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
               <Label htmlFor="telefone">Telefone</Label>
               <Input
                 id="telefone"
+                className="h-11 text-base md:h-9 md:text-sm"
                 placeholder="(11) 99999-9999"
                 aria-invalid={Boolean(errors.telefone)}
                 {...register("telefone")}
@@ -302,12 +304,12 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
             Kit do catálogo
           </p>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <button
               type="button"
               onClick={() => selecionarKit("")}
               className={cn(
-                "rounded-xl border p-3.5 text-left transition-colors",
+                "min-h-[4.5rem] rounded-xl border p-4 text-left transition-colors md:min-h-0 md:p-3.5",
                 !kitId
                   ? "border-champagne/60 bg-champagne/10"
                   : "border-border/60 bg-background/20 hover:border-border"
@@ -329,7 +331,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                   type="button"
                   onClick={() => selecionarKit(kit.id)}
                   className={cn(
-                    "rounded-xl border p-3.5 text-left transition-colors",
+                    "min-h-[4.5rem] rounded-xl border p-4 text-left transition-colors md:min-h-0 md:p-3.5",
                     selected
                       ? "border-champagne/60 bg-champagne/10"
                       : "border-border/60 bg-background/20 hover:border-border"
@@ -361,7 +363,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
           </div>
 
           {kitSelecionado?.valorPegueEMonte != null ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <button
                 type="button"
                 onClick={() => {
@@ -369,7 +371,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                   setValorManual(false);
                 }}
                 className={cn(
-                  "rounded-lg border px-3 py-1.5 text-sm transition-colors",
+                  "min-h-11 rounded-lg border px-4 py-2.5 text-sm transition-colors md:min-h-0 md:px-3 md:py-1.5",
                   !pegueEMonte
                     ? "border-champagne/60 bg-champagne/10 text-foreground"
                     : "border-border/60 text-muted-foreground hover:text-foreground"
@@ -385,7 +387,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                   setValorManual(false);
                 }}
                 className={cn(
-                  "rounded-lg border px-3 py-1.5 text-sm transition-colors",
+                  "min-h-11 rounded-lg border px-4 py-2.5 text-sm transition-colors md:min-h-0 md:px-3 md:py-1.5",
                   pegueEMonte
                     ? "border-champagne/60 bg-champagne/10 text-foreground"
                     : "border-border/60 text-muted-foreground hover:text-foreground"
@@ -404,14 +406,14 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
           <p className="text-xs font-medium uppercase tracking-wider text-champagne/80">
             Add-ons
           </p>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {CATALOGO_ADDONS.map((addon) => {
               const checked = addonIds.includes(addon.id);
               return (
                 <label
                   key={addon.id}
                   className={cn(
-                    "flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm transition-colors",
+                    "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm transition-colors md:min-h-0 md:px-3 md:py-2.5",
                     checked
                       ? "border-champagne/50 bg-champagne/8"
                       : "border-border/60 bg-background/20"
@@ -441,11 +443,12 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
           <p className="text-xs font-medium uppercase tracking-wider text-champagne/80">
             Decoração e agenda
           </p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
+          <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="tema">Nome do tema</Label>
               <Input
                 id="tema"
+                className="h-11 text-base md:h-9 md:text-sm"
                 placeholder="Ex.: Ursinho Pooh, Frozen, Safari..."
                 aria-invalid={Boolean(errors.tema)}
                 {...register("tema")}
@@ -460,6 +463,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
               <Input
                 id="dataEvento"
                 type="date"
+                className="h-11 text-base md:h-9 md:text-sm"
                 aria-invalid={Boolean(errors.dataEvento)}
                 {...register("dataEvento")}
               />
@@ -496,6 +500,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
               <Input
                 id="horaEvento"
                 type="time"
+                className="h-11 text-base md:h-9 md:text-sm"
                 aria-invalid={Boolean(errors.horaEvento)}
                 {...register("horaEvento")}
               />
@@ -511,6 +516,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
               <Input
                 id="horaMontagem"
                 type="time"
+                className="h-11 text-base md:h-9 md:text-sm"
                 aria-invalid={Boolean(errors.horaMontagem)}
                 {...register("horaMontagem")}
               />
@@ -527,9 +533,10 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="extraInput">Itens extras manuais</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
                 id="extraInput"
+                className="h-11 text-base md:h-9 md:text-sm"
                 value={extraInput}
                 onChange={(event) => setExtraInput(event.target.value)}
                 onKeyDown={(event) => {
@@ -540,7 +547,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                 }}
                 placeholder="Ex.: toalha especial, placa personalizada"
               />
-              <Button type="button" variant="outline" onClick={addExtra}>
+              <Button type="button" variant="outline" className="min-h-11 sm:shrink-0" onClick={addExtra}>
                 Adicionar
               </Button>
             </div>
@@ -570,6 +577,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
             <Label htmlFor="endereco">Endereço</Label>
             <Input
               id="endereco"
+              className="h-11 text-base md:h-9 md:text-sm"
               placeholder="Rua das Flores, 123 — São Paulo/SP"
               aria-invalid={Boolean(errors.endereco)}
               {...register("endereco")}
@@ -587,7 +595,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
               id="observacoes"
               rows={3}
               placeholder="Preferências do cliente, cores, acesso, restrições..."
-              className="flex w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="flex min-h-[5.5rem] w-full rounded-lg border border-input bg-transparent px-3 py-2.5 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:py-2 md:text-sm"
               {...register("observacoes")}
             />
           </div>
@@ -648,13 +656,14 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
             </li>
           </ul>
 
-          <div className="mt-4 space-y-2 sm:max-w-xs">
+          <div className="space-y-2">
             <Label htmlFor="valor">Valor final (R$)</Label>
             <Input
               id="valor"
               type="number"
               step="0.01"
               min="0"
+              className="h-11 text-base md:h-9 md:text-sm"
               placeholder="1500.00"
               aria-invalid={Boolean(errors.valor)}
               {...register("valor", {
@@ -680,8 +689,8 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
             ) : null}
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={copiarOrcamento}>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={copiarOrcamento}>
               {copyFeedback ? (
                 <Check className="size-4" />
               ) : (
@@ -689,7 +698,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
               )}
               {copyFeedback ? "Copiado" : "Copiar orçamento"}
             </Button>
-            <Button type="button" variant="outline" onClick={abrirWhatsApp}>
+            <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={abrirWhatsApp}>
               <MessageCircle className="size-4" />
               WhatsApp
             </Button>
@@ -702,18 +711,21 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
           </div>
         ) : null}
 
-        <div className="flex items-center justify-end gap-2 pt-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push("/vendas")}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Salvando..." : "Salvar venda"}
-          </Button>
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:static md:z-auto md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+          <div className="mx-auto flex max-w-3xl flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 w-full sm:w-auto"
+              onClick={() => router.push("/vendas")}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={isSubmitting}>
+              {isSubmitting ? "Salvando..." : "Salvar venda"}
+            </Button>
+          </div>
         </div>
       </form>
     </div>

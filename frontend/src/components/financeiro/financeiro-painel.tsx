@@ -28,9 +28,9 @@ function FluxoCaixaBar({
   const pctConfirmadas = total > 0 ? (confirmadas / total) * 100 : 0;
 
   return (
-    <div className="rounded-xl border border-border/70 bg-card/60 p-5">
-      <div className="flex items-center justify-between gap-4">
-        <div>
+    <div className="min-w-0 rounded-xl border border-border/70 bg-card/60 p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Fluxo de caixa
           </p>
@@ -46,14 +46,14 @@ function FluxoCaixaBar({
         </span>
       </div>
 
-      <div className="mt-5 h-3 overflow-hidden rounded-full bg-foreground/8">
+      <div className="mt-4 h-3 w-full max-w-full overflow-hidden rounded-full bg-foreground/8 sm:mt-5">
         <div
-          className="h-full rounded-full bg-status-done transition-all"
+          className="h-full max-w-full rounded-full bg-status-done transition-all"
           style={{ width: `${pctConfirmadas}%` }}
         />
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs">
+      <div className="mt-3 flex flex-col gap-2 text-xs sm:flex-row sm:flex-wrap sm:gap-x-6 sm:gap-y-1">
         <span className="flex items-center gap-2 text-muted-foreground">
           <span className="size-2 rounded-full bg-status-done" />
           Confirmadas{" "}
@@ -101,14 +101,14 @@ function RentabilidadeTemaList({
         return (
           <li
             key={item.tema}
-            className="rounded-lg border border-border/60 bg-card/40 px-4 py-3"
+            className="min-w-0 rounded-lg border border-border/60 bg-card/40 px-4 py-3"
           >
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-foreground">
                   {item.tema}
                 </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-0.5 break-words text-xs text-muted-foreground">
                   Receita {formatCurrency(item.receita)}
                   {item.margem != null ? (
                     <>
@@ -127,9 +127,9 @@ function RentabilidadeTemaList({
                 </span>
               ) : null}
             </div>
-            <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-foreground/8">
+            <div className="mt-2.5 h-2 w-full max-w-full overflow-hidden rounded-full bg-foreground/8">
               <div
-                className={cn("h-full rounded-full bg-champagne/80")}
+                className={cn("h-full max-w-full rounded-full bg-champagne/80")}
                 style={{ width: `${widthPct}%` }}
               />
             </div>
@@ -140,13 +140,60 @@ function RentabilidadeTemaList({
   );
 }
 
+function RankingVendedoresMobile({
+  ranking,
+}: {
+  ranking: NonNullable<FinanceiroResumo["rankingVendedores"]>;
+}) {
+  return (
+    <ul className="space-y-3 md:hidden">
+      {ranking.map((row, index) => (
+        <li
+          key={row.vendedorId}
+          className="rounded-xl border border-border/70 bg-card/40 p-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">#{index + 1}</p>
+              <p className="font-medium text-foreground">{row.vendedorNome}</p>
+            </div>
+            <p className="shrink-0 font-display text-lg tabular-nums text-foreground">
+              {formatCurrency(row.totalComissao)}
+            </p>
+          </div>
+          <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <dt className="text-muted-foreground">Pagas</dt>
+              <dd className="mt-0.5 font-medium tabular-nums text-foreground">
+                {row.comissoesPagas != null
+                  ? formatCurrency(row.comissoesPagas)
+                  : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Pendentes</dt>
+              <dd className="mt-0.5 font-medium tabular-nums text-foreground">
+                {row.comissoesPendentes != null
+                  ? formatCurrency(row.comissoesPendentes)
+                  : "—"}
+              </dd>
+            </div>
+          </dl>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function RankingVendedores({
   ranking,
 }: {
   ranking: NonNullable<FinanceiroResumo["rankingVendedores"]>;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-border/70">
+    <>
+      <RankingVendedoresMobile ranking={ranking} />
+      <div className="hidden overflow-hidden rounded-xl border border-border/70 md:block">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
@@ -184,6 +231,7 @@ function RankingVendedores({
         </TableBody>
       </Table>
     </div>
+    </>
   );
 }
 
@@ -198,18 +246,18 @@ function ComissoesResumo({
   const pctPagas = total > 0 ? (pagas / total) * 100 : 0;
 
   return (
-    <div className="rounded-xl border border-border/70 bg-card/60 p-5">
+    <div className="min-w-0 rounded-xl border border-border/70 bg-card/60 p-4 sm:p-5">
       <div className="flex items-center gap-2">
         <Users className="size-4 text-champagne" />
         <p className="text-sm font-medium text-foreground">Comissões</p>
       </div>
-      <p className="mt-3 font-display text-2xl text-foreground">
+      <p className="mt-3 font-display text-xl text-foreground sm:text-2xl">
         {formatCurrency(total)}
       </p>
-      <p className="mt-1 text-xs text-muted-foreground">
+      <p className="mt-1 break-words text-xs text-muted-foreground">
         {formatCurrency(pagas)} pagas · {formatCurrency(pendentes)} pendentes
       </p>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-foreground/8">
+      <div className="mt-4 h-2 w-full max-w-full overflow-hidden rounded-full bg-foreground/8">
         <div
           className="h-full rounded-full bg-status-closed"
           style={{ width: `${pctPagas}%` }}
@@ -224,8 +272,8 @@ export function FinanceiroPainel({ resumo }: FinanceiroPainelProps) {
     resumo.rankingVendedores != null && resumo.rankingVendedores.length > 0;
 
   return (
-    <div className="space-y-8">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="min-w-0 space-y-6 sm:space-y-8">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard
           label="Entradas confirmadas"
           value={formatCurrency(resumo.entradasConfirmadas)}
@@ -254,7 +302,7 @@ export function FinanceiroPainel({ resumo }: FinanceiroPainelProps) {
         />
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
+      <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <FluxoCaixaBar
           confirmadas={resumo.entradasConfirmadas}
           recebiveis={resumo.recebiveis}
@@ -279,7 +327,7 @@ export function FinanceiroPainel({ resumo }: FinanceiroPainelProps) {
         {temRanking ? (
           <RankingVendedores ranking={resumo.rankingVendedores!} />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <StatCard
               label="Total pago a vendedores"
               value={formatCurrency(resumo.comissoesPagas)}

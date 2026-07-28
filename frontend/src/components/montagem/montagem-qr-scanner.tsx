@@ -23,6 +23,11 @@ interface MontagemQrScannerProps {
   initialModo?: "camera" | "manual";
 }
 
+function calcQrboxSize(containerWidth: number): number {
+  const inner = containerWidth - 24;
+  return Math.min(240, Math.max(160, inner));
+}
+
 /**
  * Scanner QR com `html5-qrcode` (câmera) + fallback manual/captura de imagem.
  * Biblioteca escolhida: html5-qrcode — leve, sem dependência nativa, funciona
@@ -36,6 +41,7 @@ export function MontagemQrScanner({
   initialModo = "camera",
 }: MontagemQrScannerProps) {
   const readerId = `montagem-qr-${osId}-${tipo}`;
+  const containerRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<{ stop: () => Promise<void> } | null>(null);
   const [modo, setModo] = useState<"camera" | "manual">(initialModo);
   const [cameraAtiva, setCameraAtiva] = useState(false);
@@ -43,6 +49,21 @@ export function MontagemQrScanner({
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [ultimoScan, setUltimoScan] = useState<string | null>(null);
+  const [qrboxSize, setQrboxSize] = useState(200);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const update = () => {
+      setQrboxSize(calcQrboxSize(el.clientWidth));
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const pararCamera = useCallback(async () => {
     if (scannerRef.current) {
@@ -84,6 +105,10 @@ export function MontagemQrScanner({
     setErro(null);
     await pararCamera();
 
+    const size = containerRef.current
+      ? calcQrboxSize(containerRef.current.clientWidth)
+      : qrboxSize;
+
     try {
       const { Html5Qrcode } = await import("html5-qrcode");
       const scanner = new Html5Qrcode(readerId);
@@ -91,7 +116,7 @@ export function MontagemQrScanner({
 
       await scanner.start(
         { facingMode: "environment" },
-        { fps: 8, qrbox: { width: 240, height: 240 } },
+        { fps: 8, qrbox: { width: size, height: size } },
         (decoded) => {
           void processarCodigo(decoded);
         },
@@ -108,7 +133,7 @@ export function MontagemQrScanner({
       );
       setModo("manual");
     }
-  }, [disabled, pararCamera, processarCodigo, readerId]);
+  }, [disabled, pararCamera, processarCodigo, qrboxSize, readerId]);
 
   useEffect(() => {
     if (modo === "camera" && !disabled) {
@@ -142,14 +167,15 @@ export function MontagemQrScanner({
     tipo === "SAIDA_GALPAO" ? "Saída do galpão" : "Retorno ao galpão";
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
+    <div className="min-w-0 space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-medium text-foreground">{tipoLabel}</p>
-        <div className="flex gap-1">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-1">
           <Button
             type="button"
             size="sm"
             variant={modo === "camera" ? "default" : "outline"}
+            className="w-full sm:w-auto"
             onClick={() => setModo("camera")}
             disabled={disabled}
           >
@@ -160,6 +186,7 @@ export function MontagemQrScanner({
             type="button"
             size="sm"
             variant={modo === "manual" ? "default" : "outline"}
+            className="w-full sm:w-auto"
             onClick={() => setModo("manual")}
             disabled={disabled}
           >
@@ -172,16 +199,14 @@ export function MontagemQrScanner({
       {modo === "camera" ? (
         <div className="space-y-3">
           <div
+            ref={containerRef}
             id={readerId}
             className={cn(
-              "overflow-hidden rounded-xl border border-border/70 bg-black/40",
-              !cameraAtiva && "flex min-h-[200px] items-center justify-center"
+              "mx-auto w-full max-w-full overflow-hidden rounded-xl border border-border/70 bg-black/40",
+              "[&_video]:!max-h-[min(280px,50vh)] [&_video]:!w-full [&_video]:!object-cover",
+              !cameraAtiva && "flex min-h-[180px] items-center justify-center sm:min-h-[200px]"
             )}
-          >
-            {!cameraAtiva && !erro ? (
-              <Loader2 className="size-6 animate-spin text-champagne" />
-            ) : null}
-          </div>
+          />
           {cameraAtiva ? (
             <Button
               type="button"
@@ -215,7 +240,7 @@ export function MontagemQrScanner({
               value={codigoManual}
               onChange={(e) => setCodigoManual(e.target.value)}
               placeholder="Ex: DJ-MESA-001"
-              className="mt-1.5"
+              className="mt-1.5 h-11 text-base sm:h-9 sm:text-sm"
               disabled={disabled || enviando}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -226,7 +251,7 @@ export function MontagemQrScanner({
           </div>
           <Button
             type="button"
-            className="w-full"
+            className="h-11 w-full sm:h-9"
             disabled={disabled || enviando || !codigoManual.trim()}
             onClick={() => void processarCodigo(codigoManual)}
           >

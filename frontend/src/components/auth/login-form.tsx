@@ -97,6 +97,7 @@ export function LoginForm() {
             placeholder="Seu nome"
             autoComplete="username"
             aria-invalid={Boolean(errors.nome)}
+            className="min-h-[var(--touch-min,44px)] text-base"
             {...register("nome")}
           />
           {errors.nome ? (
@@ -113,13 +114,13 @@ export function LoginForm() {
               placeholder="••••••••"
               autoComplete="current-password"
               aria-invalid={Boolean(errors.senha)}
-              className="pr-9"
+              className="min-h-[var(--touch-min,44px)] pr-12 text-base"
               {...register("senha")}
             />
             <button
               type="button"
               onClick={() => setShowPassword((value) => !value)}
-              className="absolute inset-y-0 right-2.5 flex items-center text-muted-foreground transition-colors hover:text-foreground"
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
               aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
             >
               {showPassword ? (
@@ -143,7 +144,7 @@ export function LoginForm() {
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="group/cta h-11 w-full gap-2 text-sm font-medium shadow-[0_0_0_0_rgba(228,197,138,0)] transition-shadow duration-300 hover:shadow-[0_0_28px_-6px_rgba(228,197,138,0.55)]"
+          className="group/cta h-11 min-h-[var(--touch-min,44px)] w-full gap-2 text-base font-medium shadow-[0_0_0_0_rgba(228,197,138,0)] transition-shadow duration-300 hover:shadow-[0_0_28px_-6px_rgba(228,197,138,0.55)] sm:text-sm"
         >
           {isSubmitting ? (
             <Loader2 className="size-4 animate-spin" />
@@ -158,13 +159,13 @@ export function LoginForm() {
         <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Acesso rápido · senha {SENHA_TEMPORARIA}
         </p>
-        <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+        <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
           {ACESSO_RAPIDO.map((account) => (
             <li key={account.nome}>
               <button
                 type="button"
                 onClick={() => fillAcesso(account.nome)}
-                className="text-left transition-colors hover:text-champagne"
+                className="flex min-h-[var(--touch-min,44px)] w-full items-center rounded-lg px-1 text-left transition-colors hover:bg-white/[0.03] hover:text-champagne"
               >
                 <span className="font-medium text-foreground/80">
                   {account.label}:

@@ -35,6 +35,62 @@ function toLocalInputValue(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function ProdutoCardMobile({ produto }: { produto: Produto }) {
+  return (
+    <article className="rounded-xl border border-border/60 bg-card/40 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-medium text-foreground">{produto.nome}</p>
+          <p className="text-sm text-muted-foreground">{produto.categoria}</p>
+        </div>
+        <p className="shrink-0 text-sm tabular-nums text-champagne">
+          {Number(produto.valorAluguel).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          })}
+        </p>
+      </div>
+
+      <div className="mt-3 space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Unidades
+        </p>
+        <ul className="space-y-2">
+          {produto.unidades.map((u) => (
+            <li
+              key={u.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/50 bg-background/30 px-3 py-2 text-sm"
+            >
+              <span className="font-medium text-foreground">
+                {u.etiqueta || u.codigoQr}
+              </span>
+              <span
+                className={cn(
+                  "rounded-md px-2 py-0.5 text-xs",
+                  u.status === "DISPONIVEL"
+                    ? "bg-emerald-500/15 text-emerald-300"
+                    : u.status === "MANUTENCAO"
+                      ? "bg-amber-500/15 text-amber-300"
+                      : "bg-sky-500/15 text-sky-300"
+                )}
+              >
+                {STATUS_LABEL[u.status] ?? u.status}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <p className="mt-3 text-xs text-muted-foreground">
+        QR obrigatório:{" "}
+        <span className="font-medium text-foreground">
+          {produto.requerQr ? "Sim" : "Não"}
+        </span>
+      </p>
+    </article>
+  );
+}
+
 export function EstoquePainel({ produtos }: EstoquePainelProps) {
   const defaultInicio = useMemo(() => {
     const d = new Date();
@@ -102,59 +158,67 @@ export function EstoquePainel({ produtos }: EstoquePainelProps) {
             <code className="text-champagne">POST /api/produtos</code>.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border/60">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Aluguel</TableHead>
-                  <TableHead>Unidades</TableHead>
-                  <TableHead>QR</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {produtos.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.nome}</TableCell>
-                    <TableCell>{p.categoria}</TableCell>
-                    <TableCell>
-                      {Number(p.valorAluguel).toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <ul className="space-y-1 text-xs text-muted-foreground">
-                        {p.unidades.map((u) => (
-                          <li key={u.id} className="flex flex-wrap gap-2">
-                            <span className="text-foreground">
-                              {u.etiqueta || u.codigoQr}
-                            </span>
-                            <span
-                              className={cn(
-                                "rounded px-1.5 py-0.5",
-                                u.status === "DISPONIVEL"
-                                  ? "bg-emerald-500/15 text-emerald-300"
-                                  : u.status === "MANUTENCAO"
-                                    ? "bg-amber-500/15 text-amber-300"
-                                    : "bg-sky-500/15 text-sky-300"
-                              )}
-                            >
-                              {STATUS_LABEL[u.status] ?? u.status}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {p.requerQr ? "Sim" : "Não"}
-                    </TableCell>
+          <>
+            <div className="space-y-3 md:hidden">
+              {produtos.map((p) => (
+                <ProdutoCardMobile key={p.id} produto={p} />
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-lg border border-border/60 md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Produto</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Aluguel</TableHead>
+                    <TableHead>Unidades</TableHead>
+                    <TableHead>QR</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {produtos.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{p.nome}</TableCell>
+                      <TableCell>{p.categoria}</TableCell>
+                      <TableCell>
+                        {Number(p.valorAluguel).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        <ul className="space-y-1 text-xs text-muted-foreground">
+                          {p.unidades.map((u) => (
+                            <li key={u.id} className="flex flex-wrap gap-2">
+                              <span className="text-foreground">
+                                {u.etiqueta || u.codigoQr}
+                              </span>
+                              <span
+                                className={cn(
+                                  "rounded px-1.5 py-0.5",
+                                  u.status === "DISPONIVEL"
+                                    ? "bg-emerald-500/15 text-emerald-300"
+                                    : u.status === "MANUTENCAO"
+                                      ? "bg-amber-500/15 text-amber-300"
+                                      : "bg-sky-500/15 text-sky-300"
+                                )}
+                              >
+                                {STATUS_LABEL[u.status] ?? u.status}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {p.requerQr ? "Sim" : "Não"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </section>
 
@@ -168,14 +232,14 @@ export function EstoquePainel({ produtos }: EstoquePainelProps) {
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+        <div className="flex flex-col gap-4 md:grid md:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-2 lg:col-span-1">
             <Label htmlFor="produto">Produto</Label>
             <select
               id="produto"
               value={produtoId}
               onChange={(e) => setProdutoId(e.target.value)}
-              className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="flex h-11 w-full rounded-lg border border-input bg-transparent px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9 md:text-sm"
             >
               {produtos.map((p) => (
                 <option key={p.id} value={p.id} className="bg-background">
@@ -189,6 +253,7 @@ export function EstoquePainel({ produtos }: EstoquePainelProps) {
             <Input
               id="inicio"
               type="datetime-local"
+              className="h-11 text-base md:h-9 md:text-sm"
               value={inicio}
               onChange={(e) => setInicio(e.target.value)}
             />
@@ -198,16 +263,17 @@ export function EstoquePainel({ produtos }: EstoquePainelProps) {
             <Input
               id="fim"
               type="datetime-local"
+              className="h-11 text-base md:h-9 md:text-sm"
               value={fim}
               onChange={(e) => setFim(e.target.value)}
             />
           </div>
-          <div className="flex items-end">
+          <div className="md:flex md:items-end">
             <Button
               type="button"
               onClick={consultar}
               disabled={pending || !produtoId}
-              className="w-full gap-1.5"
+              className="min-h-11 w-full gap-1.5 md:min-h-9"
             >
               <Search className="size-4" />
               {pending ? "Consultando…" : "Consultar"}
@@ -236,11 +302,11 @@ export function EstoquePainel({ produtos }: EstoquePainelProps) {
                 Nenhuma unidade disponível. Reserva seria bloqueada (409).
               </p>
             ) : (
-              <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+              <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {resultado.unidades.map((u) => (
                   <li
                     key={u.id}
-                    className="rounded-md border border-border/50 px-3 py-2 text-sm"
+                    className="rounded-md border border-border/50 px-3 py-2.5 text-sm md:py-2"
                   >
                     <span className="font-medium">
                       {u.etiqueta || u.codigoQr}

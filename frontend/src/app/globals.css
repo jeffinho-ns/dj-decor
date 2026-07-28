@@ -102,6 +102,9 @@
   --status-closed: #7ea8c9;
   --status-done: #8fae86;
 
+  --touch-min: 2.75rem;
+  --mobile-nav-h: 3.5rem;
+
   --gradient-noturno: radial-gradient(
       ellipse 120% 70% at 18% -12%,
       rgba(228, 197, 138, 0.14),
@@ -123,6 +126,7 @@
   html {
     @apply font-sans;
     color-scheme: dark;
+    overflow-x: hidden;
   }
 
   body {
@@ -132,6 +136,8 @@
     background-repeat: no-repeat;
     position: relative;
     min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body::before {
@@ -165,6 +171,26 @@
 
   .bg-noite {
     background-image: var(--gradient-noturno);
+  }
+
+  .pb-nav {
+    padding-bottom: calc(
+      var(--mobile-nav-h) + env(safe-area-inset-bottom, 0px) + 1rem
+    );
+  }
+
+  @media (min-width: 768px) {
+    .pb-nav {
+      padding-bottom: 0;
+    }
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 

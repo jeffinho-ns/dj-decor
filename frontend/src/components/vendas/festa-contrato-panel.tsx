@@ -119,80 +119,78 @@ export function FestaContratoPanel({
 
   return (
     <div className="space-y-4">
-      <section className="space-y-2">
+      <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <h4 className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-            <FileText className="size-3.5 text-champagne" />
+          <h4 className="flex items-center gap-1.5 text-sm font-medium text-foreground md:text-xs">
+            <FileText className="size-4 text-champagne md:size-3.5" />
             Contrato
           </h4>
           <Button
             type="button"
             variant="ghost"
-            size="icon-xs"
-            className="text-muted-foreground"
+            size="icon-sm"
+            className="min-h-10 min-w-10 text-muted-foreground md:min-h-7 md:min-w-7"
             disabled={loading}
             onClick={() => void carregar()}
             aria-label="Atualizar contrato e WhatsApp"
           >
-            <RefreshCw className={cn("size-3", loading && "animate-spin")} />
+            <RefreshCw className={cn("size-4 md:size-3", loading && "animate-spin")} />
           </Button>
         </div>
 
         {loading ? (
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Loader2 className="size-3 animate-spin" />
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground md:text-xs">
+            <Loader2 className="size-4 animate-spin md:size-3" />
             Carregando…
           </p>
         ) : (
           <>
             {contrato ? (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Gerado em{" "}
                 {format(parseISO(contrato.geradoEm), "dd/MM/yyyy HH:mm", {
                   locale: ptBR,
                 })}
               </p>
             ) : (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Nenhum contrato gerado ainda.
               </p>
             )}
 
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-col gap-2">
               <Button
                 type="button"
-                size="xs"
                 variant="secondary"
-                className="w-full sm:flex-1"
+                className="min-h-11 w-full md:min-h-7"
                 disabled={gerando}
                 onClick={() => void handleGerarContrato()}
               >
                 {gerando ? (
-                  <Loader2 className="size-3 animate-spin" />
+                  <Loader2 className="size-4 animate-spin" />
                 ) : (
-                  <FileText className="size-3" />
+                  <FileText className="size-4 md:size-3" />
                 )}
                 {contrato ? "Regenerar contrato" : "Gerar contrato"}
               </Button>
               <Button
                 type="button"
-                size="xs"
                 variant="outline"
-                className="w-full sm:flex-1"
+                className="min-h-11 w-full md:min-h-7"
                 disabled={!contrato || baixando}
                 onClick={() => void handleBaixarPdf()}
               >
                 {baixando ? (
-                  <Loader2 className="size-3 animate-spin" />
+                  <Loader2 className="size-4 animate-spin" />
                 ) : (
-                  <Download className="size-3" />
+                  <Download className="size-4 md:size-3" />
                 )}
                 Baixar PDF
               </Button>
             </div>
 
             {contrato && contrato.pdfDisponivel === false ? (
-              <p className="text-[10px] text-muted-foreground/80">
+              <p className="text-xs text-muted-foreground/80">
                 PDF ainda não renderizado no servidor — o download pode falhar
                 até a Fase 3 concluir a geração.
               </p>
@@ -201,9 +199,9 @@ export function FestaContratoPanel({
         )}
       </section>
 
-      <section className="space-y-2 border-t border-border/50 pt-3">
-        <h4 className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-          <MessageCircle className="size-3.5 text-emerald-400/90" />
+      <section className="space-y-3 border-t border-border/50 pt-4">
+        <h4 className="flex items-center gap-1.5 text-sm font-medium text-foreground md:text-xs">
+          <MessageCircle className="size-4 text-emerald-400/90 md:size-3.5" />
           WhatsApp
           {!loading ? (
             <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-normal tabular-nums text-muted-foreground">
@@ -213,36 +211,36 @@ export function FestaContratoPanel({
         </h4>
 
         {loading ? (
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Loader2 className="size-3 animate-spin" />
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground md:text-xs">
+            <Loader2 className="size-4 animate-spin md:size-3" />
             Carregando mensagens…
           </p>
         ) : mensagens.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground/80">
+          <p className="text-xs text-muted-foreground/80">
             Nenhuma mensagem registrada. Disparos automáticos ocorrem na
             confirmação de pagamento e quando a equipe está a caminho.
           </p>
         ) : (
-          <ul className="max-h-48 space-y-2 overflow-y-auto pr-0.5">
+          <ul className="max-h-56 space-y-2 overflow-y-auto pr-0.5 md:max-h-48">
             {mensagens.map((msg) => (
               <li
                 key={msg.id}
-                className="rounded-md border border-border/50 bg-muted/20 px-2.5 py-2"
+                className="rounded-md border border-border/50 bg-muted/20 px-3 py-2.5 md:px-2.5 md:py-2"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <p className="text-xs font-medium text-foreground">
+                  <p className="text-sm font-medium text-foreground md:text-xs">
                     {templateLabel[msg.template] ?? msg.template}
                   </p>
                   <span
                     className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset",
+                      "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset md:text-[10px]",
                       statusBadge[msg.status]
                     )}
                   >
                     {statusLabel[msg.status]}
                   </span>
                 </div>
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground md:text-[10px]">
                   <span>
                     Criada{" "}
                     {format(parseISO(msg.criadoEm), "dd/MM HH:mm", {
@@ -259,7 +257,7 @@ export function FestaContratoPanel({
                   ) : null}
                 </div>
                 {msg.erro ? (
-                  <p className="mt-1 text-[10px] text-destructive/90">
+                  <p className="mt-1 text-xs text-destructive/90 md:text-[10px]">
                     {msg.erro}
                   </p>
                 ) : null}
@@ -270,7 +268,7 @@ export function FestaContratoPanel({
       </section>
 
       {error ? (
-        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive md:text-[11px]">
           {error}
         </p>
       ) : null}

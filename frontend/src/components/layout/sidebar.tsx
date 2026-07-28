@@ -57,7 +57,7 @@ interface SidebarProps {
   user: User;
 }
 
-function isNavActive(pathname: string, href: string): boolean {
+export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/dashboard") {
     return (
       pathname === "/dashboard" ||

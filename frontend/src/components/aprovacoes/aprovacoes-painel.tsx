@@ -35,6 +35,118 @@ interface AprovacoesPainelProps {
   apiUnavailable?: boolean;
 }
 
+function AprovacaoActions({
+  festaId,
+  isBusy,
+  apiUnavailable,
+  onAction,
+  layout = "inline",
+}: {
+  festaId: string;
+  isBusy: boolean;
+  apiUnavailable: boolean;
+  onAction: (festaId: string, action: "aprovar" | "recusar") => void;
+  layout?: "inline" | "stacked";
+}) {
+  const stacked = layout === "stacked";
+
+  return (
+    <div
+      className={
+        stacked
+          ? "flex flex-col gap-2"
+          : "flex justify-end gap-2"
+      }
+    >
+      <Button
+        type="button"
+        size={stacked ? "default" : "sm"}
+        variant="outline"
+        className={stacked ? "w-full" : undefined}
+        disabled={isBusy || apiUnavailable}
+        onClick={() => onAction(festaId, "recusar")}
+      >
+        <X className="mr-1 size-3.5" />
+        Recusar
+      </Button>
+      <Button
+        type="button"
+        size={stacked ? "default" : "sm"}
+        className={stacked ? "w-full" : undefined}
+        disabled={isBusy || apiUnavailable}
+        onClick={() => onAction(festaId, "aprovar")}
+      >
+        <Check className="mr-1 size-3.5" />
+        Aprovar
+      </Button>
+    </div>
+  );
+}
+
+function AprovacaoCard({
+  festa,
+  isBusy,
+  apiUnavailable,
+  onAction,
+}: {
+  festa: FestaDescontoPendente;
+  isBusy: boolean;
+  apiUnavailable: boolean;
+  onAction: (festaId: string, action: "aprovar" | "recusar") => void;
+}) {
+  const valorOriginal = festa.valorOriginal ?? festa.valor;
+
+  return (
+    <article className="rounded-xl border border-border/60 bg-card/40 p-4">
+      <div>
+        <p className="font-medium text-foreground">{festa.tema}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{festa.endereco}</p>
+      </div>
+
+      <dl className="mt-3 space-y-2 text-sm">
+        <div className="flex justify-between gap-3">
+          <dt className="text-muted-foreground">Cliente</dt>
+          <dd className="text-right font-medium text-foreground">
+            {festa.cliente.nome}
+          </dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt className="text-muted-foreground">Vendedor</dt>
+          <dd className="text-right text-foreground">{festa.vendedor.nome}</dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt className="text-muted-foreground">Solicitante</dt>
+          <dd className="text-right text-foreground">
+            {festa.descontoSolicitadoPor?.nome ?? "—"}
+          </dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt className="text-muted-foreground">Valor original</dt>
+          <dd className="text-right font-medium tabular-nums text-foreground">
+            {formatCurrency(valorOriginal)}
+          </dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt className="text-muted-foreground">Desconto</dt>
+          <dd className="text-right font-medium tabular-nums text-champagne">
+            {formatPercent(festa.descontoPercentual)}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mt-4">
+        <AprovacaoActions
+          festaId={festa.id}
+          isBusy={isBusy}
+          apiUnavailable={apiUnavailable}
+          onAction={onAction}
+          layout="stacked"
+        />
+      </div>
+    </article>
+  );
+}
+
 export function AprovacoesPainel({
   initialPendentes,
   apiUnavailable = false,
@@ -69,8 +181,13 @@ export function AprovacoesPainel({
     });
   }
 
+  const emptyMessage =
+    apiUnavailable
+      ? "Aguardando conexão com a API…"
+      : "Nenhum desconto pendente de aprovação.";
+
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {apiUnavailable ? (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
           <p className="font-medium">API de descontos indisponível</p>
@@ -87,7 +204,27 @@ export function AprovacoesPainel({
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-border/60">
+      <div className="md:hidden">
+        {pendentes.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            {emptyMessage}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {pendentes.map((festa) => (
+              <AprovacaoCard
+                key={festa.id}
+                festa={festa}
+                isBusy={pending && actionId === festa.id}
+                apiUnavailable={apiUnavailable}
+                onAction={handleAction}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-xl border border-border/60 md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -107,9 +244,7 @@ export function AprovacoesPainel({
                   colSpan={7}
                   className="py-10 text-center text-muted-foreground"
                 >
-                  {apiUnavailable
-                    ? "Aguardando conexão com a API…"
-                    : "Nenhum desconto pendente de aprovação."}
+                  {emptyMessage}
                 </TableCell>
               </TableRow>
             ) : (
@@ -130,29 +265,16 @@ export function AprovacoesPainel({
                       {festa.descontoSolicitadoPor?.nome ?? "—"}
                     </TableCell>
                     <TableCell>{formatCurrency(valorOriginal)}</TableCell>
-                    <TableCell>{formatPercent(festa.descontoPercentual)}</TableCell>
+                    <TableCell>
+                      {formatPercent(festa.descontoPercentual)}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={isBusy || apiUnavailable}
-                          onClick={() => handleAction(festa.id, "recusar")}
-                        >
-                          <X className="mr-1 size-3.5" />
-                          Recusar
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={isBusy || apiUnavailable}
-                          onClick={() => handleAction(festa.id, "aprovar")}
-                        >
-                          <Check className="mr-1 size-3.5" />
-                          Aprovar
-                        </Button>
-                      </div>
+                      <AprovacaoActions
+                        festaId={festa.id}
+                        isBusy={isBusy}
+                        apiUnavailable={apiUnavailable}
+                        onAction={handleAction}
+                      />
                     </TableCell>
                   </TableRow>
                 );

@@ -31,7 +31,7 @@ export function LogoutButton() {
       size="sm"
       onClick={handleLogout}
       disabled={loading}
-      className="gap-1.5 text-muted-foreground hover:text-foreground"
+      className="min-h-[var(--touch-min,44px)] min-w-[var(--touch-min,44px)] gap-1.5 text-muted-foreground hover:text-foreground md:min-h-0 md:min-w-0"
     >
       <LogOut className="size-4" />
       Sair
