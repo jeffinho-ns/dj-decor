@@ -23,7 +23,7 @@ type FestaContrato = Festa & {
 function formatarData(data: Date): string {
   return data.toLocaleDateString("pt-BR", {
     day: "2-digit",
-    month: "2-digit",
+    month: "long",
     year: "numeric",
   });
 }
@@ -31,7 +31,7 @@ function formatarData(data: Date): string {
 function formatarDataHora(data: Date): string {
   return data.toLocaleString("pt-BR", {
     day: "2-digit",
-    month: "2-digit",
+    month: "long",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
@@ -46,6 +46,20 @@ function formatarMoeda(valor: { toString(): string }): string {
   });
 }
 
+function clausula(
+  doc: PDFKit.PDFDocument,
+  titulo: string,
+  paragrafos: string[]
+): void {
+  doc.font("Helvetica-Bold").text(titulo);
+  doc.font("Helvetica");
+  for (const texto of paragrafos) {
+    doc.moveDown(0.4);
+    doc.text(texto, { align: "justify" });
+  }
+  doc.moveDown(0.8);
+}
+
 function renderContratoPdf(festa: FestaContrato): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 50, size: "A4" });
@@ -55,76 +69,103 @@ function renderContratoPdf(festa: FestaContrato): Promise<Buffer> {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
+    // Cabeçalho DJ Decor
     doc
-      .fontSize(16)
+      .fontSize(22)
+      .font("Helvetica-Bold")
+      .fillColor("#8B6914")
+      .text("DJ DECOR", { align: "center" });
+    doc
+      .fontSize(10)
+      .font("Helvetica")
+      .fillColor("#666666")
+      .text("Decoração de Festas · Locação de Materiais", { align: "center" });
+    doc.moveDown(0.5);
+    doc
+      .fillColor("#000000")
+      .fontSize(14)
       .font("Helvetica-Bold")
       .text("CONTRATO DE LOCAÇÃO DE DECORAÇÃO", { align: "center" });
-    doc.moveDown(1.5);
+    doc.moveDown(1.2);
 
-    doc.fontSize(11).font("Helvetica");
+    doc.fontSize(10).font("Helvetica");
     doc.text(
-      "Pelo presente instrumento particular, as partes abaixo qualificadas celebram contrato de locação de decoração para evento, nos termos a seguir:"
+      `Contrato nº ${festa.id.slice(0, 8).toUpperCase()} · Emitido em ${formatarData(new Date())}`,
+      { align: "center" }
     );
-    doc.moveDown();
+    doc.moveDown(1.2);
+
+    doc.text(
+      "Pelo presente instrumento particular, de um lado a LOCADORA e, de outro, o(a) LOCATÁRIO(A), " +
+        "qualificados abaixo, celebram o presente contrato de locação de decoração para evento, " +
+        "nos termos das cláusulas seguintes:",
+      { align: "justify" }
+    );
+    doc.moveDown(1);
 
     doc.font("Helvetica-Bold").text("LOCADORA");
     doc.font("Helvetica");
-    doc.text("DJ Decor — Decoração de Festas");
-    doc.text(`Representante: ${festa.vendedor.nome}`);
-    doc.moveDown();
+    doc.text("Razão social: DJ Decor — Decoração de Festas");
+    doc.text(`Representante / vendedor(a): ${festa.vendedor.nome}`);
+    doc.moveDown(0.8);
 
     doc.font("Helvetica-Bold").text("LOCATÁRIO(A)");
     doc.font("Helvetica");
     doc.text(`Nome: ${festa.cliente.nome}`);
     doc.text(`Telefone: ${festa.cliente.telefone}`);
-    doc.moveDown();
+    doc.moveDown(1);
 
-    doc.font("Helvetica-Bold").text("DADOS DO EVENTO");
-    doc.font("Helvetica");
-    doc.text(`Data do evento: ${formatarData(festa.dataEvento)}`);
-    doc.text(`Horário de montagem: ${formatarDataHora(festa.horarioMontagem)}`);
-    doc.text(`Endereço: ${festa.endereco}`);
-    doc.text(`Tema: ${festa.tema}`);
-    if (festa.kitCatalogo) {
-      doc.text(`Kit catálogo: ${festa.kitCatalogo}`);
-    }
-    if (festa.itensExtras.length > 0) {
-      doc.text(`Itens extras: ${festa.itensExtras.join(", ")}`);
-    }
-    if (festa.observacoes) {
-      doc.text(`Observações: ${festa.observacoes}`);
-    }
-    doc.moveDown();
+    const itensDescricao = [
+      festa.kitCatalogo ? `Kit: ${festa.kitCatalogo}` : null,
+      festa.itensExtras.length > 0
+        ? `Extras: ${festa.itensExtras.join(", ")}`
+        : null,
+      festa.observacoes ? `Obs.: ${festa.observacoes}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
 
-    doc.font("Helvetica-Bold").text("VALOR DA LOCAÇÃO");
-    doc.font("Helvetica");
-    doc.text(formatarMoeda(festa.valor));
-    doc.moveDown();
+    clausula(doc, "CLÁUSULA 1 — DO OBJETO", [
+      `1.1. A LOCADORA compromete-se a disponibilizar, em regime de locação, a decoração ` +
+        `referente ao tema "${festa.tema}" para o evento do(a) LOCATÁRIO(A).`,
+      itensDescricao
+        ? `1.2. Composição contratada: ${itensDescricao}.`
+        : "1.2. A composição detalhada dos itens consta do orçamento aprovado entre as partes.",
+      "1.3. Os materiais permanecem de propriedade exclusiva da LOCADORA, cedidos apenas para uso no evento.",
+    ]);
 
-    doc.font("Helvetica-Bold").text("CLÁUSULAS GERAIS");
-    doc.font("Helvetica");
-    doc.text(
-      "1. O locatário declara ciência de que a decoração será montada conforme dados acima e se compromete a disponibilizar acesso ao local na data e horário acordados."
-    );
-    doc.moveDown(0.5);
-    doc.text(
-      "2. O pagamento deverá ser efetuado conforme condições acordadas entre as partes. A não quitação poderá impedir a montagem ou retirada dos materiais."
-    );
-    doc.moveDown(0.5);
-    doc.text(
-      "3. O locatário responsabiliza-se pela integridade dos materiais locados durante o período do evento, respondendo por danos ou extravios."
-    );
-    doc.moveDown(0.5);
-    doc.text(
-      "4. Este contrato é firmado em caráter particular, vinculando as partes às obrigações aqui descritas."
-    );
-    doc.moveDown(2);
+    clausula(doc, "CLÁUSULA 2 — DO PRAZO E DO LOCAL", [
+      `2.1. Data do evento: ${formatarData(festa.dataEvento)}.`,
+      `2.2. Horário previsto para montagem: ${formatarDataHora(festa.horarioMontagem)}.`,
+      `2.3. Local de montagem: ${festa.endereco}.`,
+      "2.4. O(A) LOCATÁRIO(A) deverá garantir acesso ao local no horário acordado, com espaço adequado para montagem e desmontagem.",
+    ]);
 
+    clausula(doc, "CLÁUSULA 3 — DO VALOR E DO PAGAMENTO", [
+      `3.1. Valor total da locação: ${formatarMoeda(festa.valor)}.`,
+      "3.2. O pagamento deverá ser efetuado conforme condições acordadas entre as partes (PIX, transferência ou outro meio combinado).",
+      "3.3. A não quitação integral até a data do evento poderá impedir a montagem, a entrega dos materiais ou a desmontagem programada.",
+    ]);
+
+    clausula(doc, "CLÁUSULA 4 — DAS RESPONSABILIDADES", [
+      "4.1. A LOCADORA responsabiliza-se pela montagem e desmontagem conforme especificações acordadas, empregando materiais em bom estado de conservação.",
+      "4.2. O(A) LOCATÁRIO(A) responsabiliza-se pela integridade dos materiais locados durante o período do evento, respondendo por danos, extravios ou mau uso.",
+      "4.3. Alterações de layout, itens ou horários após a confirmação poderão gerar custos adicionais, mediante concordância prévia.",
+      "4.4. A LOCADORA não se responsabiliza por impedimentos causados por condições climáticas extremas, falta de energia elétrica ou restrições do local não informadas previamente.",
+    ]);
+
+    clausula(doc, "CLÁUSULA 5 — DISPOSIÇÕES GERAIS E FORO", [
+      "5.1. Este contrato é firmado em caráter particular, obrigando as partes, seus herdeiros e sucessores.",
+      "5.2. Eventuais tolerâncias quanto ao cumprimento de cláusulas não implicam novação ou renúncia de direitos.",
+      "5.3. Fica eleito o foro da comarca de domicílio da LOCADORA para dirimir quaisquer controvérsias oriundas deste contrato, com renúncia a qualquer outro, por mais privilegiado que seja.",
+    ]);
+
+    doc.moveDown(1.5);
     const assinaturaY = doc.y;
     doc.text("_________________________________________", 50, assinaturaY);
-    doc.text("Locadora — DJ Decor", 50, assinaturaY + 15);
+    doc.text("LOCADORA — DJ Decor", 50, assinaturaY + 14);
     doc.text("_________________________________________", 320, assinaturaY);
-    doc.text("Locatário(a)", 320, assinaturaY + 15);
+    doc.text("LOCATÁRIO(A)", 320, assinaturaY + 14);
 
     doc.end();
   });

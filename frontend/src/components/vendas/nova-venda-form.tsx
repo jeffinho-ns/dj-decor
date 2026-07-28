@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { createFesta } from "@/lib/api";
+import { createFesta, sugestoesProdutos } from "@/lib/api";
 import {
   CATALOGO_ADDONS,
   CATALOGO_KITS,
@@ -23,6 +23,7 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { TamanhoDecoracao } from "@/types/festa";
+import type { ProdutoSugestao } from "@/types/estoque";
 
 const selectClassName =
   "flex h-11 w-full rounded-lg border border-input bg-transparent px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9 md:text-sm";
@@ -60,6 +61,13 @@ function digitsOnly(value: string): string {
   return value.replace(/\D/g, "");
 }
 
+function kitIdFromSugestao(reason: string): CatalogoKitId | null {
+  const match = reason.match(/kit "([^"]+)"/i);
+  if (!match?.[1]) return null;
+  const id = match[1] as CatalogoKitId;
+  return CATALOGO_KITS.some((kit) => kit.id === id) ? id : null;
+}
+
 interface NovaVendaFormProps {
   token: string;
 }
@@ -74,6 +82,9 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
   const [addonIds, setAddonIds] = useState<string[]>([]);
   const [valorManual, setValorManual] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [sugestoes, setSugestoes] = useState<ProdutoSugestao[]>([]);
+  const [loadingSugestoes, setLoadingSugestoes] = useState(false);
+  const [sugestoesError, setSugestoesError] = useState<string | null>(null);
 
   const {
     register,
@@ -102,6 +113,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
   const horaEvento = useWatch({ control, name: "horaEvento" });
   const nomeCliente = useWatch({ control, name: "nomeCliente" });
   const tema = useWatch({ control, name: "tema" });
+  const tamanhoDecoracao = useWatch({ control, name: "tamanhoDecoracao" });
   const valorWatch = useWatch({ control, name: "valor" });
   const telefone = useWatch({ control, name: "telefone" });
 
@@ -135,6 +147,77 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
     if (orcamento.total <= 0) return;
     setValue("valor", String(orcamento.total), { shouldValidate: true });
   }, [orcamento.total, kitSelecionado, addonIds.length, valorManual, setValue]);
+
+  async function buscarSugestoes(temaValue: string) {
+    const trimmed = temaValue.trim();
+    if (trimmed.length < 2) {
+      setSugestoes([]);
+      setSugestoesError(null);
+      return;
+    }
+
+    setLoadingSugestoes(true);
+    setSugestoesError(null);
+    try {
+      const list = await sugestoesProdutos(
+        { tema: trimmed, tamanho: tamanhoDecoracao },
+        token
+      );
+      setSugestoes(list);
+    } catch {
+      setSugestoes([]);
+      setSugestoesError(null);
+    } finally {
+      setLoadingSugestoes(false);
+    }
+  }
+
+  useEffect(() => {
+    const trimmed = (tema ?? "").trim();
+    if (trimmed.length < 2) {
+      setSugestoes([]);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void buscarSugestoes(trimmed);
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [tema, tamanhoDecoracao, token]);
+
+  function aplicarSugestao(sugestao: ProdutoSugestao) {
+    const kitFromReason = kitIdFromSugestao(sugestao.reason);
+    if (kitFromReason) {
+      selecionarKit(kitFromReason);
+      return;
+    }
+
+    const jaExiste =
+      extrasManuais.some(
+        (item) => item.toLowerCase() === sugestao.nome.toLowerCase()
+      ) ||
+      orcamento.itensKit.some(
+        (item) => item.toLowerCase() === sugestao.nome.toLowerCase()
+      ) ||
+      orcamento.itensAddons.some(
+        (item) => item.toLowerCase() === sugestao.nome.toLowerCase()
+      );
+
+    if (!jaExiste) {
+      setExtrasManuais((prev) => [...prev, sugestao.nome]);
+    }
+
+    const obsAtual = getValues("observacoes")?.trim() ?? "";
+    if (!obsAtual.toLowerCase().includes(sugestao.nome.toLowerCase())) {
+      const prefix = obsAtual ? `${obsAtual}\n` : "";
+      setValue(
+        "observacoes",
+        `${prefix}Sugestão: ${sugestao.nome} (${sugestao.reason})`,
+        { shouldDirty: true }
+      );
+    }
+  }
 
   function selecionarKit(id: CatalogoKitId | "") {
     setKitId(id);
@@ -451,10 +534,40 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                 className="h-11 text-base md:h-9 md:text-sm"
                 placeholder="Ex.: Ursinho Pooh, Frozen, Safari..."
                 aria-invalid={Boolean(errors.tema)}
-                {...register("tema")}
+                {...register("tema", {
+                  onBlur: (event) => {
+                    void buscarSugestoes(event.target.value);
+                  },
+                })}
               />
               {errors.tema ? (
                 <p className="text-xs text-destructive">{errors.tema.message}</p>
+              ) : null}
+              {loadingSugestoes ? (
+                <p className="text-xs text-muted-foreground">
+                  Buscando sugestões…
+                </p>
+              ) : sugestoes.length > 0 ? (
+                <div className="space-y-2 pt-1">
+                  <p className="text-xs text-muted-foreground">
+                    Sugestões para este tema
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {sugestoes.map((sugestao) => (
+                      <button
+                        key={sugestao.id}
+                        type="button"
+                        title={sugestao.reason}
+                        onClick={() => aplicarSugestao(sugestao)}
+                        className="inline-flex min-h-9 max-w-full items-center rounded-full border border-champagne/40 bg-champagne/10 px-3 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-champagne/15"
+                      >
+                        <span className="truncate">{sugestao.nome}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : sugestoesError ? (
+                <p className="text-xs text-muted-foreground">{sugestoesError}</p>
               ) : null}
             </div>
 

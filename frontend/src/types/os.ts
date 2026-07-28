@@ -82,10 +82,27 @@ export interface RotaDiaItem {
 }
 
 /** Status público do portal do cliente. */
+export interface PortalTimelineStep {
+  key: string;
+  label: string;
+  done: boolean;
+  at?: string;
+}
+
 export interface PortalFestaStatus {
+  tema: string;
   status: string;
   dataEvento: string;
-  tema: string;
+  horarioMontagem: string;
+  enderecoResumo: string;
+  endereco: string;
+  clienteNomePrimeiro: string;
+  timeline: PortalTimelineStep[];
+  montagemStatus?: string;
+}
+
+export interface PortalLinkResponse {
+  url: string;
 }
 
 export interface CheckinPayload {

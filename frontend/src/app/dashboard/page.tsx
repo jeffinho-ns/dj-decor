@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { PlusCircle } from "lucide-react";
 
+import { QrAlertasStrip } from "@/components/dashboard/qr-alertas-strip";
 import { CalendarioAgenda } from "@/components/calendario/calendario-agenda";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { OfflineQueueSync } from "@/components/layout/offline-queue-sync";
 import { buttonVariants } from "@/components/ui/button";
-import { listFestas } from "@/lib/api";
+import { listAlertasQr, listFestas } from "@/lib/api";
 import { requireSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import type { Festa } from "@/types/festa";
@@ -16,9 +18,20 @@ export default async function DashboardPage() {
 
   let festas: Festa[] = [];
   let loadError: string | null = null;
+  let alertasQrCount = 0;
+
+  const canSeeQrAlertas =
+    user.role === "ADMIN" || user.role === "GERENTE";
 
   try {
-    festas = await listFestas(token);
+    const results = await Promise.all([
+      listFestas(token),
+      canSeeQrAlertas
+        ? listAlertasQr(token).catch(() => [] as Awaited<ReturnType<typeof listAlertasQr>>)
+        : Promise.resolve([]),
+    ]);
+    festas = results[0];
+    alertasQrCount = results[1].length;
   } catch (error) {
     loadError =
       error instanceof Error
@@ -46,13 +59,19 @@ export default async function DashboardPage() {
         )
       }
     >
+      <OfflineQueueSync token={token} className="mb-4" />
       {loadError ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <p className="font-medium">Não foi possível carregar a agenda</p>
           <p className="mt-1 opacity-90">{loadError}</p>
         </div>
       ) : (
-        <CalendarioAgenda festas={festas} />
+        <>
+          {canSeeQrAlertas ? (
+            <QrAlertasStrip count={alertasQrCount} />
+          ) : null}
+          <CalendarioAgenda festas={festas} />
+        </>
       )}
     </DashboardShell>
   );

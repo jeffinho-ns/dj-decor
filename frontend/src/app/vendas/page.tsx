@@ -27,7 +27,9 @@ export default async function VendasPage() {
   try {
     const results = await Promise.all([
       listFestas(token),
-      user.role === "VENDEDOR"
+      user.role === "VENDEDOR" ||
+      user.role === "GERENTE" ||
+      user.role === "ADMIN"
         ? getComissaoRanking(token, "semana")
         : Promise.resolve(null),
     ]);

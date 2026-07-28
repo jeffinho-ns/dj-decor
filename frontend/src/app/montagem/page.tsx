@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { OfflineQueueSync } from "@/components/layout/offline-queue-sync";
 import { MontagemHoje } from "@/components/montagem/montagem-hoje";
 import { listFestas, listOsHoje } from "@/lib/api";
 import { festasDoDia } from "@/lib/montagem";
@@ -47,6 +48,7 @@ export default async function MontagemPage() {
       title="Montagem"
       description="Ordens de serviço do dia — toque para iniciar o fluxo."
     >
+      <OfflineQueueSync token={token} className="mb-4" />
       {loadError ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <p className="font-medium">Não foi possível carregar os dados</p>

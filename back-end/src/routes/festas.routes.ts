@@ -23,6 +23,11 @@ festasRoutes.get(
   requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
   (req, res, next) => festasController.risco(req, res, next)
 );
+festasRoutes.post(
+  "/:id/portal-link",
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  (req, res, next) => festasController.portalLink(req, res, next)
+);
 festasRoutes.get(
   "/:id",
   requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN, Role.MONTADOR),

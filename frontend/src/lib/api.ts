@@ -39,6 +39,7 @@ import type {
   ItemRomaneio,
   OrdemServico,
   PortalFestaStatus,
+  PortalLinkResponse,
   QrScanPayload,
   QrScanResult,
   RotaDiaItem,
@@ -414,6 +415,21 @@ export async function getPortalStatus(
     { cache: "no-store" }
   );
   return handleResponse<PortalFestaStatus>(response);
+}
+
+/** Link compartilhável do portal (POST /api/festas/:id/portal-link). */
+export async function getPortalLink(
+  festaId: string,
+  token: string
+): Promise<PortalLinkResponse> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/festas/${festaId}/portal-link`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+    }
+  );
+  return handleResponse<PortalLinkResponse>(response);
 }
 
 /** OS atribuídas ao montador logado (GET /api/os/mine). */

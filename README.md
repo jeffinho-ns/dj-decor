@@ -78,6 +78,32 @@ Montador tem acesso apenas de leitura às festas (agenda de montagem); não pode
 
 Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibilidade.
 
+## Guia de teste com vendedores
+
+Contas do seed (senha de todos: `@123Mudar`):
+
+| Persona | Nome | Role | Uso no teste |
+|---------|------|------|--------------|
+| Admin | **Jefferson** | `ADMIN` | Configuração, estoque, visão geral |
+| Gerente | **Debora** | `GERENTE` | Aprovar pagamentos, reservas, contrato |
+| Vendedora | **Vitória** | `VENDEDOR` | Fluxo comercial no mobile |
+| Montador | **Carlos** | `MONTADOR` | Romaneio, check-in, foto, QR |
+
+### Happy path mobile (Vitória → Carlos)
+
+1. **Vitória** — login em `/login`, abrir `/vendas`, criar orçamento em `/vendas/nova` (tema, data, endereço, valor).
+2. Mover card no Kanban para **Aguardando pagamento**; registrar PIX em **Pagamentos** e pedir à **Debora** confirmar (ou confirmar como gerente).
+3. Após pagamento confirmado, avançar festa para **Fechado** / **Em montagem** (gera OS automaticamente).
+4. **Carlos** — login, abrir `/montagem`, entrar na OS do dia:
+   - Marcar itens do romaneio (carregado + conferido); foto em itens de alto valor.
+   - Concluir romaneio → check-in com GPS → foto final → scan QR saída/retorno.
+5. **Debora** — `POST /api/festas/:id/contrato` gera PDF de locação (cláusulas em português).
+6. Mensagens WhatsApp (`pagamento_confirmado`, `equipe_a_caminho`, etc.) são registradas com `mensagemSugerida` pronta para o projeto de IA.
+
+**Offline:** sem rede, toggles de romaneio ficam na fila local; ao voltar online, banner mostra ações pendentes e reenvia automaticamente.
+
+Teste em viewport mobile (Chrome DevTools) ou celular na mesma rede (`NEXT_PUBLIC_API_URL` apontando para o IP da máquina).
+
 ## Endpoints principais
 
 | Método | Rota | Descrição |
@@ -120,14 +146,14 @@ Em `NODE_ENV=development`, `Bearer mock-vendedor` ainda é aceito por compatibil
 
 A OS é criada automaticamente (`ABERTA`) quando a festa avança para `FECHADO` ou `EM_MONTAGEM`. O seed inclui uma OS demo com 2 itens de romaneio descritivos (sem unidade física).
 
-### Fase 3 — contrato PDF e WhatsApp (em breve)
+### Fase 3 — contrato PDF e WhatsApp
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| POST | `/api/festas/:id/contrato` | Gera/registra contrato de locação — **stub** retorna `{ id, geradoEm }`; PDF real via Puppeteer na Fase 3 |
-| POST | `/api/webhooks/atendimento-ia` | Já registra mensagens; envio real via `WHATSAPP_IA_WEBHOOK_URL` |
+| POST | `/api/festas/:id/contrato` | Gera/registra contrato de locação em PDF (cláusulas pt-BR) |
+| POST | `/api/webhooks/atendimento-ia` | Registra mensagens; envio real via `WHATSAPP_IA_WEBHOOK_URL` |
 
-Adapter PDF: `back-end/src/integrations/pdf.ts` (`PdfAdapter.gerarContratoLocacao`). Adapter WhatsApp: `back-end/src/integrations/whatsapp.ts`.
+Adapter PDF: `back-end/src/integrations/pdf.ts` (`PdfAdapter.gerarContratoLocacao`). Adapter WhatsApp: `back-end/src/integrations/whatsapp.ts` (payload inclui `mensagemSugerida`).
 
 ### Status da festa (Kanban)
 
@@ -283,7 +309,7 @@ Não mantenha um segundo projeto Vercel no mesmo repositório (ex.: `dj-decor-r`
 ## Roadmap (próximas fases)
 
 - **Multi-tenant / contábil** — isolamento por tenant (schema ou `tenantId`), plano de contas, DRE por unidade de negócio, faturamento consolidado. Não implementado no MVP atual (single-tenant DJ Decor).
-- **Fila offline completa** — stub em `frontend/src/lib/offline-queue.ts`; expandir para check-in, foto e scan QR com Service Worker.
+- **Fila offline** — `frontend/src/lib/offline-queue.ts` (romaneio, checklist festas, retry genérico) + banner e flush ao reconectar.
 - **Portal do cliente** — stub público em `/portal?id=` + `GET /api/portal/:festaId/status`; evoluir para link tokenizado, timeline de montagem e galeria.
 - **WhatsApp IA** — templates `upsell_extras` e `pos_venda_avaliacao` registrados; integração completa via `WHATSAPP_IA_WEBHOOK_URL`.
 

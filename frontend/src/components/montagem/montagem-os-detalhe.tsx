@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -25,10 +25,8 @@ import {
   uploadFotoFinalOs,
   uploadItemFotoRomaneio,
 } from "@/lib/api";
-import {
-  enqueueRomaneioToggle,
-  flushOfflineQueue,
-} from "@/lib/offline-queue";
+import { OfflineQueueSync } from "@/components/layout/offline-queue-sync";
+import { enqueueRomaneioToggle } from "@/lib/offline-queue";
 import { cn } from "@/lib/utils";
 import type { OrdemServico, StatusOS } from "@/types/os";
 
@@ -71,12 +69,6 @@ export function MontagemOsDetalhe({
 
   const festa = os.festa;
   const itens = os.itensRomaneio;
-
-  useEffect(() => {
-    void flushOfflineQueue(async (osId, itemId, payload) => {
-      await updateRomaneioItem(osId, itemId, payload, token);
-    });
-  }, [token]);
 
   const romaneioOk = os.romaneioConcluido;
   const checkinOk = Boolean(os.checkinAt);
@@ -269,6 +261,7 @@ export function MontagemOsDetalhe({
 
   return (
     <div className="relative mx-auto max-w-lg space-y-5 pb-28 sm:space-y-6 md:pb-8">
+      <OfflineQueueSync token={token} />
       <Link
         href="/montagem"
         className="inline-flex items-center gap-1.5 text-sm text-champagne transition-colors hover:text-champagne/80"

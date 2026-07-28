@@ -1,4 +1,5 @@
 import type { User } from "./auth";
+import type { StatusDesconto } from "./desconto";
 
 export type StatusFesta =
   | "ORCAMENTO"
@@ -47,6 +48,8 @@ export interface Festa {
   cliente: Cliente;
   vendedor: User;
   risco?: RiscoOrcamento;
+  descontoPercentual?: string | number | null;
+  descontoStatus?: StatusDesconto;
 }
 
 export interface Pagamento {

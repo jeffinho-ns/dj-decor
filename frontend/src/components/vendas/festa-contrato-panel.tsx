@@ -6,6 +6,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Download,
   FileText,
+  Link2,
   Loader2,
   MessageCircle,
   RefreshCw,
@@ -55,6 +56,8 @@ export function FestaContratoPanel({
   const [loading, setLoading] = useState(true);
   const [gerando, setGerando] = useState(false);
   const [baixando, setBaixando] = useState(false);
+  const [copiandoLink, setCopiandoLink] = useState(false);
+  const [linkCopiado, setLinkCopiado] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
@@ -117,9 +120,55 @@ export function FestaContratoPanel({
     }
   }
 
+  async function handleCopiarLinkCliente() {
+    setError(null);
+    setCopiandoLink(true);
+    try {
+      const url =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/portal?id=${festaId}`
+          : "";
+      if (!url) return;
+      await navigator.clipboard.writeText(url);
+      setLinkCopiado(true);
+      window.setTimeout(() => setLinkCopiado(false), 2500);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Falha ao copiar link do portal"
+      );
+    } finally {
+      setCopiandoLink(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <section className="space-y-3">
+        <h4 className="flex items-center gap-1.5 text-sm font-medium text-foreground md:text-xs">
+          <Link2 className="size-4 text-champagne md:size-3.5" />
+          Portal do cliente
+        </h4>
+        <p className="text-xs text-muted-foreground">
+          Link público para o cliente acompanhar tema, endereço e andamento —
+          sem login.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 w-full md:min-h-7"
+          disabled={copiandoLink}
+          onClick={() => void handleCopiarLinkCliente()}
+        >
+          {copiandoLink ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Link2 className="size-4 md:size-3" />
+          )}
+          {linkCopiado ? "Link copiado!" : "Copiar link do cliente"}
+        </Button>
+      </section>
+
+      <section className="space-y-3 border-t border-border/50 pt-4">
         <div className="flex items-center justify-between gap-2">
           <h4 className="flex items-center gap-1.5 text-sm font-medium text-foreground md:text-xs">
             <FileText className="size-4 text-champagne md:size-3.5" />

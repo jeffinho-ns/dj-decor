@@ -7,6 +7,10 @@ import {
   InvalidStatusTransitionError,
 } from "../services/festas.service";
 import {
+  PortalFestaNotFoundError,
+  portalService,
+} from "../services/portal.service";
+import {
   RiscoFestaNotFoundError,
   riscoService,
 } from "../services/risco.service";
@@ -133,6 +137,28 @@ export class FestasController {
       res.status(200).json(risco);
     } catch (error) {
       this.handleError(error, res, next);
+    }
+  }
+
+  async portalLink(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const id = getParamId(req.params.id);
+      if (!id) {
+        res.status(400).json({ error: "ID é obrigatório" });
+        return;
+      }
+      await portalService.getFestaStatus(id);
+      res.status(200).json(portalService.buildPortalUrl(id));
+    } catch (error) {
+      if (error instanceof PortalFestaNotFoundError) {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+      next(error);
     }
   }
 
