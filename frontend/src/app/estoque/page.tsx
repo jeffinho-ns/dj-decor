@@ -40,7 +40,7 @@ export default async function EstoquePage() {
       description="Catálogo de produtos e consulta de disponibilidade sem overbooking."
     >
       {error ? (
-        <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
           <p className="font-medium">Não foi possível carregar o estoque</p>
           <p className="mt-1 opacity-90">{error}</p>
         </div>

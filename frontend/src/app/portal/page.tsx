@@ -23,7 +23,7 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
   const festaId = params.id?.trim() || null;
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="relative z-10 min-h-screen bg-transparent">
       <PortalClientView festaId={festaId} />
     </main>
   );

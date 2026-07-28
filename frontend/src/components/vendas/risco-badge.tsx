@@ -2,9 +2,9 @@ import { cn } from "@/lib/utils";
 import type { NivelRisco, RiscoOrcamento } from "@/types/festa";
 
 const nivelStyles: Record<NivelRisco, string> = {
-  BAIXO: "border-emerald-400/40 bg-emerald-400/10 text-emerald-200",
-  MEDIO: "border-amber-400/40 bg-amber-400/10 text-amber-200",
-  ALTO: "border-destructive/40 bg-destructive/10 text-destructive",
+  BAIXO: "bg-balloon-mint/12 text-balloon-mint shadow-[var(--shadow-neo-sm)]",
+  MEDIO: "bg-balloon-sun/12 text-balloon-sun shadow-[var(--shadow-neo-sm)]",
+  ALTO: "bg-balloon-pink/12 text-balloon-pink shadow-[var(--shadow-neo-sm)]",
 };
 
 const nivelLabel: Record<NivelRisco, string> = {
@@ -26,7 +26,7 @@ export function RiscoBadge({ risco, className }: RiscoBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none",
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none",
         nivelStyles[risco.nivel],
         className
       )}

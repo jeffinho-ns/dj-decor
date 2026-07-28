@@ -43,7 +43,7 @@ export default async function AprovacoesPage() {
       description="Descontos solicitados pelos vendedores aguardando sua decisão."
     >
       {error ? (
-        <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
           <p className="font-medium">Erro ao carregar aprovações</p>
           <p className="mt-1 opacity-90">{error}</p>
         </div>

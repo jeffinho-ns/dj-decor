@@ -49,7 +49,7 @@ export default async function FinanceiroPage() {
       description="Fluxo de caixa, rentabilidade por tema e comissões da equipe."
     >
       {error ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
           <p className="font-medium">Não foi possível carregar o financeiro</p>
           <p className="mt-1 opacity-90">{error}</p>
         </div>

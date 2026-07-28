@@ -21,6 +21,23 @@ interface FinanceiroPainelProps {
   comissaoRanking?: ComissaoRanking | null;
 }
 
+const TEMA_BAR = ["bg-balloon-pink", "bg-balloon-sky", "bg-balloon-sun", "bg-balloon-mint", "bg-balloon-lilac"];
+
+function SectionHeading({
+  dot,
+  children,
+}: {
+  dot: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <h2 className="mb-4 flex items-center gap-2 font-display text-lg text-foreground">
+      <span className={cn("balloon-dot", dot)} />
+      {children}
+    </h2>
+  );
+}
+
 function FluxoCaixaBar({
   confirmadas,
   recebiveis,
@@ -32,10 +49,10 @@ function FluxoCaixaBar({
   const pctConfirmadas = total > 0 ? (confirmadas / total) * 100 : 0;
 
   return (
-    <div className="min-w-0 rounded-xl border border-border/70 bg-card/60 p-4 sm:p-5">
+    <div className="min-w-0 rounded-2xl p-4 sm:p-5 neo-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
             Fluxo de caixa
           </p>
           <p className="mt-1 font-display text-lg text-foreground">
@@ -45,21 +62,21 @@ function FluxoCaixaBar({
             Entradas confirmadas vs recebíveis
           </p>
         </div>
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-champagne/12 text-champagne">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-balloon-mint/12 text-balloon-mint">
           <Wallet className="size-4" />
         </span>
       </div>
 
-      <div className="mt-4 h-3 w-full max-w-full overflow-hidden rounded-full bg-foreground/8 sm:mt-5">
+      <div className="mt-4 h-3 w-full max-w-full overflow-hidden rounded-full neo-inset sm:mt-5">
         <div
-          className="h-full max-w-full rounded-full bg-status-done transition-all"
+          className="h-full max-w-full rounded-full bg-balloon-mint transition-all"
           style={{ width: `${pctConfirmadas}%` }}
         />
       </div>
 
       <div className="mt-3 flex flex-col gap-2 text-xs sm:flex-row sm:flex-wrap sm:gap-x-6 sm:gap-y-1">
         <span className="flex items-center gap-2 text-muted-foreground">
-          <span className="size-2 rounded-full bg-status-done" />
+          <span className="balloon-dot bg-balloon-mint" />
           Confirmadas{" "}
           <strong className="font-medium text-foreground">
             {formatCurrency(confirmadas)}
@@ -69,7 +86,7 @@ function FluxoCaixaBar({
           ) : null}
         </span>
         <span className="flex items-center gap-2 text-muted-foreground">
-          <span className="size-2 rounded-full bg-champagne/70" />
+          <span className="balloon-dot bg-balloon-sun" />
           Recebíveis{" "}
           <strong className="font-medium text-foreground">
             {formatCurrency(recebiveis)}
@@ -90,7 +107,7 @@ function RentabilidadeTemaList({
 }) {
   if (itens.length === 0) {
     return (
-      <div className="rounded-xl border border-border/70 bg-card/40 px-4 py-8 text-center text-sm text-muted-foreground">
+      <div className="rounded-2xl px-4 py-8 text-center text-sm text-muted-foreground neo-sm">
         Nenhum dado de rentabilidade por tema no período.
       </div>
     );
@@ -100,12 +117,12 @@ function RentabilidadeTemaList({
 
   return (
     <ul className="space-y-3">
-      {itens.map((item) => {
+      {itens.map((item, index) => {
         const widthPct = (item.receita / maxReceita) * 100;
         return (
           <li
             key={item.tema}
-            className="min-w-0 rounded-lg border border-border/60 bg-card/40 px-4 py-3"
+            className="min-w-0 rounded-2xl px-4 py-3 neo-sm"
           >
             <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
               <div className="min-w-0">
@@ -131,9 +148,12 @@ function RentabilidadeTemaList({
                 </span>
               ) : null}
             </div>
-            <div className="mt-2.5 h-2 w-full max-w-full overflow-hidden rounded-full bg-foreground/8">
+            <div className="mt-2.5 h-2 w-full max-w-full overflow-hidden rounded-full neo-inset">
               <div
-                className={cn("h-full max-w-full rounded-full bg-champagne/80")}
+                className={cn(
+                  "h-full max-w-full rounded-full",
+                  TEMA_BAR[index % TEMA_BAR.length]
+                )}
                 style={{ width: `${widthPct}%` }}
               />
             </div>
@@ -154,14 +174,14 @@ function RankingVendedoresMobile({
       {ranking.map((row, index) => (
         <li
           key={row.vendedorId}
-          className="rounded-xl border border-border/70 bg-card/40 p-4"
+          className="rounded-2xl p-4 neo-sm"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">#{index + 1}</p>
+              <p className="text-xs text-balloon-lilac">#{index + 1}</p>
               <p className="font-medium text-foreground">{row.vendedorNome}</p>
             </div>
-            <p className="shrink-0 font-display text-lg tabular-nums text-foreground">
+            <p className="shrink-0 font-display text-lg tabular-nums text-balloon-pink">
               {formatCurrency(row.totalComissao)}
             </p>
           </div>
@@ -197,44 +217,44 @@ function RankingVendedores({
   return (
     <>
       <RankingVendedoresMobile ranking={ranking} />
-      <div className="hidden overflow-hidden rounded-xl border border-border/70 md:block">
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="w-10">#</TableHead>
-            <TableHead>Vendedor</TableHead>
-            <TableHead className="text-right">Total</TableHead>
-            <TableHead className="hidden text-right sm:table-cell">
-              Pagas
-            </TableHead>
-            <TableHead className="hidden text-right sm:table-cell">
-              Pendentes
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {ranking.map((row, index) => (
-            <TableRow key={row.vendedorId}>
-              <TableCell className="text-muted-foreground">{index + 1}</TableCell>
-              <TableCell className="font-medium">{row.vendedorNome}</TableCell>
-              <TableCell className="text-right tabular-nums">
-                {formatCurrency(row.totalComissao)}
-              </TableCell>
-              <TableCell className="hidden text-right tabular-nums sm:table-cell">
-                {row.comissoesPagas != null
-                  ? formatCurrency(row.comissoesPagas)
-                  : "—"}
-              </TableCell>
-              <TableCell className="hidden text-right tabular-nums sm:table-cell">
-                {row.comissoesPendentes != null
-                  ? formatCurrency(row.comissoesPendentes)
-                  : "—"}
-              </TableCell>
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-10">#</TableHead>
+              <TableHead>Vendedor</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead className="hidden text-right sm:table-cell">
+                Pagas
+              </TableHead>
+              <TableHead className="hidden text-right sm:table-cell">
+                Pendentes
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHeader>
+          <TableBody>
+            {ranking.map((row, index) => (
+              <TableRow key={row.vendedorId}>
+                <TableCell className="text-balloon-lilac">{index + 1}</TableCell>
+                <TableCell className="font-medium">{row.vendedorNome}</TableCell>
+                <TableCell className="text-right tabular-nums text-balloon-pink">
+                  {formatCurrency(row.totalComissao)}
+                </TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                  {row.comissoesPagas != null
+                    ? formatCurrency(row.comissoesPagas)
+                    : "—"}
+                </TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                  {row.comissoesPendentes != null
+                    ? formatCurrency(row.comissoesPendentes)
+                    : "—"}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </>
   );
 }
@@ -250,9 +270,9 @@ function ComissoesResumo({
   const pctPagas = total > 0 ? (pagas / total) * 100 : 0;
 
   return (
-    <div className="min-w-0 rounded-xl border border-border/70 bg-card/60 p-4 sm:p-5">
+    <div className="min-w-0 rounded-2xl p-4 sm:p-5 neo-sm">
       <div className="flex items-center gap-2">
-        <Users className="size-4 text-champagne" />
+        <Users className="size-4 text-balloon-sky" />
         <p className="text-sm font-medium text-foreground">Comissões</p>
       </div>
       <p className="mt-3 font-display text-xl text-foreground sm:text-2xl">
@@ -261,9 +281,9 @@ function ComissoesResumo({
       <p className="mt-1 break-words text-xs text-muted-foreground">
         {formatCurrency(pagas)} pagas · {formatCurrency(pendentes)} pendentes
       </p>
-      <div className="mt-4 h-2 w-full max-w-full overflow-hidden rounded-full bg-foreground/8">
+      <div className="mt-4 h-2 w-full max-w-full overflow-hidden rounded-full neo-inset">
         <div
-          className="h-full rounded-full bg-status-closed"
+          className="h-full rounded-full bg-balloon-sky"
           style={{ width: `${pctPagas}%` }}
         />
       </div>
@@ -288,27 +308,27 @@ export function FinanceiroPainel({
           label="Entradas confirmadas"
           value={formatCurrency(resumo.entradasConfirmadas)}
           icon={Banknote}
-          accent="sage"
+          accent="mint"
           hint="Pagamentos já confirmados"
         />
         <StatCard
           label="Recebíveis"
           value={formatCurrency(resumo.recebiveis)}
           icon={Wallet}
-          accent="champagne"
+          accent="sun"
           hint="Pagamentos pendentes de confirmação"
         />
         <StatCard
           label="Comissões pagas"
           value={formatCurrency(resumo.comissoesPagas)}
           icon={TrendingUp}
-          accent="blue"
+          accent="sky"
         />
         <StatCard
           label="Comissões pendentes"
           value={formatCurrency(resumo.comissoesPendentes)}
           icon={Users}
-          accent="neutral"
+          accent="lilac"
         />
       </section>
 
@@ -324,29 +344,29 @@ export function FinanceiroPainel({
       </section>
 
       <section>
-        <h2 className="mb-4 font-display text-lg text-foreground">
+        <SectionHeading dot="bg-balloon-pink">
           Rentabilidade por tema
-        </h2>
+        </SectionHeading>
         <RentabilidadeTemaList itens={resumo.rentabilidadePorTema} />
       </section>
 
       {previsao ? (
         <section>
-          <h2 className="mb-4 font-display text-lg text-foreground">
+          <SectionHeading dot="bg-balloon-lilac">
             Previsão de caixa
-          </h2>
+          </SectionHeading>
           <PrevisaoCaixaSection previsao={previsao} />
         </section>
       ) : null}
 
       <section>
-        <h2 className="mb-4 font-display text-lg text-foreground">
+        <SectionHeading dot="bg-balloon-sky">
           {temRankingGamificado
             ? "Ranking de comissões (gamificado)"
             : temRanking
               ? "Ranking de vendedores"
               : "Resumo de comissões"}
-        </h2>
+        </SectionHeading>
         {temRankingGamificado ? (
           <ComissaoRankingSection ranking={comissaoRanking!} />
         ) : temRanking ? (
@@ -357,13 +377,13 @@ export function FinanceiroPainel({
               label="Total pago a vendedores"
               value={formatCurrency(resumo.comissoesPagas)}
               icon={TrendingUp}
-              accent="blue"
+              accent="sky"
             />
             <StatCard
               label="A pagar"
               value={formatCurrency(resumo.comissoesPendentes)}
               icon={Users}
-              accent="neutral"
+              accent="lilac"
               hint="Ranking disponível quando a API retornar rankingVendedores"
             />
           </div>

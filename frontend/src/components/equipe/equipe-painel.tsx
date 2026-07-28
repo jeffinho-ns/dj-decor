@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { assignMontadorOs, listEquipeAgenda } from "@/lib/api";
 import { getClientToken } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 import type { AgendaOs, Montador } from "@/types/equipe";
 
 function toLocalDateValue(date: Date): string {
@@ -31,6 +32,14 @@ function formatDateTime(iso: string): string {
     minute: "2-digit",
   });
 }
+
+const CARD_ACCENTS = [
+  { tema: "text-balloon-pink", badge: "bg-balloon-pink/12 text-balloon-pink" },
+  { tema: "text-balloon-sky", badge: "bg-balloon-sky/12 text-balloon-sky" },
+  { tema: "text-balloon-sun", badge: "bg-balloon-sun/12 text-balloon-sun" },
+  { tema: "text-balloon-mint", badge: "bg-balloon-mint/12 text-balloon-mint" },
+  { tema: "text-balloon-lilac", badge: "bg-balloon-lilac/12 text-balloon-lilac" },
+];
 
 interface EquipePainelProps {
   initialAgenda: AgendaOs[];
@@ -58,7 +67,7 @@ function MontadorSelect({
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base font-medium sm:h-9 sm:text-sm"
+      className="flex h-11 w-full rounded-2xl border-0 bg-[var(--neo-bg)] px-3 text-base font-medium shadow-[var(--shadow-neo-inset)] outline-none focus-visible:ring-3 focus-visible:ring-balloon-sky/30 sm:h-9 sm:text-sm"
     >
       {options.map((m) => (
         <option key={m.id || "none"} value={m.id}>
@@ -74,16 +83,20 @@ function AgendaCard({
   montadorOptions,
   assigning,
   onAssign,
+  accentIndex,
 }: {
   item: AgendaOs;
   montadorOptions: { id: string; nome: string }[];
   assigning: boolean;
   onAssign: (montadorId: string) => void;
+  accentIndex: number;
 }) {
+  const accent = CARD_ACCENTS[accentIndex % CARD_ACCENTS.length];
+
   return (
-    <article className="rounded-xl border border-border/60 bg-card/40 p-4">
+    <article className="rounded-2xl p-4 neo-sm">
       <div className="space-y-1">
-        <p className="font-medium text-foreground">{item.festa.tema}</p>
+        <p className={cn("font-medium", accent.tema)}>{item.festa.tema}</p>
         <p className="text-sm text-muted-foreground">{item.festa.cliente.nome}</p>
       </div>
 
@@ -208,7 +221,7 @@ export function EquipePainel({
 
   return (
     <div className="min-w-0 space-y-6">
-      <div className="grid grid-cols-1 gap-4 rounded-xl border border-border/60 bg-card/40 p-4 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
+      <div className="grid grid-cols-1 gap-4 rounded-2xl p-4 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end neo-sm">
         <div className="space-y-1.5">
           <Label htmlFor="equipe-inicio">Início</Label>
           <input
@@ -216,7 +229,7 @@ export function EquipePainel({
             type="date"
             value={inicio}
             onChange={(e) => setInicio(e.target.value)}
-            className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base sm:h-9 sm:text-sm"
+            className="flex h-11 w-full rounded-2xl border-0 bg-[var(--neo-bg)] px-3 text-base shadow-[var(--shadow-neo-inset)] outline-none focus-visible:ring-3 focus-visible:ring-balloon-sky/30 sm:h-9 sm:text-sm"
           />
         </div>
         <div className="space-y-1.5">
@@ -226,7 +239,7 @@ export function EquipePainel({
             type="date"
             value={fim}
             onChange={(e) => setFim(e.target.value)}
-            className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base sm:h-9 sm:text-sm"
+            className="flex h-11 w-full rounded-2xl border-0 bg-[var(--neo-bg)] px-3 text-base shadow-[var(--shadow-neo-inset)] outline-none focus-visible:ring-3 focus-visible:ring-balloon-sky/30 sm:h-9 sm:text-sm"
           />
         </div>
         <Button
@@ -241,7 +254,7 @@ export function EquipePainel({
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
           {error}
         </div>
       ) : null}
@@ -251,20 +264,21 @@ export function EquipePainel({
           emptyMessage
         ) : (
           <div className="space-y-3">
-            {agenda.map((item) => (
+            {agenda.map((item, index) => (
               <AgendaCard
                 key={item.id}
                 item={item}
                 montadorOptions={montadorOptions}
                 assigning={pending && assigningId === item.id}
                 onAssign={(montadorId) => atribuirMontador(item.id, montadorId)}
+                accentIndex={index}
               />
             ))}
           </div>
         )}
       </div>
 
-      <div className="hidden overflow-hidden rounded-xl border border-border/60 md:block">
+      <div className="hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -287,15 +301,17 @@ export function EquipePainel({
                 </TableCell>
               </TableRow>
             ) : (
-              agenda.map((item) => (
+              agenda.map((item, index) => (
                 <TableRow key={item.id}>
-                  <TableCell className="whitespace-nowrap text-sm">
+                  <TableCell className="text-sm whitespace-nowrap">
                     {formatDateTime(item.festa.horarioMontagem)}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-sm">
+                  <TableCell className="text-sm whitespace-nowrap">
                     {formatDateTime(item.festa.dataEvento)}
                   </TableCell>
-                  <TableCell>{item.festa.tema}</TableCell>
+                  <TableCell className={CARD_ACCENTS[index % CARD_ACCENTS.length].tema}>
+                    {item.festa.tema}
+                  </TableCell>
                   <TableCell>{item.festa.cliente.nome}</TableCell>
                   <TableCell className="max-w-[14rem] truncate text-sm">
                     {item.festa.endereco}

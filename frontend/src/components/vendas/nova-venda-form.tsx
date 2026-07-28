@@ -26,7 +26,7 @@ import type { TamanhoDecoracao } from "@/types/festa";
 import type { ProdutoSugestao } from "@/types/estoque";
 
 const selectClassName =
-  "flex h-11 w-full rounded-lg border border-input bg-transparent px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9 md:text-sm";
+  "flex h-11 w-full rounded-xl neo-inset px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-balloon-sky/30 md:h-9 md:text-sm";
 
 const TAMANHOS: TamanhoDecoracao[] = ["P", "M", "G", "GG"];
 
@@ -332,7 +332,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-6 md:p-8">
+    <div className="mx-auto max-w-3xl rounded-2xl neo-sm p-4 sm:p-6 md:p-8">
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
         Novo orçamento
       </p>
@@ -342,7 +342,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
 
       <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6 pb-24 md:pb-0">
         <div className="space-y-4">
-          <p className="text-xs font-medium uppercase tracking-wider text-champagne/80">
+          <p className="text-xs font-medium uppercase tracking-wider text-balloon-pink">
             Cliente
           </p>
           <div className="grid grid-cols-1 gap-4">
@@ -383,7 +383,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
         <Separator className="bg-border/60" />
 
         <div className="space-y-4">
-          <p className="text-xs font-medium uppercase tracking-wider text-champagne/80">
+          <p className="text-xs font-medium uppercase tracking-wider text-balloon-sky">
             Kit do catálogo
           </p>
 
@@ -392,10 +392,10 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
               type="button"
               onClick={() => selecionarKit("")}
               className={cn(
-                "min-h-[4.5rem] rounded-xl border p-4 text-left transition-colors md:min-h-0 md:p-3.5",
+                "min-h-[4.5rem] rounded-2xl p-4 text-left transition-all md:min-h-0 md:p-3.5",
                 !kitId
-                  ? "border-champagne/60 bg-champagne/10"
-                  : "border-border/60 bg-background/20 hover:border-border"
+                  ? "neo-sky"
+                  : "neo-sm hover:brightness-[1.02]"
               )}
             >
               <p className="text-sm font-medium text-foreground">
@@ -414,10 +414,10 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                   type="button"
                   onClick={() => selecionarKit(kit.id)}
                   className={cn(
-                    "min-h-[4.5rem] rounded-xl border p-4 text-left transition-colors md:min-h-0 md:p-3.5",
+                    "min-h-[4.5rem] rounded-2xl p-4 text-left transition-all md:min-h-0 md:p-3.5",
                     selected
-                      ? "border-champagne/60 bg-champagne/10"
-                      : "border-border/60 bg-background/20 hover:border-border"
+                      ? "neo-pink"
+                      : "neo-sm hover:brightness-[1.02]"
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -425,13 +425,13 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                       {kit.nome}
                     </p>
                     {selected ? (
-                      <Check className="size-4 shrink-0 text-champagne" />
+                      <Check className="size-4 shrink-0 opacity-90" />
                     ) : null}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {kit.descricaoCurta}
                   </p>
-                  <p className="mt-2 text-sm tabular-nums text-champagne">
+                  <p className="mt-2 text-sm tabular-nums opacity-90">
                     {formatCurrency(kit.valorEquipe)}
                     {kit.valorPegueEMonte != null ? (
                       <span className="text-muted-foreground">
@@ -454,10 +454,10 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                   setValorManual(false);
                 }}
                 className={cn(
-                  "min-h-11 rounded-lg border px-4 py-2.5 text-sm transition-colors md:min-h-0 md:px-3 md:py-1.5",
+                  "min-h-11 rounded-2xl px-4 py-2.5 text-sm transition-all md:min-h-0 md:px-3 md:py-1.5",
                   !pegueEMonte
-                    ? "border-champagne/60 bg-champagne/10 text-foreground"
-                    : "border-border/60 text-muted-foreground hover:text-foreground"
+                    ? "neo-sky"
+                    : "neo-sm text-muted-foreground hover:brightness-[1.02]"
                 )}
               >
                 Montagem pela equipe —{" "}
@@ -470,10 +470,10 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                   setValorManual(false);
                 }}
                 className={cn(
-                  "min-h-11 rounded-lg border px-4 py-2.5 text-sm transition-colors md:min-h-0 md:px-3 md:py-1.5",
+                  "min-h-11 rounded-2xl px-4 py-2.5 text-sm transition-all md:min-h-0 md:px-3 md:py-1.5",
                   pegueEMonte
-                    ? "border-champagne/60 bg-champagne/10 text-foreground"
-                    : "border-border/60 text-muted-foreground hover:text-foreground"
+                    ? "neo-pink"
+                    : "neo-sm text-muted-foreground hover:brightness-[1.02]"
                 )}
               >
                 Pegue e monte —{" "}
@@ -486,7 +486,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
         <Separator className="bg-border/60" />
 
         <div className="space-y-4">
-          <p className="text-xs font-medium uppercase tracking-wider text-champagne/80">
+          <p className="text-xs font-medium uppercase tracking-wider text-balloon-mint">
             Add-ons
           </p>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -496,16 +496,16 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                 <label
                   key={addon.id}
                   className={cn(
-                    "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm transition-colors md:min-h-0 md:px-3 md:py-2.5",
+                    "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm transition-all md:min-h-0 md:px-3 md:py-2.5",
                     checked
-                      ? "border-champagne/50 bg-champagne/8"
-                      : "border-border/60 bg-background/20"
+                      ? "neo-mint"
+                      : "neo-sm"
                   )}
                 >
                   <span className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      className="size-4 accent-champagne"
+                      className="size-4 accent-balloon-mint"
                       checked={checked}
                       onChange={() => toggleAddon(addon.id)}
                     />
@@ -523,7 +523,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
         <Separator className="bg-border/60" />
 
         <div className="space-y-4">
-          <p className="text-xs font-medium uppercase tracking-wider text-champagne/80">
+          <p className="text-xs font-medium uppercase tracking-wider text-balloon-sun">
             Decoração e agenda
           </p>
           <div className="grid grid-cols-1 gap-4">
@@ -559,7 +559,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                         type="button"
                         title={sugestao.reason}
                         onClick={() => aplicarSugestao(sugestao)}
-                        className="inline-flex min-h-9 max-w-full items-center rounded-full border border-champagne/40 bg-champagne/10 px-3 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-champagne/15"
+                        className="inline-flex min-h-9 max-w-full items-center rounded-full bg-balloon-sky/12 px-3 py-1.5 text-left text-xs font-medium text-balloon-sky shadow-[var(--shadow-neo-sm)] transition-all hover:bg-balloon-sky/18"
                       >
                         <span className="truncate">{sugestao.nome}</span>
                       </button>
@@ -669,7 +669,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                 {extrasManuais.map((item) => (
                   <li
                     key={item}
-                    className="inline-flex items-center gap-1 rounded-md border border-border/70 bg-muted/40 px-2 py-1 text-xs text-foreground"
+                    className="inline-flex items-center gap-1 rounded-full bg-balloon-lilac/12 px-2.5 py-1 text-xs font-medium text-balloon-lilac shadow-[var(--shadow-neo-sm)]"
                   >
                     {item}
                     <button
@@ -708,7 +708,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
               id="observacoes"
               rows={3}
               placeholder="Preferências do cliente, cores, acesso, restrições..."
-              className="flex min-h-[5.5rem] w-full rounded-lg border border-input bg-transparent px-3 py-2.5 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:py-2 md:text-sm"
+              className="flex min-h-[5.5rem] w-full rounded-xl neo-inset px-3 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-balloon-sun/30 md:py-2 md:text-sm"
               {...register("observacoes")}
             />
           </div>
@@ -716,8 +716,8 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
 
         <Separator className="bg-border/60" />
 
-        <div className="rounded-xl border border-border/60 bg-background/30 p-4">
-          <p className="text-xs font-medium uppercase tracking-wider text-champagne/80">
+        <div className="rounded-2xl neo-inset p-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-balloon-lilac">
             Resumo do orçamento
           </p>
           <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
@@ -763,7 +763,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
             </li>
             <li className="pt-1 text-base font-medium text-foreground">
               Total sugerido:{" "}
-              <span className="tabular-nums text-champagne">
+              <span className="tabular-nums text-balloon-sun">
                 {formatCurrency(orcamento.total || Number(valorWatch) || 0)}
               </span>
             </li>
@@ -786,7 +786,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
             {valorManual && orcamento.total > 0 ? (
               <button
                 type="button"
-                className="text-xs text-champagne hover:underline"
+                className="text-xs text-balloon-sky hover:underline"
                 onClick={() => {
                   setValorManual(false);
                   setValue("valor", String(orcamento.total), {
@@ -819,7 +819,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
         </div>
 
         {submitError ? (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {submitError}
           </div>
         ) : null}

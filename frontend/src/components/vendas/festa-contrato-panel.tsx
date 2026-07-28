@@ -35,9 +35,9 @@ const statusLabel: Record<StatusMensagemWhatsApp, string> = {
 };
 
 const statusBadge: Record<StatusMensagemWhatsApp, string> = {
-  PENDENTE: "bg-amber-400/15 text-amber-300 ring-amber-400/25",
-  ENVIADA: "bg-emerald-400/15 text-emerald-300 ring-emerald-400/25",
-  FALHA: "bg-destructive/15 text-destructive ring-destructive/25",
+  PENDENTE: "bg-balloon-sun/12 text-balloon-sun shadow-[var(--shadow-neo-sm)]",
+  ENVIADA: "bg-balloon-mint/12 text-balloon-mint shadow-[var(--shadow-neo-sm)]",
+  FALHA: "bg-destructive/12 text-destructive shadow-[var(--shadow-neo-sm)]",
 };
 
 interface FestaContratoPanelProps {
@@ -145,7 +145,9 @@ export function FestaContratoPanel({
     <div className="space-y-4">
       <section className="space-y-3">
         <h4 className="flex items-center gap-1.5 text-sm font-medium text-foreground md:text-xs">
-          <Link2 className="size-4 text-champagne md:size-3.5" />
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-xl neo-sky md:size-6">
+            <Link2 className="size-4 md:size-3.5" />
+          </span>
           Portal do cliente
         </h4>
         <p className="text-xs text-muted-foreground">
@@ -171,7 +173,9 @@ export function FestaContratoPanel({
       <section className="space-y-3 border-t border-border/50 pt-4">
         <div className="flex items-center justify-between gap-2">
           <h4 className="flex items-center gap-1.5 text-sm font-medium text-foreground md:text-xs">
-            <FileText className="size-4 text-champagne md:size-3.5" />
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-balloon-lilac/12 text-balloon-lilac shadow-[var(--shadow-neo-sm)] md:size-6">
+              <FileText className="size-4 md:size-3.5" />
+            </span>
             Contrato
           </h4>
           <Button
@@ -250,7 +254,9 @@ export function FestaContratoPanel({
 
       <section className="space-y-3 border-t border-border/50 pt-4">
         <h4 className="flex items-center gap-1.5 text-sm font-medium text-foreground md:text-xs">
-          <MessageCircle className="size-4 text-emerald-400/90 md:size-3.5" />
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-xl neo-mint md:size-6">
+            <MessageCircle className="size-4 md:size-3.5" />
+          </span>
           WhatsApp
           {!loading ? (
             <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-normal tabular-nums text-muted-foreground">
@@ -274,7 +280,7 @@ export function FestaContratoPanel({
             {mensagens.map((msg) => (
               <li
                 key={msg.id}
-                className="rounded-md border border-border/50 bg-muted/20 px-3 py-2.5 md:px-2.5 md:py-2"
+                className="rounded-xl neo-sm px-3 py-2.5 md:px-2.5 md:py-2"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <p className="text-sm font-medium text-foreground md:text-xs">
@@ -282,7 +288,7 @@ export function FestaContratoPanel({
                   </p>
                   <span
                     className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset md:text-[10px]",
+                      "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold md:text-[10px]",
                       statusBadge[msg.status]
                     )}
                   >
@@ -317,7 +323,7 @@ export function FestaContratoPanel({
       </section>
 
       {error ? (
-        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive md:text-[11px]">
+        <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive md:text-[11px]">
           {error}
         </p>
       ) : null}

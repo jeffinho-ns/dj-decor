@@ -136,7 +136,7 @@ export function LoginForm() {
         </div>
 
         {formError ? (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {formError}
           </div>
         ) : null}

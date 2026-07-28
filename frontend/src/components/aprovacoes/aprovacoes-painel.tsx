@@ -97,7 +97,7 @@ function AprovacaoCard({
   const valorOriginal = festa.valorOriginal ?? festa.valor;
 
   return (
-    <article className="rounded-xl border border-border/60 bg-card/40 p-4">
+    <article className="rounded-2xl p-4 neo-sm">
       <div>
         <p className="font-medium text-foreground">{festa.tema}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">{festa.endereco}</p>
@@ -128,7 +128,7 @@ function AprovacaoCard({
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">Desconto</dt>
-          <dd className="text-right font-medium tabular-nums text-champagne">
+          <dd className="text-right font-medium tabular-nums text-balloon-pink">
             {formatPercent(festa.descontoPercentual)}
           </dd>
         </div>
@@ -189,8 +189,8 @@ export function AprovacoesPainel({
   return (
     <div className="min-w-0 space-y-4">
       {apiUnavailable ? (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-          <p className="font-medium">API de descontos indisponível</p>
+        <div className="rounded-2xl border border-balloon-sun/35 bg-balloon-sun/10 px-4 py-3 text-sm text-foreground neo-sm">
+          <p className="font-medium text-balloon-sun">API de descontos indisponível</p>
           <p className="mt-1 opacity-90">
             A interface está pronta; quando o backend responder, as aprovações
             aparecerão aqui automaticamente.
@@ -199,7 +199,7 @@ export function AprovacoesPainel({
       ) : null}
 
       {error ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
           {error}
         </div>
       ) : null}
@@ -224,7 +224,7 @@ export function AprovacoesPainel({
         )}
       </div>
 
-      <div className="hidden overflow-hidden rounded-xl border border-border/60 md:block">
+      <div className="hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -265,7 +265,7 @@ export function AprovacoesPainel({
                       {festa.descontoSolicitadoPor?.nome ?? "—"}
                     </TableCell>
                     <TableCell>{formatCurrency(valorOriginal)}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium text-balloon-pink">
                       {formatPercent(festa.descontoPercentual)}
                     </TableCell>
                     <TableCell className="text-right">

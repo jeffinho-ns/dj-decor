@@ -27,13 +27,13 @@ const statusLabel: Record<StatusFesta, string> = {
 };
 
 const statusClass: Record<StatusFesta, string> = {
-  ORCAMENTO: "bg-champagne/12 text-champagne",
-  AGUARDANDO_PAGAMENTO: "bg-amber-500/14 text-amber-300",
-  PAGO: "bg-emerald-500/14 text-emerald-300",
-  FECHADO: "bg-status-closed/14 text-status-closed",
-  EM_MONTAGEM: "bg-sky-500/14 text-sky-300",
-  CONCLUIDO: "bg-status-done/14 text-status-done",
-  CANCELADO: "bg-destructive/14 text-destructive",
+  ORCAMENTO: "bg-balloon-sun/12 text-balloon-sun shadow-[var(--shadow-neo-sm)]",
+  AGUARDANDO_PAGAMENTO: "bg-balloon-sky/12 text-balloon-sky shadow-[var(--shadow-neo-sm)]",
+  PAGO: "bg-balloon-mint/12 text-balloon-mint shadow-[var(--shadow-neo-sm)]",
+  FECHADO: "bg-balloon-lilac/12 text-balloon-lilac shadow-[var(--shadow-neo-sm)]",
+  EM_MONTAGEM: "bg-balloon-pink/12 text-balloon-pink shadow-[var(--shadow-neo-sm)]",
+  CONCLUIDO: "bg-balloon-mint/12 text-balloon-mint shadow-[var(--shadow-neo-sm)]",
+  CANCELADO: "bg-destructive/12 text-destructive shadow-[var(--shadow-neo-sm)]",
 };
 
 const tamanhoLabel: Record<TamanhoDecoracao, string> = {
@@ -49,7 +49,7 @@ interface FestasTableProps {
 
 function FestaCardMobile({ festa }: { festa: Festa }) {
   return (
-    <article className="rounded-xl border border-border/70 bg-card/40 p-4">
+    <article className="rounded-2xl neo-sm p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-medium text-foreground">{festa.cliente.nome}</p>
@@ -57,7 +57,7 @@ function FestaCardMobile({ festa }: { festa: Festa }) {
         </div>
         <span
           className={cn(
-            "inline-flex shrink-0 rounded-md px-2 py-1 text-xs font-medium",
+            "inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",
             statusClass[festa.status]
           )}
         >
@@ -72,7 +72,7 @@ function FestaCardMobile({ festa }: { festa: Festa }) {
           </p>
           <p className="text-foreground">{festa.tema}</p>
           {festa.kitCatalogo || festa.pegueEMonte ? (
-            <p className="mt-0.5 text-xs text-champagne/90">
+            <p className="mt-0.5 text-xs text-balloon-sky">
               {nomeDoKit(festa.kitCatalogo) ?? "Kit personalizado"}
               {festa.pegueEMonte ? " · Pegue e monte" : ""}
             </p>
@@ -97,7 +97,7 @@ function FestaCardMobile({ festa }: { festa: Festa }) {
             <p className="font-medium uppercase tracking-wider text-muted-foreground">
               Valor
             </p>
-            <p className="mt-0.5 tabular-nums text-champagne">
+            <p className="mt-0.5 tabular-nums text-balloon-sun">
               {formatCurrency(festa.valor)}
             </p>
           </div>
@@ -136,7 +136,7 @@ function FestaCardMobile({ festa }: { festa: Festa }) {
 export function FestasTable({ festas }: FestasTableProps) {
   if (festas.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border px-6 py-16 text-center">
+      <div className="rounded-2xl neo-inset px-6 py-16 text-center">
         <p className="text-sm font-medium text-foreground">
           Nenhuma venda encontrada
         </p>
@@ -155,7 +155,7 @@ export function FestasTable({ festas }: FestasTableProps) {
         ))}
       </div>
 
-      <div className="hidden overflow-x-auto rounded-xl border border-border/70 bg-card/40 md:block">
+      <div className="hidden overflow-x-auto rounded-2xl neo-sm md:block">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -172,7 +172,7 @@ export function FestasTable({ festas }: FestasTableProps) {
             {festas.map((festa) => (
               <TableRow
                 key={festa.id}
-                className="border-border/60 hover:bg-champagne/[0.03]"
+                className="hover:bg-balloon-pink/[0.04]"
               >
                 <TableCell>
                   <p className="font-medium text-foreground">
@@ -185,7 +185,7 @@ export function FestasTable({ festas }: FestasTableProps) {
                 <TableCell className="text-muted-foreground">
                   <p>{festa.tema}</p>
                   {festa.kitCatalogo || festa.pegueEMonte ? (
-                    <p className="mt-0.5 text-xs text-champagne/90">
+                    <p className="mt-0.5 text-xs text-balloon-sky">
                       {nomeDoKit(festa.kitCatalogo) ?? "Kit personalizado"}
                       {festa.pegueEMonte ? " · Pegue e monte" : ""}
                     </p>
@@ -217,7 +217,7 @@ export function FestasTable({ festas }: FestasTableProps) {
                 <TableCell>
                   <span
                     className={cn(
-                      "inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
+                      "inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold",
                       statusClass[festa.status]
                     )}
                   >

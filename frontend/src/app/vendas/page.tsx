@@ -56,7 +56,7 @@ export default async function VendasPage() {
       }
     >
       {error ? (
-        <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <p className="font-medium">Não foi possível carregar as vendas</p>
           <p className="mt-1 opacity-90">{error}</p>
           <p className="mt-2 text-xs opacity-80">

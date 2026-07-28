@@ -2,20 +2,28 @@ import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-type Accent = "champagne" | "blue" | "sage" | "neutral";
+type FestiveColor = "pink" | "sky" | "sun" | "mint" | "lilac" | "neutral";
 
-const ACCENT_CLASS: Record<Accent, string> = {
-  champagne: "bg-champagne/12 text-champagne",
-  blue: "bg-status-closed/12 text-status-closed",
-  sage: "bg-status-done/12 text-status-done",
+/** Aliases legados — mapeados para cores festivas */
+type LegacyAccent = "champagne" | "blue" | "sage";
+
+const ACCENT_CLASS: Record<FestiveColor | LegacyAccent, string> = {
+  pink: "chip-pink",
+  sky: "chip-sky",
+  sun: "chip-sun",
+  mint: "chip-mint",
+  lilac: "chip-lilac",
   neutral: "bg-foreground/8 text-foreground/70",
+  champagne: "chip-sun",
+  blue: "chip-sky",
+  sage: "chip-mint",
 };
 
 interface StatCardProps {
   label: string;
   value: string;
   icon: LucideIcon;
-  accent?: Accent;
+  accent?: FestiveColor | LegacyAccent;
   hint?: string;
 }
 
@@ -27,14 +35,12 @@ export function StatCard({
   hint,
 }: StatCardProps) {
   return (
-    <div className="rounded-xl border border-border/70 bg-card/60 p-5 transition-colors hover:border-champagne/25">
+    <div className="neo-sm rounded-2xl p-5 transition-transform hover:-translate-y-0.5">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          {label}
-        </p>
+        <p className="section-label text-muted-foreground">{label}</p>
         <span
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-lg",
+            "flex size-9 shrink-0 items-center justify-center rounded-xl shadow-[inset_2px_2px_4px_rgba(42,49,66,0.06),inset_-2px_-2px_4px_rgba(255,255,255,0.85)]",
             ACCENT_CLASS[accent]
           )}
         >

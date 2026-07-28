@@ -76,15 +76,13 @@ export function OfflineQueueSync({ token, className }: OfflineQueueSyncProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400",
+        "neo-sun flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium",
         className
       )}
       role="status"
     >
       <WifiOff className="size-3.5 shrink-0" aria-hidden />
-      <span>
-        {flushing ? "Reenviando ações…" : label}
-      </span>
+      <span>{flushing ? "Reenviando ações…" : label}</span>
     </div>
   );
 }

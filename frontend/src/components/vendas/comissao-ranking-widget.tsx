@@ -6,6 +6,24 @@ import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ComissaoRanking } from "@/types/financeiro";
 
+function rankAccent(posicao: number | null | undefined, isMe: boolean) {
+  if (isMe) return "neo-inset ring-1 ring-balloon-pink/25";
+  if (posicao === 1) return "neo-sun";
+  if (posicao === 2) return "bg-balloon-pink/10 shadow-[var(--shadow-neo-sm)]";
+  if (posicao === 3) return "bg-balloon-sky/10 shadow-[var(--shadow-neo-sm)]";
+  return "neo-sm";
+}
+
+function rankBarColor(
+  posicao: number | null | undefined,
+  atingiuMeta: boolean | undefined
+) {
+  if (atingiuMeta) return "bg-balloon-mint";
+  if (posicao === 1) return "bg-balloon-sun";
+  if (posicao === 2) return "bg-balloon-pink";
+  return "bg-balloon-sky";
+}
+
 interface ComissaoRankingWidgetProps {
   ranking: ComissaoRanking;
   vendedorId: string;
@@ -26,7 +44,7 @@ export function ComissaoRankingWidget({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border/70 bg-card/60 p-4 sm:p-5",
+        "rounded-2xl neo-sm p-4 sm:p-5",
         className
       )}
     >
@@ -46,16 +64,16 @@ export function ComissaoRankingWidget({
             {posicao != null ? ` · você está em #${posicao}` : ""}
           </p>
         </div>
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-champagne/12 text-champagne">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl neo-sun">
           <Trophy className="size-4" />
         </span>
       </div>
 
-      <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-foreground/8">
+      <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full neo-inset">
         <div
           className={cn(
             "h-full rounded-full transition-all",
-            me?.atingiuMeta ? "bg-status-done" : "bg-champagne/80"
+            me?.atingiuMeta ? "bg-balloon-mint" : "bg-balloon-sun"
           )}
           style={{ width: `${Math.min(100, progresso)}%` }}
         />
@@ -68,7 +86,7 @@ export function ComissaoRankingWidget({
       </p>
 
       {ranking.ranking.length > 0 ? (
-        <ul className="mt-4 space-y-1.5 border-t border-border/50 pt-4">
+        <ul className="mt-4 space-y-1.5 border-t border-border/30 pt-4">
           {ranking.ranking.map((row) => {
             const isMe = row.vendedorId === vendedorId;
             const widthPct = (row.totalComissao / maxTotal) * 100;
@@ -76,15 +94,16 @@ export function ComissaoRankingWidget({
               <li
                 key={row.vendedorId}
                 className={cn(
-                  "rounded-lg px-2 py-1.5",
-                  isMe && "bg-champagne/8"
+                  "rounded-2xl px-2.5 py-1.5",
+                  rankAccent(row.posicao, isMe)
                 )}
               >
                 <div className="flex items-center justify-between gap-2 text-xs">
                   <span
                     className={cn(
                       "min-w-0 truncate",
-                      isMe ? "font-medium text-foreground" : "text-muted-foreground"
+                      isMe ? "font-semibold text-foreground" : "text-muted-foreground",
+                      row.posicao === 1 && !isMe && "font-medium text-balloon-sun"
                     )}
                   >
                     #{row.posicao ?? "—"} {row.vendedorNome}
@@ -95,11 +114,11 @@ export function ComissaoRankingWidget({
                     {formatCurrency(row.totalComissao)}
                   </span>
                 </div>
-                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-foreground/8">
+                <div className="mt-1 h-1 w-full overflow-hidden rounded-full neo-inset">
                   <div
                     className={cn(
                       "h-full rounded-full",
-                      row.atingiuMeta ? "bg-status-done" : "bg-champagne/60"
+                      rankBarColor(row.posicao, row.atingiuMeta)
                     )}
                     style={{ width: `${widthPct}%` }}
                   />
@@ -109,7 +128,7 @@ export function ComissaoRankingWidget({
           })}
         </ul>
       ) : (
-        <p className="mt-4 border-t border-border/50 pt-4 text-xs text-muted-foreground">
+        <p className="mt-4 border-t border-border/30 pt-4 text-xs text-muted-foreground">
           Nenhuma comissão confirmada no período.
         </p>
       )}
@@ -126,7 +145,7 @@ export function ComissaoRankingSection({ ranking }: ComissaoRankingSectionProps)
 
   if (ranking.ranking.length === 0) {
     return (
-      <div className="rounded-xl border border-border/70 bg-card/40 px-4 py-8 text-center text-sm text-muted-foreground">
+      <div className="rounded-2xl neo-inset px-4 py-8 text-center text-sm text-muted-foreground">
         Nenhuma comissão confirmada no período.
       </div>
     );
@@ -143,7 +162,14 @@ export function ComissaoRankingSection({ ranking }: ComissaoRankingSectionProps)
           return (
             <li
               key={row.vendedorId}
-              className="rounded-lg border border-border/60 bg-card/40 px-4 py-3"
+              className={cn(
+                "rounded-2xl px-4 py-3",
+                row.posicao === 1
+                  ? "neo-sun"
+                  : row.posicao === 2
+                    ? "bg-balloon-pink/10 shadow-[var(--shadow-neo-sm)]"
+                    : "neo-sm"
+              )}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -159,11 +185,11 @@ export function ComissaoRankingSection({ ranking }: ComissaoRankingSectionProps)
                   {formatCurrency(row.totalComissao)}
                 </p>
               </div>
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-foreground/8">
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full neo-inset">
                 <div
                   className={cn(
                     "h-full rounded-full",
-                    row.atingiuMeta ? "bg-status-done" : "bg-champagne/80"
+                    rankBarColor(row.posicao, row.atingiuMeta)
                   )}
                   style={{ width: `${widthPct}%` }}
                 />

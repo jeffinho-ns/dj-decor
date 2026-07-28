@@ -38,6 +38,38 @@ const STATUS_OS_LABEL: Record<StatusOS, string> = {
   FINALIZADA: "Finalizada",
 };
 
+type Etapa = "romaneio" | "checkin" | "foto" | "qr";
+
+const ETAPA_ACCENT: Record<
+  Etapa,
+  { ring: string; icon: string; badge: string; progress: string }
+> = {
+  romaneio: {
+    ring: "ring-balloon-pink/35",
+    icon: "text-balloon-pink",
+    badge: "bg-balloon-pink/12 text-balloon-pink",
+    progress: "bg-balloon-pink",
+  },
+  checkin: {
+    ring: "ring-balloon-sky/35",
+    icon: "text-balloon-sky",
+    badge: "bg-balloon-sky/12 text-balloon-sky",
+    progress: "bg-balloon-sky",
+  },
+  foto: {
+    ring: "ring-balloon-mint/35",
+    icon: "text-balloon-mint",
+    badge: "bg-balloon-mint/12 text-balloon-mint",
+    progress: "bg-balloon-mint",
+  },
+  qr: {
+    ring: "ring-balloon-lilac/35",
+    icon: "text-balloon-lilac",
+    badge: "bg-balloon-lilac/12 text-balloon-lilac",
+    progress: "bg-balloon-lilac",
+  },
+};
+
 function safeTime(value: string | null | undefined): string {
   if (!value) return "—";
   try {
@@ -52,7 +84,13 @@ interface MontagemOsDetalheProps {
   token: string;
 }
 
-type Etapa = "romaneio" | "checkin" | "foto" | "qr";
+function sectionClass(etapa: Etapa, etapaAtiva: Etapa, dimmed?: boolean) {
+  return cn(
+    "rounded-2xl p-4 sm:p-5 neo-sm",
+    etapa === etapaAtiva && `ring-2 ${ETAPA_ACCENT[etapa].ring}`,
+    dimmed && "opacity-50"
+  );
+}
 
 export function MontagemOsDetalhe({
   osInicial,
@@ -264,21 +302,21 @@ export function MontagemOsDetalhe({
       <OfflineQueueSync token={token} />
       <Link
         href="/montagem"
-        className="inline-flex items-center gap-1.5 text-sm text-champagne transition-colors hover:text-champagne/80"
+        className="inline-flex items-center gap-1.5 text-sm text-balloon-sky transition-colors hover:text-balloon-sky/80"
       >
         <ArrowLeft className="size-4" />
         Voltar
       </Link>
 
-      <header className="rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5">
+      <header className="rounded-2xl p-4 sm:p-5 neo-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="font-medium text-foreground">
               {festa.cliente?.nome ?? "—"}
             </p>
-            <p className="text-sm text-champagne">{festa.tema || "—"}</p>
+            <p className="text-sm text-balloon-pink">{festa.tema || "—"}</p>
           </div>
-          <span className="shrink-0 rounded-md bg-champagne/12 px-2.5 py-1 text-[11px] font-medium text-champagne">
+          <span className="shrink-0 rounded-lg bg-balloon-sky/12 px-2.5 py-1 text-[11px] font-medium text-balloon-sky">
             {STATUS_OS_LABEL[os.status]}
           </span>
         </div>
@@ -296,7 +334,7 @@ export function MontagemOsDetalhe({
             </span>
           </p>
           <p className="flex items-start gap-2">
-            <MapPin className="mt-0.5 size-4 shrink-0 text-champagne/80" />
+            <MapPin className="mt-0.5 size-4 shrink-0 text-balloon-mint/80" />
             {festa.endereco || "—"}
           </p>
         </div>
@@ -316,10 +354,10 @@ export function MontagemOsDetalhe({
               className={cn(
                 "h-1 flex-1 rounded-full transition-colors",
                 done
-                  ? "bg-status-done"
+                  ? "bg-balloon-mint"
                   : active
-                    ? "bg-champagne"
-                    : "bg-border/60"
+                    ? ETAPA_ACCENT[etapa].progress
+                    : "bg-[var(--neo-dark)]/40"
               )}
               aria-hidden
             />
@@ -327,17 +365,12 @@ export function MontagemOsDetalhe({
         })}
       </ol>
 
-      <section
-        className={cn(
-          "rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5",
-          etapaAtiva === "romaneio" && "ring-1 ring-champagne/30"
-        )}
-      >
+      <section className={sectionClass("romaneio", etapaAtiva)}>
         <div className="flex items-center gap-2">
           {romaneioOk ? (
-            <CheckCircle2 className="size-5 text-status-done" />
+            <CheckCircle2 className="size-5 text-balloon-mint" />
           ) : (
-            <PackageCheck className="size-5 text-champagne" />
+            <PackageCheck className={cn("size-5", ETAPA_ACCENT.romaneio.icon)} />
           )}
           <h3 className="font-display text-lg text-foreground">
             1. Romaneio
@@ -353,14 +386,14 @@ export function MontagemOsDetalhe({
             {itens.map((item) => (
               <li
                 key={item.id}
-                className="rounded-xl border border-border/50 bg-background/30 p-3"
+                className="rounded-xl p-3 neo-inset"
               >
                 <p className="text-sm font-medium text-foreground">
                   {item.descricao ??
                     item.unidade?.produto?.nome ??
                     "Item sem descrição"}
                   {itemAltoValor(item) ? (
-                    <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase text-amber-600">
+                    <span className="ml-2 rounded-lg bg-balloon-sun/12 px-1.5 py-0.5 text-[10px] font-medium uppercase text-balloon-sun">
                       Alto valor
                     </span>
                   ) : null}
@@ -387,7 +420,7 @@ export function MontagemOsDetalhe({
                 {itemAltoValor(item) && !romaneioOk ? (
                   <div className="mt-2">
                     {item.fotoMidiaId ? (
-                      <p className="text-xs text-status-done">
+                      <p className="text-xs text-balloon-mint">
                         Foto registrada
                       </p>
                     ) : (
@@ -426,7 +459,7 @@ export function MontagemOsDetalhe({
             )}
           </Button>
         ) : romaneioOk ? (
-          <p className="mt-3 text-xs text-status-done">
+          <p className="mt-3 text-xs text-balloon-mint">
             Romaneio concluído{" "}
             {format(new Date(), "HH:mm", { locale: ptBR })}
           </p>
@@ -448,18 +481,12 @@ export function MontagemOsDetalhe({
         }}
       />
 
-      <section
-        className={cn(
-          "rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5",
-          etapaAtiva === "checkin" && "ring-1 ring-champagne/30",
-          !romaneioOk && "opacity-50"
-        )}
-      >
+      <section className={sectionClass("checkin", etapaAtiva, !romaneioOk)}>
         <div className="flex items-center gap-2">
           {checkinOk ? (
-            <CheckCircle2 className="size-5 text-status-done" />
+            <CheckCircle2 className="size-5 text-balloon-mint" />
           ) : (
-            <Navigation className="size-5 text-champagne" />
+            <Navigation className={cn("size-5", ETAPA_ACCENT.checkin.icon)} />
           )}
           <h3 className="font-display text-lg text-foreground">
             2. Check-in no local
@@ -505,18 +532,12 @@ export function MontagemOsDetalhe({
         )}
       </section>
 
-      <section
-        className={cn(
-          "rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5",
-          etapaAtiva === "foto" && "ring-1 ring-champagne/30",
-          !checkinOk && "opacity-50"
-        )}
-      >
+      <section className={sectionClass("foto", etapaAtiva, !checkinOk)}>
         <div className="flex items-center gap-2">
           {fotoOk ? (
-            <CheckCircle2 className="size-5 text-status-done" />
+            <CheckCircle2 className="size-5 text-balloon-mint" />
           ) : (
-            <Camera className="size-5 text-champagne" />
+            <Camera className={cn("size-5", ETAPA_ACCENT.foto.icon)} />
           )}
           <h3 className="font-display text-lg text-foreground">
             3. Foto da montagem
@@ -524,7 +545,7 @@ export function MontagemOsDetalhe({
         </div>
 
         {fotoOk ? (
-          <p className="mt-3 text-sm text-status-done">
+          <p className="mt-3 text-sm text-balloon-mint">
             Montagem finalizada e foto enviada.
           </p>
         ) : (
@@ -568,9 +589,9 @@ export function MontagemOsDetalhe({
               />
               <span
                 className={cn(
-                  "inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium transition-colors",
+                  "inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium transition-colors neo-inset",
                   checkinOk && !pending
-                    ? "cursor-pointer hover:bg-muted"
+                    ? "cursor-pointer hover:text-balloon-mint"
                     : "cursor-not-allowed opacity-50"
                 )}
               >
@@ -588,22 +609,16 @@ export function MontagemOsDetalhe({
         )}
       </section>
 
-      <section
-        className={cn(
-          "rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5",
-          etapaAtiva === "qr" && "ring-1 ring-champagne/30",
-          !romaneioOk && "opacity-50"
-        )}
-      >
+      <section className={sectionClass("qr", etapaAtiva, !romaneioOk)}>
         <div className="flex items-center gap-2">
-          <Circle className="size-5 text-champagne" />
+          <Circle className={cn("size-5", ETAPA_ACCENT.qr.icon)} />
           <h3 className="font-display text-lg text-foreground">
             4. Scan QR
           </h3>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
           Registre saída do galpão e retorno das peças. Scanner via{" "}
-          <span className="text-champagne">html5-qrcode</span>.
+          <span className="text-balloon-lilac">html5-qrcode</span>.
         </p>
 
         <div className="mt-4 space-y-5 sm:space-y-6">
@@ -613,7 +628,7 @@ export function MontagemOsDetalhe({
             disabled={!romaneioOk}
             onScan={(codigo) => qrScanHandler(codigo, "SAIDA_GALPAO")}
           />
-          <div className="border-t border-border/60 pt-4">
+          <div className="border-t border-[var(--neo-dark)]/25 pt-4">
             <MontagemQrScanner
               osId={os.id}
               tipo="ENTRADA_RETORNO"
@@ -626,7 +641,7 @@ export function MontagemOsDetalhe({
       </section>
 
       {erro ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
           {erro}
         </div>
       ) : null}
@@ -731,8 +746,8 @@ function MontagemStickyAction({
   if (!action) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border/70 bg-background/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md md:hidden">
-      {action}
+    <div className="fixed inset-x-0 bottom-0 z-20 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden">
+      <div className="rounded-2xl p-3 neo-sm">{action}</div>
     </div>
   );
 }
@@ -754,10 +769,10 @@ function ToggleChip({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+        "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors neo-inset",
         checked
-          ? "border-status-done/40 bg-status-done/14 text-status-done"
-          : "border-border/60 bg-background/50 text-muted-foreground hover:bg-foreground/5",
+          ? "text-balloon-mint ring-1 ring-balloon-mint/30"
+          : "text-muted-foreground hover:text-foreground",
         disabled && "cursor-not-allowed opacity-60"
       )}
     >

@@ -46,24 +46,32 @@ const statusLabel: Record<StatusFesta, string> = {
 };
 
 const statusDot: Record<StatusFesta, string> = {
-  ORCAMENTO: "bg-champagne",
-  AGUARDANDO_PAGAMENTO: "bg-amber-400",
-  PAGO: "bg-emerald-400",
-  FECHADO: "bg-status-closed",
-  EM_MONTAGEM: "bg-sky-400",
-  CONCLUIDO: "bg-status-done",
+  ORCAMENTO: "bg-balloon-sun",
+  AGUARDANDO_PAGAMENTO: "bg-balloon-sun",
+  PAGO: "bg-balloon-mint",
+  FECHADO: "bg-balloon-sky",
+  EM_MONTAGEM: "bg-balloon-lilac",
+  CONCLUIDO: "bg-balloon-mint",
   CANCELADO: "bg-destructive",
 };
 
 const statusBadge: Record<StatusFesta, string> = {
-  ORCAMENTO: "bg-champagne/12 text-champagne",
-  AGUARDANDO_PAGAMENTO: "bg-amber-500/14 text-amber-300",
-  PAGO: "bg-emerald-500/14 text-emerald-300",
-  FECHADO: "bg-status-closed/14 text-status-closed",
-  EM_MONTAGEM: "bg-sky-500/14 text-sky-300",
-  CONCLUIDO: "bg-status-done/14 text-status-done",
+  ORCAMENTO: "bg-balloon-sun/12 text-balloon-sun",
+  AGUARDANDO_PAGAMENTO: "bg-balloon-sun/12 text-balloon-sun",
+  PAGO: "bg-balloon-mint/12 text-balloon-mint",
+  FECHADO: "bg-balloon-sky/12 text-balloon-sky",
+  EM_MONTAGEM: "bg-balloon-lilac/12 text-balloon-lilac",
+  CONCLUIDO: "bg-balloon-mint/12 text-balloon-mint",
   CANCELADO: "bg-destructive/14 text-destructive",
 };
+
+const ICON_ACCENTS = [
+  "text-balloon-pink/80",
+  "text-balloon-sky/80",
+  "text-balloon-sun/80",
+  "text-balloon-mint/80",
+  "text-balloon-lilac/80",
+];
 
 interface CalendarioAgendaProps {
   festas: Festa[];
@@ -85,13 +93,17 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)]">
-      <section className="rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5">
+      <section className="rounded-2xl p-4 sm:p-5 neo-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-              Agenda operacional
-            </p>
-            <h2 className="mt-1 font-display text-2xl capitalize text-foreground">
+            <div className="flex items-center gap-1.5">
+              <span className="balloon-dot bg-balloon-pink" />
+              <span className="balloon-dot bg-balloon-sky" />
+              <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
+                Agenda operacional
+              </p>
+            </div>
+            <h2 className="mt-1 font-display text-2xl text-foreground capitalize">
               {formatMonthTitle(currentMonth)}
             </h2>
           </div>
@@ -137,32 +149,32 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
             festas
           </p>
           <p>
-            <span className="font-medium tabular-nums text-status-closed">
+            <span className="font-medium tabular-nums text-balloon-sky">
               {summary.fechadas}
             </span>{" "}
             fechadas
           </p>
           <p>
-            <span className="font-medium tabular-nums text-champagne">
+            <span className="font-medium tabular-nums text-balloon-sun">
               {summary.orcamentos}
             </span>{" "}
             orçamentos
           </p>
           <p>
-            <span className="font-medium tabular-nums text-status-done">
+            <span className="font-medium tabular-nums text-balloon-mint">
               {summary.concluidas}
             </span>{" "}
             concluídas
           </p>
           <p>
-            <span className="font-medium tabular-nums text-foreground">
+            <span className="font-medium tabular-nums text-balloon-pink">
               {formatCurrency(summary.valorFechado)}
             </span>{" "}
             valor fechado
           </p>
         </div>
 
-        <div className="mt-5 grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="mt-5 grid grid-cols-7 gap-1 text-center text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
           {WEEKDAYS.map((day) => (
             <div key={day} className="py-2">
               {day}
@@ -187,19 +199,19 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
                   }
                 }}
                 className={cn(
-                  "relative flex min-h-[4.5rem] flex-col items-start rounded-xl border p-2 text-left transition-colors",
+                  "relative flex min-h-[4.5rem] flex-col items-start rounded-xl p-2 text-left transition-all",
                   meta.inMonth
-                    ? "border-border/50 bg-background/20 hover:border-champagne/40"
-                    : "border-transparent bg-transparent text-muted-foreground/40",
-                  meta.isSelected && "border-champagne/60 bg-champagne/10",
-                  meta.isToday && !meta.isSelected && "ring-1 ring-champagne/35"
+                    ? "neo-inset hover:ring-2 hover:ring-balloon-sky/25"
+                    : "bg-transparent text-muted-foreground/40",
+                  meta.isSelected && "ring-2 ring-balloon-pink/50 bg-balloon-pink/8",
+                  meta.isToday && !meta.isSelected && "ring-2 ring-balloon-sun/40"
                 )}
               >
                 <span
                   className={cn(
                     "text-sm tabular-nums",
                     meta.isSelected
-                      ? "font-semibold text-champagne"
+                      ? "font-semibold text-balloon-pink"
                       : "text-foreground/90"
                   )}
                 >
@@ -218,7 +230,7 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
                         />
                       ))}
                     </div>
-                    <span className="rounded-md bg-champagne/15 px-1.5 py-0.5 text-[10px] font-medium text-champagne">
+                    <span className="rounded-lg bg-balloon-pink/12 px-1.5 py-0.5 text-[10px] font-medium text-balloon-pink">
                       {count}
                     </span>
                   </div>
@@ -229,11 +241,14 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
         </div>
       </section>
 
-      <aside className="rounded-2xl border border-border/70 bg-card/40 p-4 sm:p-5">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-          Dia selecionado
-        </p>
-        <h3 className="mt-1 font-display text-xl capitalize text-foreground">
+      <aside className="rounded-2xl p-4 sm:p-5 neo-sm">
+        <div className="flex items-center gap-1.5">
+          <span className="balloon-dot bg-balloon-lilac" />
+          <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
+            Dia selecionado
+          </p>
+        </div>
+        <h3 className="mt-1 font-display text-xl text-foreground capitalize">
           {format(selectedDay, "EEEE, d 'de' MMMM", { locale: ptBR })}
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -243,17 +258,16 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
         </p>
 
         <div className="mt-5 space-y-3">
-          {selectedFestas.map((festa) => {
+          {selectedFestas.map((festa, index) => {
             const isFechado = festa.status === "FECHADO";
+            const iconAccent = ICON_ACCENTS[index % ICON_ACCENTS.length];
 
             return (
               <article
                 key={festa.id}
                 className={cn(
-                  "rounded-xl border bg-background/25 p-3.5",
-                  isFechado
-                    ? "border-status-closed/45 bg-status-closed/[0.06]"
-                    : "border-border/60"
+                  "rounded-xl p-3.5 neo-inset",
+                  isFechado && "ring-1 ring-balloon-sky/30"
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -261,7 +275,7 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
                     <p className="font-medium text-foreground">
                       {festa.cliente.nome}
                     </p>
-                    <p className="text-sm text-champagne">{festa.tema}</p>
+                    <p className="text-sm text-balloon-pink">{festa.tema}</p>
                     {festa.kitCatalogo || festa.pegueEMonte ? (
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {nomeDoKit(festa.kitCatalogo) ?? "Kit personalizado"}
@@ -271,9 +285,9 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
                   </div>
                   <span
                     className={cn(
-                      "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium",
+                      "shrink-0 rounded-lg px-2 py-0.5 text-[11px] font-medium",
                       statusBadge[festa.status],
-                      isFechado && "ring-1 ring-status-closed/35"
+                      isFechado && "ring-1 ring-balloon-sky/35"
                     )}
                   >
                     {statusLabel[festa.status]}
@@ -282,7 +296,7 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
 
                 <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
-                    <Clock3 className="size-3.5 shrink-0 text-champagne/80" />
+                    <Clock3 className={cn("size-3.5 shrink-0", iconAccent)} />
                     Montagem{" "}
                     <span className="font-medium text-foreground">
                       {format(parseISO(festa.horarioMontagem), "HH:mm")}
@@ -294,31 +308,31 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
                     </span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <Phone className="size-3.5 shrink-0 text-champagne/80" />
+                    <Phone className={cn("size-3.5 shrink-0", iconAccent)} />
                     <span className="font-medium text-foreground">
                       {festa.cliente.telefone || "—"}
                     </span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <UserRound className="size-3.5 shrink-0 text-champagne/80" />
+                    <UserRound className={cn("size-3.5 shrink-0", iconAccent)} />
                     Vendedor{" "}
                     <span className="font-medium text-foreground">
                       {festa.vendedor?.nome ?? "—"}
                     </span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <Wallet className="size-3.5 shrink-0 text-champagne/80" />
+                    <Wallet className={cn("size-3.5 shrink-0", iconAccent)} />
                     <span
                       className={cn(
                         "font-medium tabular-nums",
-                        isFechado ? "text-status-closed" : "text-foreground"
+                        isFechado ? "text-balloon-sky" : "text-foreground"
                       )}
                     >
                       {formatCurrency(festa.valor)}
                     </span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <Package className="size-3.5 shrink-0 text-champagne/80" />
+                    <Package className={cn("size-3.5 shrink-0", iconAccent)} />
                     Tamanho{" "}
                     <span className="font-medium text-foreground">
                       {festa.tamanhoDecoracao}
@@ -330,7 +344,7 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
                     ) : null}
                   </li>
                   <li className="flex items-start gap-2">
-                    <MapPin className="mt-0.5 size-3.5 shrink-0 text-champagne/80" />
+                    <MapPin className={cn("mt-0.5 size-3.5 shrink-0", iconAccent)} />
                     <span>{festa.endereco}</span>
                   </li>
                   {festa.observacoes ? (

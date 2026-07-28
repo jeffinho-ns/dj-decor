@@ -165,11 +165,13 @@ export function MontagemQrScanner({
 
   const tipoLabel =
     tipo === "SAIDA_GALPAO" ? "Saída do galpão" : "Retorno ao galpão";
+  const accentClass =
+    tipo === "SAIDA_GALPAO" ? "text-balloon-sky" : "text-balloon-lilac";
 
   return (
     <div className="min-w-0 space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-medium text-foreground">{tipoLabel}</p>
+        <p className={cn("text-sm font-medium", accentClass)}>{tipoLabel}</p>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-1">
           <Button
             type="button"
@@ -198,15 +200,17 @@ export function MontagemQrScanner({
 
       {modo === "camera" ? (
         <div className="space-y-3">
-          <div
-            ref={containerRef}
-            id={readerId}
-            className={cn(
-              "mx-auto w-full max-w-full overflow-hidden rounded-xl border border-border/70 bg-black/40",
-              "[&_video]:!max-h-[min(280px,50vh)] [&_video]:!w-full [&_video]:!object-cover",
-              !cameraAtiva && "flex min-h-[180px] items-center justify-center sm:min-h-[200px]"
-            )}
-          />
+          <div className="rounded-2xl p-1.5 neo-sm">
+            <div
+              ref={containerRef}
+              id={readerId}
+              className={cn(
+                "mx-auto w-full max-w-full overflow-hidden rounded-xl bg-black/50 neo-inset",
+                "[&_video]:!max-h-[min(280px,50vh)] [&_video]:!w-full [&_video]:!object-cover",
+                !cameraAtiva && "flex min-h-[180px] items-center justify-center sm:min-h-[200px]"
+              )}
+            />
+          </div>
           {cameraAtiva ? (
             <Button
               type="button"
@@ -232,7 +236,7 @@ export function MontagemQrScanner({
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 rounded-2xl p-4 neo-inset">
           <div>
             <Label htmlFor={`qr-manual-${osId}-${tipo}`}>Código QR</Label>
             <Input
@@ -286,7 +290,7 @@ export function MontagemQrScanner({
       )}
 
       {ultimoScan ? (
-        <p className="text-xs text-status-done">
+        <p className="text-xs text-balloon-mint">
           Último scan: <span className="font-medium">{ultimoScan}</span>
         </p>
       ) : null}

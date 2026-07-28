@@ -29,14 +29,45 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  ORCAMENTO: "border-champagne/40 bg-champagne/12 text-champagne",
-  AGUARDANDO_PAGAMENTO: "border-amber-400/40 bg-amber-400/12 text-amber-200",
-  PAGO: "border-emerald-400/40 bg-emerald-400/12 text-emerald-200",
-  FECHADO: "border-status-closed/40 bg-status-closed/12 text-status-closed",
-  EM_MONTAGEM: "border-sky-400/40 bg-sky-400/12 text-sky-200",
-  CONCLUIDO: "border-status-done/40 bg-status-done/12 text-status-done",
-  CANCELADO: "border-destructive/40 bg-destructive/12 text-destructive",
+  ORCAMENTO: "neo-sm bg-balloon-sun/15 text-balloon-sun",
+  AGUARDANDO_PAGAMENTO: "neo-sm bg-balloon-sun/15 text-balloon-sun",
+  PAGO: "neo-sm bg-balloon-mint/15 text-balloon-mint",
+  FECHADO: "neo-sm bg-balloon-sky/15 text-balloon-sky",
+  EM_MONTAGEM: "neo-sm bg-balloon-pink/15 text-balloon-pink",
+  CONCLUIDO: "neo-sm bg-balloon-mint/15 text-balloon-mint",
+  CANCELADO: "neo-sm bg-destructive/12 text-destructive",
 };
+
+const TIMELINE_COLORS = [
+  {
+    done: "border-balloon-pink bg-balloon-pink text-white",
+    current:
+      "border-balloon-pink bg-balloon-pink/15 text-balloon-pink shadow-[0_0_14px_rgba(255,92,138,0.35)]",
+    line: "bg-balloon-pink/45",
+    active: "text-balloon-pink",
+  },
+  {
+    done: "border-balloon-sky bg-balloon-sky text-white",
+    current:
+      "border-balloon-sky bg-balloon-sky/15 text-balloon-sky shadow-[0_0_14px_rgba(61,185,245,0.35)]",
+    line: "bg-balloon-sky/45",
+    active: "text-balloon-sky",
+  },
+  {
+    done: "border-balloon-sun bg-balloon-sun text-accent-foreground",
+    current:
+      "border-balloon-sun bg-balloon-sun/15 text-balloon-sun shadow-[0_0_14px_rgba(255,201,60,0.4)]",
+    line: "bg-balloon-sun/45",
+    active: "text-balloon-sun",
+  },
+  {
+    done: "border-balloon-mint bg-balloon-mint text-white",
+    current:
+      "border-balloon-mint bg-balloon-mint/15 text-balloon-mint shadow-[0_0_14px_rgba(45,212,168,0.35)]",
+    line: "bg-balloon-mint/45",
+    active: "text-balloon-mint",
+  },
+];
 
 interface PortalPageProps {
   festaId: string | null;
@@ -100,8 +131,8 @@ export function PortalClientView({ festaId }: PortalPageProps) {
   if (!festaId) {
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-5 py-16 text-center">
-        <div className="rounded-full bg-champagne/10 p-4 ring-1 ring-champagne/20">
-          <PartyPopper className="size-10 text-champagne" />
+        <div className="neo-sm rounded-full p-5">
+          <PartyPopper className="size-10 text-balloon-pink" />
         </div>
         <h1 className="mt-5 font-display text-2xl text-foreground">
           Portal do cliente
@@ -109,6 +140,15 @@ export function PortalClientView({ festaId }: PortalPageProps) {
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           Use o link enviado pela equipe DJ Decor para acompanhar sua festa.
         </p>
+        <span
+          aria-hidden
+          className="mt-4 inline-flex items-center gap-1.5"
+        >
+          <span className="balloon-dot bg-balloon-pink" />
+          <span className="balloon-dot bg-balloon-sky" />
+          <span className="balloon-dot bg-balloon-sun" />
+          <span className="balloon-dot bg-balloon-mint" />
+        </span>
       </div>
     );
   }
@@ -116,7 +156,7 @@ export function PortalClientView({ festaId }: PortalPageProps) {
   if (loading) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center">
-        <Loader2 className="size-9 animate-spin text-champagne" />
+        <Loader2 className="size-9 animate-spin text-balloon-pink" />
       </div>
     );
   }
@@ -134,21 +174,30 @@ export function PortalClientView({ festaId }: PortalPageProps) {
   const statusLabel = STATUS_LABEL[data.status] ?? data.status;
   const statusBadge =
     STATUS_BADGE[data.status] ??
-    "border-border/60 bg-muted/40 text-muted-foreground";
+    "neo-sm bg-muted/60 text-muted-foreground";
 
   return (
     <div className="relative mx-auto min-h-screen max-w-lg px-4 pb-12 pt-8 sm:px-6">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-champagne/8 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-balloon-pink/12 via-balloon-sky/8 to-transparent"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-8 top-12 size-28 rounded-full bg-balloon-sun/20 blur-2xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-6 top-24 size-24 rounded-full bg-balloon-mint/15 blur-2xl"
       />
 
       <header className="relative text-center">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-champagne/80">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-balloon-sky">
           DJ Decor
         </p>
         <h1 className="mt-2 font-display text-2xl leading-tight text-foreground sm:text-3xl">
-          Olá, {data.clienteNomePrimeiro}
+          Olá,{" "}
+          <span className="text-balloon-pink">{data.clienteNomePrimeiro}</span>
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Acompanhe sua decoração
@@ -157,7 +206,7 @@ export function PortalClientView({ festaId }: PortalPageProps) {
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium",
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
               statusBadge
             )}
           >
@@ -167,7 +216,7 @@ export function PortalClientView({ festaId }: PortalPageProps) {
           <button
             type="button"
             onClick={() => void handleShare()}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border/60 bg-card/50 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-champagne/40 hover:text-foreground"
+            className="neo-sm inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:-translate-y-0.5 hover:text-balloon-sky"
           >
             <Share2 className="size-3.5" />
             {copied ? "Link copiado!" : "Compartilhar"}
@@ -175,7 +224,7 @@ export function PortalClientView({ festaId }: PortalPageProps) {
         </div>
       </header>
 
-      <article className="relative mt-8 space-y-4 rounded-2xl border border-border/60 bg-card/50 p-5 shadow-lg shadow-black/20 backdrop-blur-sm">
+      <article className="neo relative mt-8 space-y-4 rounded-2xl p-5">
         <div>
           <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             Tema
@@ -186,8 +235,8 @@ export function PortalClientView({ festaId }: PortalPageProps) {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex items-start gap-2.5 rounded-xl bg-muted/30 px-3 py-2.5">
-            <CalendarDays className="mt-0.5 size-4 shrink-0 text-champagne" />
+          <div className="neo-sm flex items-start gap-2.5 rounded-xl px-3 py-2.5">
+            <CalendarDays className="mt-0.5 size-4 shrink-0 text-balloon-pink" />
             <div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Data do evento
@@ -200,8 +249,8 @@ export function PortalClientView({ festaId }: PortalPageProps) {
             </div>
           </div>
 
-          <div className="flex items-start gap-2.5 rounded-xl bg-muted/30 px-3 py-2.5">
-            <Clock className="mt-0.5 size-4 shrink-0 text-champagne" />
+          <div className="neo-sm flex items-start gap-2.5 rounded-xl px-3 py-2.5">
+            <Clock className="mt-0.5 size-4 shrink-0 text-balloon-sky" />
             <div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Montagem
@@ -215,8 +264,8 @@ export function PortalClientView({ festaId }: PortalPageProps) {
           </div>
         </div>
 
-        <div className="flex items-start gap-2.5 rounded-xl border border-border/40 bg-background/30 px-3 py-3">
-          <MapPin className="mt-0.5 size-4 shrink-0 text-champagne" />
+        <div className="neo-inset flex items-start gap-2.5 rounded-xl px-3 py-3">
+          <MapPin className="mt-0.5 size-4 shrink-0 text-balloon-mint" />
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
               Endereço
@@ -232,14 +281,13 @@ export function PortalClientView({ festaId }: PortalPageProps) {
       </article>
 
       <section className="relative mt-8">
-        <h2 className="mb-4 text-sm font-medium text-foreground">
-          Andamento
-        </h2>
+        <h2 className="mb-4 text-sm font-medium text-foreground">Andamento</h2>
 
         <ol className="space-y-0">
           {data.timeline.map((step, index) => {
             const isCurrent = index === currentStepIndex && !step.done;
             const isLast = index === data.timeline.length - 1;
+            const colors = TIMELINE_COLORS[index % TIMELINE_COLORS.length];
 
             return (
               <li key={`${step.key}-${index}`} className="relative flex gap-3">
@@ -247,8 +295,8 @@ export function PortalClientView({ festaId }: PortalPageProps) {
                   <span
                     aria-hidden
                     className={cn(
-                      "absolute left-[11px] top-7 h-[calc(100%-0.25rem)] w-px",
-                      step.done ? "bg-champagne/50" : "bg-border/70"
+                      "absolute left-[11px] top-7 h-[calc(100%-0.25rem)] w-0.5 rounded-full",
+                      step.done ? colors.line : "bg-muted-foreground/20"
                     )}
                   />
                 ) : null}
@@ -257,10 +305,10 @@ export function PortalClientView({ festaId }: PortalPageProps) {
                   className={cn(
                     "relative z-10 mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
                     step.done
-                      ? "border-champagne bg-champagne text-primary-foreground"
+                      ? colors.done
                       : isCurrent
-                        ? "border-champagne bg-champagne/15 text-champagne shadow-[0_0_12px_rgba(228,197,138,0.35)]"
-                        : "border-border/70 bg-muted/40 text-muted-foreground"
+                        ? colors.current
+                        : "border-muted-foreground/25 bg-muted/50 text-muted-foreground"
                   )}
                 >
                   {step.done ? (
@@ -288,7 +336,7 @@ export function PortalClientView({ festaId }: PortalPageProps) {
                       })}
                     </p>
                   ) : isCurrent ? (
-                    <p className="mt-0.5 text-xs text-champagne/90">
+                    <p className={cn("mt-0.5 text-xs font-medium", colors.active)}>
                       Em andamento
                     </p>
                   ) : null}

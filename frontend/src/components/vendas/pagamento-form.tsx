@@ -27,7 +27,7 @@ const tipoLabel: Record<TipoPagamento, string> = {
 const TIPOS: TipoPagamento[] = ["PIX", "DINHEIRO", "CARTAO", "OUTRO"];
 
 const selectClassName =
-  "flex h-11 w-full rounded-lg border border-input bg-transparent px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9 md:px-2.5 md:text-sm";
+  "flex h-11 w-full rounded-xl neo-inset px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-balloon-mint/30 md:h-9 md:px-2.5 md:text-sm";
 
 interface PagamentoFormProps {
   festaId: string;
@@ -125,7 +125,7 @@ export function PagamentoForm({
             {pagamentos.map((pagamento) => (
               <li
                 key={pagamento.id}
-                className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/30 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-2xl neo-sm px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="font-medium text-foreground">
@@ -139,18 +139,18 @@ export function PagamentoForm({
                       locale: ptBR,
                     })}
                     {pagamento.comprovanteMidiaId ? (
-                      <span className="ml-1.5 inline-flex items-center gap-0.5 text-champagne">
+                      <span className="ml-1.5 inline-flex items-center gap-0.5 text-balloon-sun">
                         <Paperclip className="size-3" /> comprovante
                       </span>
                     ) : null}
                   </p>
                 </div>
                 {pagamento.status === "CONFIRMADO" ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 self-start rounded-md bg-emerald-500/14 px-2 py-1 text-xs font-medium text-emerald-300 sm:self-auto">
+                  <span className="inline-flex shrink-0 items-center gap-1 self-start rounded-full bg-balloon-mint/12 px-2.5 py-1 text-xs font-semibold text-balloon-mint shadow-[var(--shadow-neo-sm)] sm:self-auto">
                     <CheckCircle2 className="size-3.5" /> Confirmado
                   </span>
                 ) : pagamento.status === "ESTORNADO" ? (
-                  <span className="inline-flex shrink-0 self-start rounded-md bg-destructive/14 px-2 py-1 text-xs font-medium text-destructive sm:self-auto">
+                  <span className="inline-flex shrink-0 self-start rounded-full bg-destructive/12 px-2.5 py-1 text-xs font-semibold text-destructive shadow-[var(--shadow-neo-sm)] sm:self-auto">
                     Estornado
                   </span>
                 ) : (
@@ -174,8 +174,8 @@ export function PagamentoForm({
         </div>
       ) : null}
 
-      <div className="space-y-3 rounded-lg border border-dashed border-border/70 p-4">
-        <p className="text-xs font-medium uppercase tracking-wider text-champagne/80">
+      <div className="space-y-3 rounded-2xl neo-inset p-4">
+        <p className="text-xs font-medium uppercase tracking-wider text-balloon-mint">
           Registrar pagamento PIX
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -220,8 +220,8 @@ export function PagamentoForm({
           <label
             htmlFor={`comprovante-${festaId}`}
             className={cn(
-              "flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-input bg-transparent px-3 text-sm text-muted-foreground transition-colors hover:border-ring md:h-9 md:px-2.5 md:text-xs",
-              file && "border-champagne/50 text-champagne"
+              "flex min-h-11 cursor-pointer items-center gap-2 rounded-xl neo-inset px-3 text-sm text-muted-foreground transition-all hover:brightness-[1.02] md:h-9 md:px-2.5 md:text-xs",
+              file && "text-balloon-sun ring-1 ring-balloon-sun/30"
             )}
           >
             <Upload className="size-4 shrink-0" />

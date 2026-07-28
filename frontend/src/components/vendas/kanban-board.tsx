@@ -55,23 +55,23 @@ const STATUS_TRANSITIONS: Record<StatusFesta, StatusFesta[]> = {
 };
 
 const columnAccent: Record<StatusFesta, string> = {
-  ORCAMENTO: "border-t-champagne",
-  AGUARDANDO_PAGAMENTO: "border-t-amber-400",
-  PAGO: "border-t-emerald-400",
-  FECHADO: "border-t-status-closed",
-  EM_MONTAGEM: "border-t-sky-400",
-  CONCLUIDO: "border-t-status-done",
+  ORCAMENTO: "border-t-balloon-sun",
+  AGUARDANDO_PAGAMENTO: "border-t-balloon-sky",
+  PAGO: "border-t-balloon-mint",
+  FECHADO: "border-t-balloon-lilac",
+  EM_MONTAGEM: "border-t-balloon-pink",
+  CONCLUIDO: "border-t-balloon-mint",
   CANCELADO: "border-t-destructive",
 };
 
 const pillAccent: Record<StatusFesta, string> = {
-  ORCAMENTO: "border-champagne/50 bg-champagne/15 text-champagne",
-  AGUARDANDO_PAGAMENTO: "border-amber-400/50 bg-amber-400/15 text-amber-200",
-  PAGO: "border-emerald-400/50 bg-emerald-400/15 text-emerald-200",
-  FECHADO: "border-status-closed/50 bg-status-closed/15 text-status-closed",
-  EM_MONTAGEM: "border-sky-400/50 bg-sky-400/15 text-sky-200",
-  CONCLUIDO: "border-status-done/50 bg-status-done/15 text-status-done",
-  CANCELADO: "border-destructive/50 bg-destructive/15 text-destructive",
+  ORCAMENTO: "neo-sun",
+  AGUARDANDO_PAGAMENTO: "neo-sky",
+  PAGO: "neo-mint",
+  FECHADO: "bg-balloon-lilac/12 text-balloon-lilac shadow-[var(--shadow-neo-sm)]",
+  EM_MONTAGEM: "neo-pink",
+  CONCLUIDO: "neo-mint",
+  CANCELADO: "bg-destructive/12 text-destructive shadow-[var(--shadow-neo-sm)]",
 };
 
 interface KanbanBoardProps {
@@ -118,8 +118,8 @@ function FestaCard({
   return (
     <article
       className={cn(
-        "rounded-lg border border-border/60 bg-background/40 p-3 shadow-sm transition-colors md:p-2.5",
-        expanded && "border-champagne/40"
+        "rounded-2xl neo-sm p-3 transition-all md:p-2.5",
+        expanded && "neo-inset ring-1 ring-balloon-pink/25"
       )}
     >
       <button
@@ -152,7 +152,7 @@ function FestaCard({
           <span className="text-muted-foreground">
             {format(parseISO(festa.dataEvento), "dd MMM", { locale: ptBR })}
           </span>
-          <span className="font-medium text-champagne">
+          <span className="font-medium text-balloon-sun">
             {formatCurrency(festa.valor)}
           </span>
         </div>
@@ -161,7 +161,7 @@ function FestaCard({
       {next.length > 0 ? (
         <div className="mt-2.5">
           <select
-            className="flex h-11 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring md:h-7 md:rounded-md md:px-2 md:text-[11px]"
+            className="flex h-11 w-full rounded-xl neo-inset px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-balloon-sky/30 md:h-7 md:px-2 md:text-[11px]"
             disabled={busy}
             defaultValue=""
             onChange={(event) => {
@@ -295,7 +295,7 @@ function FestaCard({
                     aguardando aprovação.
                   </p>
                 ) : descontoStatus === "APROVADO" ? (
-                  <p className="mt-2 text-xs text-emerald-200/90">
+                  <p className="mt-2 text-xs text-balloon-mint">
                     Desconto de{" "}
                     {festa.descontoPercentual != null
                       ? `${Number(festa.descontoPercentual).toFixed(0)}%`
@@ -434,7 +434,7 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
         <p className="text-sm text-muted-foreground">
           Funil por status — clique no card para pagamentos, contrato e WhatsApp.
         </p>
-        <div className="flex gap-1 rounded-lg border border-border/60 p-0.5">
+        <div className="flex gap-1 rounded-2xl neo-inset p-0.5">
           <Button
             type="button"
             size="xs"
@@ -459,7 +459,7 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
       </div>
 
       {error ? (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       ) : null}
@@ -480,10 +480,10 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
                     type="button"
                     onClick={() => setActiveStatus(status)}
                     className={cn(
-                      "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors",
+                      "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition-all",
                       active
                         ? pillAccent[status]
-                        : "border-border/60 bg-muted/30 text-muted-foreground"
+                        : "neo-sm text-muted-foreground"
                     )}
                   >
                     {statusLabel[status]}
@@ -502,7 +502,7 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
 
             <div className="space-y-3">
               {activeItems.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-border/60 px-4 py-10 text-center text-sm text-muted-foreground">
+                <p className="rounded-2xl neo-inset px-4 py-10 text-center text-sm text-muted-foreground">
                   Nenhuma venda em {statusLabel[activeStatus].toLowerCase()}
                 </p>
               ) : (
@@ -519,7 +519,7 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
                 <section
                   key={status}
                   className={cn(
-                    "flex w-[min(100%,17.5rem)] shrink-0 flex-col rounded-xl border border-border/50 border-t-2 bg-card/30",
+                    "flex w-[min(100%,17.5rem)] shrink-0 flex-col rounded-2xl neo-sm border-t-4",
                     columnAccent[status]
                   )}
                 >
@@ -527,7 +527,7 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
                     <h3 className="text-xs font-medium tracking-wide text-foreground">
                       {statusLabel[status]}
                     </h3>
-                    <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+                    <span className="rounded-full bg-balloon-sky/12 px-1.5 py-0.5 text-[10px] tabular-nums text-balloon-sky">
                       {items.length}
                     </span>
                   </header>

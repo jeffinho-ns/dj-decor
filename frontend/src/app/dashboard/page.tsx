@@ -61,7 +61,7 @@ export default async function DashboardPage() {
     >
       <OfflineQueueSync token={token} className="mb-4" />
       {loadError ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
           <p className="font-medium">Não foi possível carregar a agenda</p>
           <p className="mt-1 opacity-90">{loadError}</p>
         </div>

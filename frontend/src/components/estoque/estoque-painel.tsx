@@ -26,6 +26,13 @@ const STATUS_LABEL: Record<string, string> = {
   MANUTENCAO: "Manutenção",
 };
 
+const STATUS_CLASS: Record<string, string> = {
+  DISPONIVEL: "bg-balloon-mint/12 text-balloon-mint",
+  MANUTENCAO: "bg-balloon-sun/12 text-balloon-sun",
+  RESERVADA: "bg-balloon-sky/12 text-balloon-sky",
+  EM_USO: "bg-balloon-lilac/12 text-balloon-lilac",
+};
+
 interface EstoquePainelProps {
   produtos: Produto[];
   alertasQr?: AlertaQr[];
@@ -36,15 +43,30 @@ function toLocalInputValue(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function SectionTitle({
+  dot,
+  children,
+}: {
+  dot: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <h2 className="flex items-center gap-2 font-display text-xl text-foreground">
+      <span className={cn("balloon-dot", dot)} />
+      {children}
+    </h2>
+  );
+}
+
 function ProdutoCardMobile({ produto }: { produto: Produto }) {
   return (
-    <article className="rounded-xl border border-border/60 bg-card/40 p-4">
+    <article className="rounded-2xl p-4 neo-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-medium text-foreground">{produto.nome}</p>
           <p className="text-sm text-muted-foreground">{produto.categoria}</p>
         </div>
-        <p className="shrink-0 text-sm tabular-nums text-champagne">
+        <p className="shrink-0 text-sm tabular-nums text-balloon-pink">
           {Number(produto.valorAluguel).toLocaleString("pt-BR", {
             style: "currency",
             currency: "BRL",
@@ -53,26 +75,23 @@ function ProdutoCardMobile({ produto }: { produto: Produto }) {
       </div>
 
       <div className="mt-3 space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
           Unidades
         </p>
         <ul className="space-y-2">
           {produto.unidades.map((u) => (
             <li
               key={u.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/50 bg-background/30 px-3 py-2 text-sm"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm neo-inset"
             >
               <span className="font-medium text-foreground">
                 {u.etiqueta || u.codigoQr}
               </span>
               <span
                 className={cn(
-                  "rounded-md px-2 py-0.5 text-xs",
-                  u.status === "DISPONIVEL"
-                    ? "bg-emerald-500/15 text-emerald-300"
-                    : u.status === "MANUTENCAO"
-                      ? "bg-amber-500/15 text-amber-300"
-                      : "bg-sky-500/15 text-sky-300"
+                  "rounded-lg px-2 py-0.5 text-xs",
+                  STATUS_CLASS[u.status] ??
+                    "bg-balloon-sky/12 text-balloon-sky"
                 )}
               >
                 {STATUS_LABEL[u.status] ?? u.status}
@@ -146,13 +165,13 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
   return (
     <div className="space-y-8">
       {alertasQr.length > 0 ? (
-        <section className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+        <section className="rounded-2xl border border-balloon-sun/35 bg-balloon-sun/10 px-4 py-3 neo-sm">
           <div className="flex flex-wrap items-center gap-2">
-            <AlertTriangle className="size-4 text-amber-400" />
-            <p className="text-sm font-medium text-amber-100">
+            <AlertTriangle className="size-4 text-balloon-sun" />
+            <p className="text-sm font-medium text-foreground">
               {alertasQr.length} alerta{alertasQr.length === 1 ? "" : "s"} QR
             </p>
-            <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs tabular-nums text-amber-200">
+            <span className="rounded-full bg-balloon-sun/20 px-2 py-0.5 text-xs tabular-nums text-balloon-sun">
               peças sem retorno
             </span>
           </div>
@@ -160,14 +179,14 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
             {alertasQr.slice(0, 5).map((a) => (
               <li
                 key={a.unidade.id}
-                className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-amber-50/90"
+                className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-foreground/90"
               >
                 <span>
                   <span className="font-medium">{a.produto.nome}</span>
                   {" · "}
                   <span className="font-mono text-xs">{a.codigoQr}</span>
                 </span>
-                <span className="text-xs text-amber-200/80">
+                <span className="text-xs text-muted-foreground">
                   saída{" "}
                   {new Date(a.saidaEm).toLocaleString("pt-BR", {
                     dateStyle: "short",
@@ -179,7 +198,7 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
             ))}
           </ul>
           {alertasQr.length > 5 ? (
-            <p className="mt-2 text-xs text-amber-200/70">
+            <p className="mt-2 text-xs text-muted-foreground">
               +{alertasQr.length - 5} outros alertas
             </p>
           ) : null}
@@ -188,16 +207,16 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
 
       <section className="space-y-4">
         <div>
-          <h2 className="font-display text-xl text-foreground">Catálogo</h2>
+          <SectionTitle dot="bg-balloon-pink">Catálogo</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
             Produtos e unidades físicas com código QR.
           </p>
         </div>
 
         {produtos.length === 0 ? (
-          <p className="rounded-lg border border-border/60 bg-card/40 px-4 py-6 text-sm text-muted-foreground">
+          <p className="rounded-2xl px-4 py-6 text-sm text-muted-foreground neo-sm">
             Nenhum produto cadastrado. Rode o seed da API ou cadastre via{" "}
-            <code className="text-champagne">POST /api/produtos</code>.
+            <code className="text-balloon-sky">POST /api/produtos</code>.
           </p>
         ) : (
           <>
@@ -207,7 +226,7 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
               ))}
             </div>
 
-            <div className="hidden overflow-x-auto rounded-lg border border-border/60 md:block">
+            <div className="hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -223,7 +242,7 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.nome}</TableCell>
                       <TableCell>{p.categoria}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-balloon-pink">
                         {Number(p.valorAluguel).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: "BRL",
@@ -238,12 +257,9 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
                               </span>
                               <span
                                 className={cn(
-                                  "rounded px-1.5 py-0.5",
-                                  u.status === "DISPONIVEL"
-                                    ? "bg-emerald-500/15 text-emerald-300"
-                                    : u.status === "MANUTENCAO"
-                                      ? "bg-amber-500/15 text-amber-300"
-                                      : "bg-sky-500/15 text-sky-300"
+                                  "rounded-lg px-1.5 py-0.5",
+                                  STATUS_CLASS[u.status] ??
+                                    "bg-balloon-sky/12 text-balloon-sky"
                                 )}
                               >
                                 {STATUS_LABEL[u.status] ?? u.status}
@@ -264,24 +280,22 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
         )}
       </section>
 
-      <section className="space-y-4 border-t border-border/60 pt-8">
+      <section className="space-y-4 border-t border-[var(--neo-dark)]/25 pt-8">
         <div>
-          <h2 className="font-display text-xl text-foreground">
-            Disponibilidade
-          </h2>
+          <SectionTitle dot="bg-balloon-sky">Disponibilidade</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
             Consulta anti-overbooking por janela de datas (montagem → retorno + cura).
           </p>
         </div>
 
-        <div className="flex flex-col gap-4 md:grid md:grid-cols-2 lg:grid-cols-4">
+        <div className="flex flex-col gap-4 rounded-2xl p-4 md:grid md:grid-cols-2 lg:grid-cols-4 neo-sm">
           <div className="space-y-2 lg:col-span-1">
             <Label htmlFor="produto">Produto</Label>
             <select
               id="produto"
               value={produtoId}
               onChange={(e) => setProdutoId(e.target.value)}
-              className="flex h-11 w-full rounded-lg border border-input bg-transparent px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9 md:text-sm"
+              className="flex h-11 w-full rounded-2xl border-0 bg-[var(--neo-bg)] px-3 text-base shadow-[var(--shadow-neo-inset)] outline-none focus-visible:ring-3 focus-visible:ring-balloon-sky/30 md:h-9 md:text-sm"
             >
               {produtos.map((p) => (
                 <option key={p.id} value={p.id} className="bg-background">
@@ -324,17 +338,17 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
         </div>
 
         {error ? (
-          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
             {error}
           </p>
         ) : null}
 
         {resultado ? (
-          <div className="rounded-lg border border-border/60 bg-card/40 p-4">
+          <div className="rounded-2xl p-4 neo-sm">
             <p className="text-sm text-foreground">
               <span className="font-medium">{resultado.produto.nome}</span>
               {" — "}
-              <span className="text-champagne">
+              <span className="font-medium text-balloon-mint">
                 {resultado.disponiveis}/{resultado.totalUnidades}
               </span>{" "}
               unidades livres no período
@@ -348,7 +362,7 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
                 {resultado.unidades.map((u) => (
                   <li
                     key={u.id}
-                    className="rounded-md border border-border/50 px-3 py-2.5 text-sm md:py-2"
+                    className="rounded-xl px-3 py-2.5 text-sm neo-inset md:py-2"
                   >
                     <span className="font-medium">
                       {u.etiqueta || u.codigoQr}

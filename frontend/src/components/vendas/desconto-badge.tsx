@@ -5,9 +5,9 @@ const statusStyles: Record<
   Exclude<StatusDesconto, "NENHUM">,
   string
 > = {
-  PENDENTE: "border-amber-400/40 bg-amber-400/10 text-amber-200",
-  APROVADO: "border-emerald-400/40 bg-emerald-400/10 text-emerald-200",
-  RECUSADO: "border-destructive/40 bg-destructive/10 text-destructive",
+  PENDENTE: "bg-balloon-sun/12 text-balloon-sun shadow-[var(--shadow-neo-sm)]",
+  APROVADO: "bg-balloon-mint/12 text-balloon-mint shadow-[var(--shadow-neo-sm)]",
+  RECUSADO: "bg-destructive/12 text-destructive shadow-[var(--shadow-neo-sm)]",
 };
 
 const statusLabel: Record<Exclude<StatusDesconto, "NENHUM">, string> = {
@@ -43,7 +43,7 @@ export function DescontoBadge({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none",
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none",
         statusStyles[status],
         className
       )}

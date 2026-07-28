@@ -104,8 +104,13 @@ export function PerfilForm({ token, user }: PerfilFormProps) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-2xl border border-border/70 bg-card/40 p-6 sm:p-8">
-      <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+    <div className="mx-auto max-w-2xl rounded-2xl p-6 sm:p-8 neo-sm">
+      <div className="flex items-center gap-2">
+        <span className="balloon-dot bg-balloon-pink" />
+        <span className="balloon-dot bg-balloon-sky" />
+        <span className="balloon-dot bg-balloon-sun" />
+      </div>
+      <p className="mt-3 text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase">
         Minha conta
       </p>
       <h2 className="mt-1 font-display text-2xl text-foreground">
@@ -114,7 +119,7 @@ export function PerfilForm({ token, user }: PerfilFormProps) {
 
       <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6">
         <div className="space-y-4">
-          <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-champagne/80">
+          <p className="flex items-center gap-1.5 text-xs font-medium tracking-wider text-balloon-pink uppercase">
             <UserIcon className="size-3.5" />
             Identificação
           </p>
@@ -145,10 +150,10 @@ export function PerfilForm({ token, user }: PerfilFormProps) {
           </div>
         </div>
 
-        <Separator className="bg-border/60" />
+        <Separator />
 
         <div className="space-y-4">
-          <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-champagne/80">
+          <p className="flex items-center gap-1.5 text-xs font-medium tracking-wider text-balloon-lilac uppercase">
             <KeyRound className="size-3.5" />
             Trocar senha
           </p>
@@ -207,13 +212,13 @@ export function PerfilForm({ token, user }: PerfilFormProps) {
         </div>
 
         {submitError ? (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive neo-inset">
             {submitError}
           </div>
         ) : null}
 
         {successMessage ? (
-          <div className="rounded-lg border border-status-done/30 bg-status-done/10 px-3 py-2 text-sm text-status-done">
+          <div className="rounded-2xl border border-balloon-mint/30 bg-balloon-mint/10 px-3 py-2 text-sm text-balloon-mint neo-inset">
             {successMessage}
           </div>
         ) : null}

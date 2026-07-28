@@ -260,6 +260,57 @@
       -4px -4px 12px rgba(255, 255, 255, 0.7);
   }
 
+  .neo-lilac {
+    background: linear-gradient(145deg, #b49cff, #9b7bff);
+    color: #fff;
+    box-shadow: 6px 6px 14px rgba(155, 123, 255, 0.35),
+      -4px -4px 12px rgba(255, 255, 255, 0.7);
+  }
+
+  .neo-coral {
+    background: linear-gradient(145deg, #ff9478, #ff7a59);
+    color: #fff;
+    box-shadow: 6px 6px 14px rgba(255, 122, 89, 0.35),
+      -4px -4px 12px rgba(255, 255, 255, 0.7);
+  }
+
+  .chip-pink {
+    background: rgba(255, 92, 138, 0.14);
+    color: #d63a68;
+  }
+
+  .chip-sky {
+    background: rgba(61, 185, 245, 0.14);
+    color: #1a8fc4;
+  }
+
+  .chip-sun {
+    background: rgba(255, 201, 60, 0.2);
+    color: #9a7400;
+  }
+
+  .chip-mint {
+    background: rgba(45, 212, 168, 0.16);
+    color: #0d8f6e;
+  }
+
+  .chip-lilac {
+    background: rgba(155, 123, 255, 0.16);
+    color: #6b4fd4;
+  }
+
+  .chip-coral {
+    background: rgba(255, 122, 89, 0.16);
+    color: #d45638;
+  }
+
+  .section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   .balloon-dot {
     display: inline-block;
     width: 0.65rem;
@@ -267,6 +318,19 @@
     border-radius: 999px;
     box-shadow: inset -1px -1px 2px rgba(0, 0, 0, 0.12),
       inset 1px 1px 2px rgba(255, 255, 255, 0.45);
+  }
+
+  .festive-bar {
+    height: 0.35rem;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      var(--balloon-pink),
+      var(--balloon-sky),
+      var(--balloon-sun),
+      var(--balloon-mint),
+      var(--balloon-lilac)
+    );
   }
 
   .pb-nav {

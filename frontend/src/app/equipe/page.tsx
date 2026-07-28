@@ -57,7 +57,7 @@ export default async function EquipePage() {
       description="Agenda de montagens e alocação de montadores."
     >
       {error ? (
-        <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
           <p className="font-medium">Não foi possível carregar a equipe</p>
           <p className="mt-1 opacity-90">{error}</p>
         </div>
