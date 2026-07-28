@@ -4,7 +4,24 @@ import type {
   UpdatePerfilPayload,
   UpdatePerfilResponse,
 } from "@/types/auth";
-import type { CreateFestaPayload, Festa } from "@/types/festa";
+import type {
+  CreateProdutoPayload,
+  CreateUnidadePayload,
+  DisponibilidadeResult,
+  Produto,
+  ReservaEstoque,
+  ReservarEstoquePayload,
+  UnidadeProduto,
+} from "@/types/estoque";
+import type {
+  ConfirmarPagamentoPayload,
+  CreateFestaPayload,
+  CreatePagamentoPayload,
+  Festa,
+  Pagamento,
+  StatusFesta,
+} from "@/types/festa";
+import type { Midia, TipoMidia } from "@/types/midia";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -126,4 +143,162 @@ export async function updateFestaChecklist(
     body: JSON.stringify({ itensExtrasConcluidos }),
   });
   return handleResponse<Festa>(response);
+}
+
+export async function updateFestaStatus(
+  id: string,
+  status: StatusFesta,
+  token: string
+): Promise<Festa> {
+  const response = await fetch(`${getBaseUrl()}/api/festas/${id}/status`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ status }),
+  });
+  return handleResponse<Festa>(response);
+}
+
+export async function listPagamentos(
+  festaId: string,
+  token: string
+): Promise<Pagamento[]> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/festas/${festaId}/pagamentos`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  return handleResponse<Pagamento[]>(response);
+}
+
+export async function createPagamento(
+  festaId: string,
+  payload: CreatePagamentoPayload,
+  token: string
+): Promise<Pagamento> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/festas/${festaId}/pagamentos`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(payload),
+    }
+  );
+  return handleResponse<Pagamento>(response);
+}
+
+export async function confirmarPagamento(
+  pagamentoId: string,
+  payload: ConfirmarPagamentoPayload,
+  token: string
+): Promise<Pagamento> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/pagamentos/${pagamentoId}/confirmar`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify(payload),
+    }
+  );
+  return handleResponse<Pagamento>(response);
+}
+
+export async function uploadMidia(
+  params: { file: File; tipo: TipoMidia; festaId?: string },
+  token: string
+): Promise<Midia> {
+  const formData = new FormData();
+  formData.append("file", params.file);
+  formData.append("tipo", params.tipo);
+  if (params.festaId) {
+    formData.append("festaId", params.festaId);
+  }
+  const response = await fetch(`${getBaseUrl()}/api/midias`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  return handleResponse<Midia>(response);
+}
+
+export async function listProdutos(
+  token: string,
+  ativosOnly = false
+): Promise<Produto[]> {
+  const qs = ativosOnly ? "?ativos=true" : "";
+  const response = await fetch(`${getBaseUrl()}/api/produtos${qs}`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<Produto[]>(response);
+}
+
+export async function createProduto(
+  payload: CreateProdutoPayload,
+  token: string
+): Promise<Produto> {
+  const response = await fetch(`${getBaseUrl()}/api/produtos`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<Produto>(response);
+}
+
+export async function createUnidade(
+  produtoId: string,
+  payload: CreateUnidadePayload,
+  token: string
+): Promise<UnidadeProduto> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/produtos/${produtoId}/unidades`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(payload),
+    }
+  );
+  return handleResponse<UnidadeProduto>(response);
+}
+
+export async function disponibilidadeEstoque(
+  params: { produtoId: string; inicio: string; fim: string },
+  token: string
+): Promise<DisponibilidadeResult> {
+  const qs = new URLSearchParams(params).toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/estoque/disponibilidade?${qs}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  return handleResponse<DisponibilidadeResult>(response);
+}
+
+export async function reservarEstoque(
+  payload: ReservarEstoquePayload,
+  token: string
+): Promise<ReservaEstoque> {
+  const response = await fetch(`${getBaseUrl()}/api/estoque/reservar`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<ReservaEstoque>(response);
+}
+
+export async function liberarReserva(
+  reservaId: string,
+  token: string
+): Promise<{ ok: true; reservaId: string }> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/estoque/reservas/${reservaId}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(token),
+    }
+  );
+  return handleResponse<{ ok: true; reservaId: string }>(response);
 }

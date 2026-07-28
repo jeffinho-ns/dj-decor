@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   Hammer,
+  Package,
   PartyPopper,
   PlusCircle,
   Sparkles,
@@ -19,6 +20,14 @@ const DEFAULT_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
+  { href: "/perfil", label: "Perfil", icon: UserRound },
+] as const;
+
+const GESTAO_NAV = [
+  { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/vendas", label: "Vendas", icon: PartyPopper },
+  { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
+  { href: "/estoque", label: "Estoque", icon: Package },
   { href: "/perfil", label: "Perfil", icon: UserRound },
 ] as const;
 
@@ -49,14 +58,22 @@ function isNavActive(pathname: string, href: string): boolean {
       pathname.startsWith("/vendas") && !pathname.startsWith("/vendas/nova")
     );
   }
+  if (href === "/estoque") {
+    return pathname === "/estoque" || pathname.startsWith("/estoque/");
+  }
   return pathname === href;
 }
 
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const isAdmin = user.role === "ADMIN";
+  const isGestao = user.role === "ADMIN" || user.role === "GERENTE";
   const isMontador = user.role === "MONTADOR";
-  const navItems = isMontador ? MONTADOR_NAV : DEFAULT_NAV;
+  const navItems = isMontador
+    ? MONTADOR_NAV
+    : isGestao
+      ? GESTAO_NAV
+      : DEFAULT_NAV;
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">

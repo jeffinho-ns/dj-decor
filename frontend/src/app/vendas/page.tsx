@@ -4,7 +4,7 @@ import { PlusCircle } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
-import { FestasTable } from "@/components/vendas/festas-table";
+import { KanbanBoard } from "@/components/vendas/kanban-board";
 import { listFestas } from "@/lib/api";
 import { requireSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,7 @@ export default async function VendasPage() {
     <DashboardShell
       user={user}
       title="Vendas"
-      description="Acompanhe os orçamentos e festas fechadas."
+      description="Funil Kanban por status — registre PIX e avance o pedido."
       actions={
         <Link
           href="/vendas/nova"
@@ -57,7 +57,7 @@ export default async function VendasPage() {
         </div>
       ) : null}
 
-      <FestasTable festas={festas} />
+      <KanbanBoard festas={festas} token={token} />
     </DashboardShell>
   );
 }

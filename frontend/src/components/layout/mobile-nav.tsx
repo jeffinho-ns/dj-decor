@@ -13,6 +13,14 @@ const DEFAULT_ITEMS = [
   { href: "/perfil", label: "Perfil" },
 ] as const;
 
+const GESTAO_ITEMS = [
+  { href: "/dashboard", label: "Agenda" },
+  { href: "/vendas", label: "Vendas" },
+  { href: "/vendas/nova", label: "Nova Venda" },
+  { href: "/estoque", label: "Estoque" },
+  { href: "/perfil", label: "Perfil" },
+] as const;
+
 const MONTADOR_ITEMS = [
   { href: "/montagem", label: "Montagem" },
   { href: "/dashboard", label: "Agenda" },
@@ -25,7 +33,13 @@ interface MobileNavProps {
 
 export function MobileNav({ user }: MobileNavProps) {
   const pathname = usePathname();
-  const items = user.role === "MONTADOR" ? MONTADOR_ITEMS : DEFAULT_ITEMS;
+  const isGestao = user.role === "ADMIN" || user.role === "GERENTE";
+  const items =
+    user.role === "MONTADOR"
+      ? MONTADOR_ITEMS
+      : isGestao
+        ? GESTAO_ITEMS
+        : DEFAULT_ITEMS;
 
   return (
     <nav className="mt-3 flex gap-4 overflow-x-auto border-t border-border/60 pt-3 md:hidden">
@@ -38,7 +52,9 @@ export function MobileNav({ user }: MobileNavProps) {
               pathname.startsWith("/calendario/")
             : item.href === "/montagem"
               ? pathname === "/montagem" || pathname.startsWith("/montagem/")
-              : pathname === item.href;
+              : item.href === "/estoque"
+                ? pathname === "/estoque" || pathname.startsWith("/estoque/")
+                : pathname === item.href;
         return (
           <Link
             key={item.href}

@@ -9,8 +9,10 @@ const PROTECTED_PREFIXES = [
   "/calendario",
   "/montagem",
   "/perfil",
+  "/estoque",
 ];
 const VENDEDOR_ONLY_PREFIXES = ["/vendas"];
+const GESTAO_ONLY_PREFIXES = ["/estoque"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
@@ -20,6 +22,12 @@ function isProtected(pathname: string): boolean {
 
 function isVendedorArea(pathname: string): boolean {
   return VENDEDOR_ONLY_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
+function isGestaoArea(pathname: string): boolean {
+  return GESTAO_ONLY_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 }
@@ -62,6 +70,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/montagem", request.url));
   }
 
+  if (
+    token &&
+    isGestaoArea(pathname) &&
+    role !== "ADMIN" &&
+    role !== "GERENTE"
+  ) {
+    return NextResponse.redirect(new URL(homeForRole(role), request.url));
+  }
+
   return NextResponse.next();
 }
 
@@ -77,6 +94,8 @@ export const config = {
     "/montagem/:path*",
     "/perfil",
     "/perfil/:path*",
+    "/estoque",
+    "/estoque/:path*",
     "/login",
   ],
 };

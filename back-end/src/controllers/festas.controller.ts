@@ -4,6 +4,7 @@ import type { AuthenticatedRequest } from "../middlewares/auth";
 import {
   FestaNotFoundError,
   festasService,
+  InvalidStatusTransitionError,
 } from "../services/festas.service";
 
 function getParamId(value: string | string[] | undefined): string | null {
@@ -99,6 +100,24 @@ export class FestasController {
     }
   }
 
+  async updateStatus(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const id = getParamId(req.params.id);
+      if (!id) {
+        res.status(400).json({ error: "ID é obrigatório" });
+        return;
+      }
+      const festa = await festasService.updateStatus(id, req.body);
+      res.status(200).json(festa);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
   private handleError(error: unknown, res: Response, next: NextFunction) {
     if (error instanceof ZodError) {
       res.status(400).json({
@@ -110,6 +129,11 @@ export class FestasController {
 
     if (error instanceof FestaNotFoundError) {
       res.status(404).json({ error: error.message });
+      return;
+    }
+
+    if (error instanceof InvalidStatusTransitionError) {
+      res.status(409).json({ error: error.message });
       return;
     }
 

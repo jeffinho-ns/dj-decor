@@ -16,8 +16,12 @@ enum Role {
 
 enum StatusFesta {
   ORCAMENTO
+  AGUARDANDO_PAGAMENTO
+  PAGO
   FECHADO
+  EM_MONTAGEM
   CONCLUIDO
+  CANCELADO
 }
 
 enum TamanhoDecoracao {
@@ -27,13 +31,71 @@ enum TamanhoDecoracao {
   GG
 }
 
+enum StatusUnidade {
+  DISPONIVEL
+  RESERVADA
+  EM_USO
+  MANUTENCAO
+}
+
+enum StatusPagamento {
+  PENDENTE
+  CONFIRMADO
+  ESTORNADO
+}
+
+enum TipoPagamento {
+  PIX
+  DINHEIRO
+  CARTAO
+  OUTRO
+}
+
+enum StatusOS {
+  ABERTA
+  ROMANEIO
+  EM_TRANSITO
+  CHECKIN
+  FINALIZADA
+}
+
+enum TipoMidia {
+  REFERENCIA_FESTA
+  ITEM
+  COMPROVANTE_PIX
+  MONTAGEM_FINAL
+  CONTRATO
+}
+
+enum TipoMovimentacao {
+  SAIDA_GALPAO
+  ENTRADA_RETORNO
+}
+
+enum StatusComissao {
+  PENDENTE
+  PAGA
+  CANCELADA
+}
+
+enum StatusMensagemWhatsApp {
+  PENDENTE
+  ENVIADA
+  FALHA
+}
+
 model User {
   id     String  @id @default(cuid())
   nome   String  @unique
   email  String? @unique
   senha  String
   role   Role    @default(VENDEDOR)
-  festas Festa[]
+
+  festas           Festa[]
+  midiasUploaded   Midia[]            @relation("MidiaUploadedBy")
+  ordensServico    OrdemServico[]     @relation("OsMontador")
+  comissoes        Comissao[]
+  movimentacoesQr  MovimentacaoQr[]
 
   @@map("users")
 }
@@ -69,5 +131,208 @@ model Festa {
   vendedorId String @map("vendedor_id")
   vendedor   User   @relation(fields: [vendedorId], references: [id])
 
+  reservasEstoque   ReservaEstoque[]
+  pagamentos        Pagamento[]
+  comissoes         Comissao[]
+  ordemServico      OrdemServico?
+  midias            Midia[]
+  contrato          Contrato?
+  mensagensWhatsApp MensagemWhatsApp[]
+
   @@map("festas")
+}
+
+model Produto {
+  id           String   @id @default(cuid())
+  nome         String
+  categoria    String
+  valorAluguel Decimal  @map("valor_aluguel") @db.Decimal(10, 2)
+  tema         String?
+  requerQr     Boolean  @default(false) @map("requer_qr")
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("criado_em")
+
+  unidades UnidadeProduto[]
+
+  @@map("produtos")
+}
+
+model UnidadeProduto {
+  id       String        @id @default(cuid())
+  codigoQr String        @unique @map("codigo_qr")
+  etiqueta String?
+  status   StatusUnidade @default(DISPONIVEL)
+
+  produtoId String  @map("produto_id")
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  reservas      ReservaEstoque[]
+  itensRomaneio ItemRomaneio[]
+  movimentacoes MovimentacaoQr[]
+
+  @@index([produtoId, status])
+  @@map("unidades_produto")
+}
+
+model ReservaEstoque {
+  id       String   @id @default(cuid())
+  inicio   DateTime
+  fim      DateTime
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  festaId String @map("festa_id")
+  festa   Festa  @relation(fields: [festaId], references: [id], onDelete: Cascade)
+
+  unidadeId String         @map("unidade_id")
+  unidade   UnidadeProduto @relation(fields: [unidadeId], references: [id], onDelete: Restrict)
+
+  @@index([unidadeId, inicio, fim])
+  @@index([festaId])
+  @@map("reservas_estoque")
+}
+
+model Pagamento {
+  id           String          @id @default(cuid())
+  valor        Decimal         @db.Decimal(10, 2)
+  tipo         TipoPagamento   @default(PIX)
+  status       StatusPagamento @default(PENDENTE)
+  confirmadoEm DateTime?       @map("confirmado_em")
+  criadoEm     DateTime        @default(now()) @map("criado_em")
+
+  festaId String @map("festa_id")
+  festa   Festa  @relation(fields: [festaId], references: [id], onDelete: Cascade)
+
+  comprovanteMidiaId String? @unique @map("comprovante_midia_id")
+  comprovanteMidia   Midia?  @relation("PagamentoComprovante", fields: [comprovanteMidiaId], references: [id])
+
+  @@index([festaId])
+  @@map("pagamentos")
+}
+
+model Comissao {
+  id         String         @id @default(cuid())
+  percentual Decimal        @db.Decimal(5, 2)
+  valor      Decimal        @db.Decimal(10, 2)
+  status     StatusComissao @default(PENDENTE)
+  criadoEm   DateTime       @default(now()) @map("criado_em")
+
+  festaId String @map("festa_id")
+  festa   Festa  @relation(fields: [festaId], references: [id], onDelete: Cascade)
+
+  vendedorId String @map("vendedor_id")
+  vendedor   User   @relation(fields: [vendedorId], references: [id])
+
+  @@index([vendedorId])
+  @@index([festaId])
+  @@map("comissoes")
+}
+
+model OrdemServico {
+  id                String    @id @default(cuid())
+  status            StatusOS  @default(ABERTA)
+  checkinLat        Float?    @map("checkin_lat")
+  checkinLng        Float?    @map("checkin_lng")
+  checkinAt         DateTime? @map("checkin_at")
+  romaneioConcluido Boolean   @default(false) @map("romaneio_concluido")
+  criadoEm          DateTime  @default(now()) @map("criado_em")
+
+  festaId String @unique @map("festa_id")
+  festa   Festa  @relation(fields: [festaId], references: [id], onDelete: Cascade)
+
+  montadorId String? @map("montador_id")
+  montador   User?   @relation("OsMontador", fields: [montadorId], references: [id])
+
+  itensRomaneio   ItemRomaneio[]
+  movimentacoesQr MovimentacaoQr[]
+
+  @@map("ordens_servico")
+}
+
+model ItemRomaneio {
+  id         String  @id @default(cuid())
+  descricao  String?
+  carregado  Boolean @default(false)
+  conferido  Boolean @default(false)
+
+  osId String       @map("os_id")
+  os   OrdemServico @relation(fields: [osId], references: [id], onDelete: Cascade)
+
+  unidadeId String?         @map("unidade_id")
+  unidade   UnidadeProduto? @relation(fields: [unidadeId], references: [id])
+
+  @@index([osId])
+  @@map("itens_romaneio")
+}
+
+model Midia {
+  id        String    @id @default(cuid())
+  data      Bytes
+  mimeType  String    @map("mime_type")
+  tamanho   Int
+  tipo      TipoMidia
+  filename  String?
+  criadoEm  DateTime  @default(now()) @map("criado_em")
+
+  festaId String? @map("festa_id")
+  festa   Festa?  @relation(fields: [festaId], references: [id], onDelete: SetNull)
+
+  uploadedById String @map("uploaded_by_id")
+  uploadedBy   User   @relation("MidiaUploadedBy", fields: [uploadedById], references: [id])
+
+  pagamentoComprovante Pagamento? @relation("PagamentoComprovante")
+
+  @@index([festaId])
+  @@map("midias")
+}
+
+model MovimentacaoQr {
+  id       String           @id @default(cuid())
+  tipo     TipoMovimentacao
+  lat      Float?
+  lng      Float?
+  criadoEm DateTime         @default(now()) @map("criado_em")
+
+  unidadeId String         @map("unidade_id")
+  unidade   UnidadeProduto @relation(fields: [unidadeId], references: [id])
+
+  osId String?       @map("os_id")
+  os   OrdemServico? @relation(fields: [osId], references: [id], onDelete: SetNull)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([unidadeId])
+  @@index([osId])
+  @@map("movimentacoes_qr")
+}
+
+model Contrato {
+  id       String   @id @default(cuid())
+  pdfData  Bytes?   @map("pdf_data")
+  pdfUrl   String?  @map("pdf_url")
+  hash     String?
+  geradoEm DateTime @default(now()) @map("gerado_em")
+
+  festaId String @unique @map("festa_id")
+  festa   Festa  @relation(fields: [festaId], references: [id], onDelete: Cascade)
+
+  @@map("contratos")
+}
+
+model MensagemWhatsApp {
+  id         String                  @id @default(cuid())
+  template   String
+  telefone   String?
+  payload    Json?
+  providerId String?                 @map("provider_id")
+  status     StatusMensagemWhatsApp  @default(PENDENTE)
+  erro       String?
+  criadoEm   DateTime                @default(now()) @map("criado_em")
+  enviadoEm  DateTime?               @map("enviado_em")
+
+  festaId String? @map("festa_id")
+  festa   Festa?  @relation(fields: [festaId], references: [id], onDelete: SetNull)
+
+  @@index([festaId])
+  @@map("mensagens_whatsapp")
 }

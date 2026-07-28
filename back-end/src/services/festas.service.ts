@@ -47,9 +47,35 @@ const updateChecklistSchema = z.object({
   itensExtrasConcluidos: z.array(z.string().min(1)),
 });
 
+const updateStatusSchema = z.object({
+  status: z.nativeEnum(StatusFesta),
+});
+
 export type CreateFestaInput = z.infer<typeof createFestaSchema>;
 export type UpdateFestaInput = z.infer<typeof updateFestaSchema>;
 export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;
+export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
+
+/**
+ * Transições de status consideradas válidas no fluxo de negócio.
+ * Status terminais (CONCLUIDO, CANCELADO) não permitem mais transições.
+ */
+const STATUS_TRANSITIONS: Record<StatusFesta, StatusFesta[]> = {
+  [StatusFesta.ORCAMENTO]: [
+    StatusFesta.AGUARDANDO_PAGAMENTO,
+    StatusFesta.CANCELADO,
+  ],
+  [StatusFesta.AGUARDANDO_PAGAMENTO]: [
+    StatusFesta.PAGO,
+    StatusFesta.ORCAMENTO,
+    StatusFesta.CANCELADO,
+  ],
+  [StatusFesta.PAGO]: [StatusFesta.FECHADO, StatusFesta.CANCELADO],
+  [StatusFesta.FECHADO]: [StatusFesta.EM_MONTAGEM, StatusFesta.CANCELADO],
+  [StatusFesta.EM_MONTAGEM]: [StatusFesta.CONCLUIDO, StatusFesta.CANCELADO],
+  [StatusFesta.CONCLUIDO]: [],
+  [StatusFesta.CANCELADO]: [],
+};
 
 export class FestasService {
   async list() {
@@ -202,6 +228,29 @@ export class FestasService {
     });
   }
 
+  async updateStatus(id: string, rawInput: unknown) {
+    const data = updateStatusSchema.parse(rawInput);
+    const festa = await this.getById(id);
+
+    if (data.status !== festa.status) {
+      const permitidos = STATUS_TRANSITIONS[festa.status] ?? [];
+      if (!permitidos.includes(data.status)) {
+        throw new InvalidStatusTransitionError(festa.status, data.status);
+      }
+    }
+
+    return prisma.festa.update({
+      where: { id },
+      data: { status: data.status },
+      include: {
+        cliente: true,
+        vendedor: {
+          select: { id: true, nome: true, email: true, role: true },
+        },
+      },
+    });
+  }
+
   private async ensureVendedorExists(vendedorId: string) {
     const existing = await prisma.user.findUnique({ where: { id: vendedorId } });
 
@@ -229,6 +278,13 @@ export class FestaNotFoundError extends Error {
   constructor(id: string) {
     super(`Festa com id ${id} não encontrada`);
     this.name = "FestaNotFoundError";
+  }
+}
+
+export class InvalidStatusTransitionError extends Error {
+  constructor(from: StatusFesta, to: StatusFesta) {
+    super(`Transição de status inválida: ${from} -> ${to}`);
+    this.name = "InvalidStatusTransitionError";
   }
 }
 

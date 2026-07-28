@@ -19,14 +19,22 @@ import type { Festa, StatusFesta } from "@/types/festa";
 
 const statusLabel: Record<StatusFesta, string> = {
   ORCAMENTO: "Orçamento",
+  AGUARDANDO_PAGAMENTO: "Aguardando pagamento",
+  PAGO: "Pago",
   FECHADO: "Fechado",
+  EM_MONTAGEM: "Em montagem",
   CONCLUIDO: "Concluído",
+  CANCELADO: "Cancelado",
 };
 
 const statusBadge: Record<StatusFesta, string> = {
   ORCAMENTO: "bg-champagne/12 text-champagne",
+  AGUARDANDO_PAGAMENTO: "bg-amber-500/14 text-amber-300",
+  PAGO: "bg-emerald-500/14 text-emerald-300",
   FECHADO: "bg-status-closed/14 text-status-closed",
+  EM_MONTAGEM: "bg-sky-500/14 text-sky-300",
   CONCLUIDO: "bg-status-done/14 text-status-done",
+  CANCELADO: "bg-destructive/14 text-destructive",
 };
 
 function safeTime(value: string | null | undefined): string {

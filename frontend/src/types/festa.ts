@@ -1,7 +1,17 @@
 import type { User } from "./auth";
 
-export type StatusFesta = "ORCAMENTO" | "FECHADO" | "CONCLUIDO";
+export type StatusFesta =
+  | "ORCAMENTO"
+  | "AGUARDANDO_PAGAMENTO"
+  | "PAGO"
+  | "FECHADO"
+  | "EM_MONTAGEM"
+  | "CONCLUIDO"
+  | "CANCELADO";
 export type TamanhoDecoracao = "P" | "M" | "G" | "GG";
+
+export type TipoPagamento = "PIX" | "DINHEIRO" | "CARTAO" | "OUTRO";
+export type StatusPagamento = "PENDENTE" | "CONFIRMADO" | "ESTORNADO";
 
 export interface Cliente {
   id: string;
@@ -28,6 +38,26 @@ export interface Festa {
   vendedorId: string;
   cliente: Cliente;
   vendedor: User;
+}
+
+export interface Pagamento {
+  id: string;
+  valor: string | number;
+  tipo: TipoPagamento;
+  status: StatusPagamento;
+  confirmadoEm: string | null;
+  criadoEm: string;
+  festaId: string;
+  comprovanteMidiaId?: string | null;
+}
+
+export interface CreatePagamentoPayload {
+  valor: number;
+  tipo?: TipoPagamento;
+}
+
+export interface ConfirmarPagamentoPayload {
+  comprovanteMidiaId?: string | null;
 }
 
 export interface CreateFestaPayload {
