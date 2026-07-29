@@ -108,6 +108,32 @@ export class EstoqueController {
       next(error);
     }
   }
+
+  async inventario(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const inventario = await estoqueService.inventarioResumo();
+      res.status(200).json(inventario);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async sincronizarCatalogo(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await estoqueService.sincronizarCatalogo();
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const estoqueController = new EstoqueController();

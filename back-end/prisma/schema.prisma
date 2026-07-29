@@ -132,6 +132,8 @@ model Festa {
   pegueEMonte           Boolean           @default(false) @map("pegue_e_monte")
   observacoes           String?           @db.Text
   endereco              String
+  alertaCompraEstoque   Boolean           @default(false) @map("alerta_compra_estoque")
+  itensFaltaEstoque     String[]          @default([]) @map("itens_falta_estoque")
   criadoEm              DateTime          @default(now()) @map("criado_em")
 
   clienteId  String @map("cliente_id")

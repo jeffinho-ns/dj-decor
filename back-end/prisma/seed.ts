@@ -7,6 +7,7 @@ import {
   StatusUnidade,
   TamanhoDecoracao,
 } from "@prisma/client";
+import { INVENTARIO_CATALOGO } from "../src/catalog/inventario";
 
 const prisma = new PrismaClient();
 
@@ -34,42 +35,6 @@ const seedUsers: SeedUser[] = [
 ];
 
 const nomesEquipe = seedUsers.map((u) => u.nome);
-
-const seedProdutos = [
-  {
-    nome: "Mesa Provençal Branca",
-    categoria: "Móveis",
-    valorAluguel: 180,
-    tema: "Provençal",
-    requerQr: true,
-    unidades: [
-      { codigoQr: "DJ-MESA-001", etiqueta: "Mesa #1" },
-      { codigoQr: "DJ-MESA-002", etiqueta: "Mesa #2" },
-    ],
-  },
-  {
-    nome: "Cadeira Tiffany Dourada",
-    categoria: "Móveis",
-    valorAluguel: 25,
-    tema: null,
-    requerQr: true,
-    unidades: [
-      { codigoQr: "DJ-CAD-001", etiqueta: "Tiffany #1" },
-      { codigoQr: "DJ-CAD-002", etiqueta: "Tiffany #2" },
-    ],
-  },
-  {
-    nome: "Arco de Balões Premium",
-    categoria: "Decoração",
-    valorAluguel: 350,
-    tema: "Infantil",
-    requerQr: false,
-    unidades: [
-      { codigoQr: "DJ-ARCO-001", etiqueta: "Arco A" },
-      { codigoQr: "DJ-ARCO-002", etiqueta: "Arco B" },
-    ],
-  },
-] as const;
 
 async function seedUsuarios() {
   const senhaHash = await bcrypt.hash(SENHA_TEMPORARIA, SALT_ROUNDS);
@@ -106,55 +71,66 @@ async function seedUsuarios() {
 }
 
 async function seedCatalogoEstoque() {
-  for (const item of seedProdutos) {
-    const existente = await prisma.produto.findFirst({
+  for (const item of INVENTARIO_CATALOGO) {
+    let produto = await prisma.produto.findFirst({
       where: { nome: item.nome },
       include: { unidades: true },
     });
 
-    if (existente) {
-      for (const u of item.unidades) {
-        await prisma.unidadeProduto.upsert({
-          where: { codigoQr: u.codigoQr },
-          update: {
-            etiqueta: u.etiqueta,
-            produtoId: existente.id,
+    if (!produto) {
+      produto = await prisma.produto.create({
+        data: {
+          nome: item.nome,
+          categoria: item.categoria,
+          valorAluguel: item.valorAluguel,
+          requerQr: item.requerQr ?? false,
+          ativo: true,
+        },
+        include: { unidades: true },
+      });
+      console.log(`[seed] produto criado: ${produto.nome}`);
+    } else {
+      await prisma.produto.update({
+        where: { id: produto.id },
+        data: {
+          categoria: item.categoria,
+          valorAluguel: item.valorAluguel,
+          requerQr: item.requerQr ?? produto.requerQr,
+          ativo: true,
+        },
+      });
+    }
+
+    const faltam = Math.max(0, item.quantidadePadrao - produto.unidades.length);
+    for (let i = 0; i < faltam; i++) {
+      const seq = produto.unidades.length + i + 1;
+      const codigoQr = `DJ-${item.chave.toUpperCase()}-${String(seq).padStart(3, "0")}`;
+      try {
+        await prisma.unidadeProduto.create({
+          data: {
+            produtoId: produto.id,
+            codigoQr,
+            etiqueta: `${item.nome} #${seq}`,
             status: StatusUnidade.DISPONIVEL,
           },
-          create: {
-            codigoQr: u.codigoQr,
-            etiqueta: u.etiqueta,
-            produtoId: existente.id,
+        });
+      } catch {
+        await prisma.unidadeProduto.create({
+          data: {
+            produtoId: produto.id,
+            codigoQr: `${codigoQr}-${Date.now().toString(36)}`,
+            etiqueta: `${item.nome} #${seq}`,
             status: StatusUnidade.DISPONIVEL,
           },
         });
       }
-      console.log(`[seed] produto atualizado: ${existente.nome} (${existente.id})`);
-      continue;
     }
 
-    const produto = await prisma.produto.create({
-      data: {
-        nome: item.nome,
-        categoria: item.categoria,
-        valorAluguel: item.valorAluguel,
-        tema: item.tema,
-        requerQr: item.requerQr,
-        ativo: true,
-        unidades: {
-          create: item.unidades.map((u) => ({
-            codigoQr: u.codigoQr,
-            etiqueta: u.etiqueta,
-            status: StatusUnidade.DISPONIVEL,
-          })),
-        },
-      },
-      include: { unidades: true },
-    });
-
-    console.log(
-      `[seed] produto criado: ${produto.nome} com ${produto.unidades.length} unidade(s)`
-    );
+    if (faltam > 0) {
+      console.log(
+        `[seed] ${item.nome}: +${faltam} unidade(s) (meta ${item.quantidadePadrao})`
+      );
+    }
   }
 }
 

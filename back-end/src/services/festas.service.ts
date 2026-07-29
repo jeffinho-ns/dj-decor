@@ -1,6 +1,7 @@
 import { StatusFesta, TamanhoDecoracao } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
+import { estoqueService } from "./estoque.service";
 import { osService } from "./os.service";
 import { riscoService } from "./risco.service";
 
@@ -134,6 +135,23 @@ export class FestasService {
       },
     });
 
+    const avaliacao = await estoqueService.avaliarItensFesta({
+      itensExtras: data.itensExtras,
+      inicio: data.horarioMontagem,
+      fim: data.dataEvento,
+    });
+
+    const observacaoEstoque = avaliacao.alertaCompraEstoque
+      ? `[COMPRAR] Itens sem estoque suficiente: ${avaliacao.itensFaltaEstoque.join("; ")}`
+      : null;
+    const observacoesBase = data.observacoes?.trim()
+      ? data.observacoes.trim()
+      : null;
+    const observacoes =
+      observacaoEstoque && observacoesBase
+        ? `${observacoesBase}\n\n${observacaoEstoque}`
+        : observacaoEstoque ?? observacoesBase;
+
     return prisma.festa.create({
       data: {
         dataEvento: data.dataEvento,
@@ -145,10 +163,12 @@ export class FestasService {
         itensExtras: data.itensExtras,
         kitCatalogo: data.kitCatalogo ?? null,
         pegueEMonte: data.pegueEMonte,
-        observacoes: data.observacoes?.trim() ? data.observacoes.trim() : null,
+        observacoes,
         endereco: data.endereco,
         clienteId: cliente.id,
         vendedorId,
+        alertaCompraEstoque: avaliacao.alertaCompraEstoque,
+        itensFaltaEstoque: avaliacao.itensFaltaEstoque,
       },
       include: {
         cliente: true,
@@ -252,9 +272,50 @@ export class FestasService {
       }
     }
 
+    const statusReavaliacao: StatusFesta[] = [
+      StatusFesta.AGUARDANDO_PAGAMENTO,
+      StatusFesta.PAGO,
+      StatusFesta.FECHADO,
+      StatusFesta.EM_MONTAGEM,
+    ];
+    const deveReavaliar = statusReavaliacao.includes(data.status);
+
+    let alertaCompraEstoque = festa.alertaCompraEstoque;
+    let itensFaltaEstoque = festa.itensFaltaEstoque;
+    let observacoes = festa.observacoes;
+
+    if (deveReavaliar) {
+      const avaliacao = await estoqueService.avaliarItensFesta({
+        itensExtras: festa.itensExtras,
+        inicio: festa.horarioMontagem,
+        fim: festa.dataEvento,
+      });
+      alertaCompraEstoque = avaliacao.alertaCompraEstoque;
+      itensFaltaEstoque = avaliacao.itensFaltaEstoque;
+
+      const marcador = "[COMPRAR]";
+      const semMarcador = (festa.observacoes ?? "")
+        .split(/\n\n/)
+        .filter((bloco) => !bloco.trim().startsWith(marcador))
+        .join("\n\n")
+        .trim();
+      const blocoCompra = avaliacao.alertaCompraEstoque
+        ? `${marcador} Itens sem estoque suficiente: ${avaliacao.itensFaltaEstoque.join("; ")}`
+        : null;
+      observacoes =
+        blocoCompra && semMarcador
+          ? `${semMarcador}\n\n${blocoCompra}`
+          : blocoCompra ?? (semMarcador || null);
+    }
+
     const updated = await prisma.festa.update({
       where: { id },
-      data: { status: data.status },
+      data: {
+        status: data.status,
+        alertaCompraEstoque,
+        itensFaltaEstoque,
+        observacoes,
+      },
       include: {
         cliente: true,
         vendedor: {

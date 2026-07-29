@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DescontoBadge } from "@/components/vendas/desconto-badge";
+import { CompraEstoqueBadge } from "@/components/vendas/compra-estoque-badge";
 import { FestaContratoPanel } from "@/components/vendas/festa-contrato-panel";
 import { PagamentoForm } from "@/components/vendas/pagamento-form";
 import { RiscoBadge } from "@/components/vendas/risco-badge";
@@ -135,6 +136,10 @@ function FestaCard({
             <DescontoBadge
               status={festa.descontoStatus}
               percentual={festa.descontoPercentual}
+            />
+            <CompraEstoqueBadge
+              alerta={festa.alertaCompraEstoque}
+              itensFalta={festa.itensFaltaEstoque}
             />
             <RiscoBadge risco={festa.risco} />
             <ChevronDown

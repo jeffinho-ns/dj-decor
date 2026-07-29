@@ -37,4 +37,16 @@ estoqueRoutes.get(
   (req, res, next) => estoqueController.listByFesta(req, res, next)
 );
 
+estoqueRoutes.get(
+  "/inventario",
+  requireRoles(Role.ADMIN, Role.GERENTE, Role.VENDEDOR),
+  (req, res, next) => estoqueController.inventario(req, res, next)
+);
+
+estoqueRoutes.post(
+  "/sincronizar-catalogo",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => estoqueController.sincronizarCatalogo(req, res, next)
+);
+
 export { estoqueRoutes };

@@ -97,3 +97,24 @@ export interface ReservaEstoque {
     horarioMontagem: string;
   };
 }
+
+export interface InventarioItem {
+  id: string;
+  nome: string;
+  categoria: string;
+  valorAluguel: string | number;
+  requerQr: boolean;
+  total: number;
+  disponivel: number;
+  reservada: number;
+  emUso: number;
+  manutencao: number;
+  unidades: UnidadeProduto[];
+}
+
+export interface SincronizarCatalogoResult {
+  criados: string[];
+  atualizados: string[];
+  totalProdutos: number;
+  inventario: InventarioItem[];
+}

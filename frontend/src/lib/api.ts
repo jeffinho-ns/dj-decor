@@ -9,10 +9,12 @@ import type {
   CreateProdutoPayload,
   CreateUnidadePayload,
   DisponibilidadeResult,
+  InventarioItem,
   Produto,
   ProdutoSugestao,
   ReservaEstoque,
   ReservarEstoquePayload,
+  SincronizarCatalogoResult,
   UnidadeProduto,
 } from "@/types/estoque";
 import type {
@@ -334,6 +336,29 @@ export async function disponibilidadeEstoque(
     }
   );
   return handleResponse<DisponibilidadeResult>(response);
+}
+
+export async function listInventario(
+  token: string
+): Promise<InventarioItem[]> {
+  const response = await fetch(`${getBaseUrl()}/api/estoque/inventario`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<InventarioItem[]>(response);
+}
+
+export async function sincronizarCatalogoEstoque(
+  token: string
+): Promise<SincronizarCatalogoResult> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/estoque/sincronizar-catalogo`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+    }
+  );
+  return handleResponse<SincronizarCatalogoResult>(response);
 }
 
 export async function reservarEstoque(

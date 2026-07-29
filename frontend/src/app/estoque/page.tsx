@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 
 import { EstoquePainel } from "@/components/estoque/estoque-painel";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { listAlertasQr, listProdutos } from "@/lib/api";
+import { listAlertasQr, listInventario, listProdutos } from "@/lib/api";
 import { requireSession } from "@/lib/session";
-import type { AlertaQr, Produto } from "@/types/estoque";
+import type { AlertaQr, InventarioItem, Produto } from "@/types/estoque";
 
 export const dynamic = "force-dynamic";
 
@@ -21,13 +21,18 @@ export default async function EstoquePage() {
   }
 
   let produtos: Produto[] = [];
+  let inventario: InventarioItem[] = [];
   let alertasQr: AlertaQr[] = [];
   let error: string | null = null;
   try {
-    [produtos, alertasQr] = await Promise.all([
+    const results = await Promise.all([
       listProdutos(token),
-      listAlertasQr(token),
+      listInventario(token).catch(() => [] as InventarioItem[]),
+      listAlertasQr(token).catch(() => [] as AlertaQr[]),
     ]);
+    produtos = results[0];
+    inventario = results[1];
+    alertasQr = results[2];
   } catch (err) {
     error =
       err instanceof Error ? err.message : "Falha ao carregar estoque da API";
@@ -37,7 +42,7 @@ export default async function EstoquePage() {
     <DashboardShell
       user={user}
       title="Estoque"
-      description="Catálogo de produtos e consulta de disponibilidade sem overbooking."
+      description="Inventário completo dos itens de festa — conte o que tem e marque o que precisa comprar."
     >
       {error ? (
         <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
@@ -46,7 +51,11 @@ export default async function EstoquePage() {
         </div>
       ) : null}
 
-      <EstoquePainel produtos={produtos} alertasQr={alertasQr} />
+      <EstoquePainel
+        produtos={produtos}
+        inventario={inventario}
+        alertasQr={alertasQr}
+      />
     </DashboardShell>
   );
 }

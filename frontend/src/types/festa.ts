@@ -50,6 +50,8 @@ export interface Festa {
   risco?: RiscoOrcamento;
   descontoPercentual?: string | number | null;
   descontoStatus?: StatusDesconto;
+  alertaCompraEstoque?: boolean;
+  itensFaltaEstoque?: string[];
 }
 
 export interface Pagamento {

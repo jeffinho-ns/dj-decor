@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { AlertTriangle, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, PackagePlus, RefreshCw, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,10 +15,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { disponibilidadeEstoque } from "@/lib/api";
+import {
+  createUnidade,
+  disponibilidadeEstoque,
+  sincronizarCatalogoEstoque,
+} from "@/lib/api";
 import { getClientToken } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import type { AlertaQr, DisponibilidadeResult, Produto } from "@/types/estoque";
+import type {
+  AlertaQr,
+  DisponibilidadeResult,
+  InventarioItem,
+  Produto,
+} from "@/types/estoque";
 
 const STATUS_LABEL: Record<string, string> = {
   DISPONIVEL: "Disponível",
@@ -35,6 +45,7 @@ const STATUS_CLASS: Record<string, string> = {
 
 interface EstoquePainelProps {
   produtos: Produto[];
+  inventario: InventarioItem[];
   alertasQr?: AlertaQr[];
 }
 
@@ -58,60 +69,29 @@ function SectionTitle({
   );
 }
 
-function ProdutoCardMobile({ produto }: { produto: Produto }) {
-  return (
-    <article className="rounded-2xl p-4 neo-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-medium text-foreground">{produto.nome}</p>
-          <p className="text-sm text-muted-foreground">{produto.categoria}</p>
-        </div>
-        <p className="shrink-0 text-sm tabular-nums text-balloon-pink">
-          {Number(produto.valorAluguel).toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          })}
-        </p>
-      </div>
-
-      <div className="mt-3 space-y-2">
-        <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-          Unidades
-        </p>
-        <ul className="space-y-2">
-          {produto.unidades.map((u) => (
-            <li
-              key={u.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm neo-inset"
-            >
-              <span className="font-medium text-foreground">
-                {u.etiqueta || u.codigoQr}
-              </span>
-              <span
-                className={cn(
-                  "rounded-lg px-2 py-0.5 text-xs",
-                  STATUS_CLASS[u.status] ??
-                    "bg-balloon-sky/12 text-balloon-sky"
-                )}
-              >
-                {STATUS_LABEL[u.status] ?? u.status}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <p className="mt-3 text-xs text-muted-foreground">
-        QR obrigatório:{" "}
-        <span className="font-medium text-foreground">
-          {produto.requerQr ? "Sim" : "Não"}
-        </span>
-      </p>
-    </article>
-  );
+function toInventarioFromProdutos(produtos: Produto[]): InventarioItem[] {
+  return produtos.map((produto) => ({
+    id: produto.id,
+    nome: produto.nome,
+    categoria: produto.categoria,
+    valorAluguel: produto.valorAluguel,
+    requerQr: produto.requerQr,
+    total: produto.unidades.length,
+    disponivel: produto.unidades.filter((u) => u.status === "DISPONIVEL").length,
+    reservada: produto.unidades.filter((u) => u.status === "RESERVADA").length,
+    emUso: produto.unidades.filter((u) => u.status === "EM_USO").length,
+    manutencao: produto.unidades.filter((u) => u.status === "MANUTENCAO")
+      .length,
+    unidades: produto.unidades,
+  }));
 }
 
-export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) {
+export function EstoquePainel({
+  produtos,
+  inventario: inventarioInicial,
+  alertasQr = [],
+}: EstoquePainelProps) {
+  const router = useRouter();
   const defaultInicio = useMemo(() => {
     const d = new Date();
     d.setMinutes(0, 0, 0);
@@ -124,26 +104,44 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
     return toLocalInputValue(d);
   }, []);
 
-  const [produtoId, setProdutoId] = useState(produtos[0]?.id ?? "");
+  const [inventario, setInventario] = useState<InventarioItem[]>(
+    inventarioInicial.length > 0
+      ? inventarioInicial
+      : toInventarioFromProdutos(produtos)
+  );
+  const [produtoId, setProdutoId] = useState(
+    inventarioInicial[0]?.id ?? produtos[0]?.id ?? ""
+  );
   const [inicio, setInicio] = useState(defaultInicio);
   const [fim, setFim] = useState(defaultFim);
   const [resultado, setResultado] = useState<DisponibilidadeResult | null>(
     null
   );
   const [error, setError] = useState<string | null>(null);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [syncing, startSync] = useTransition();
+  const [addingUnitId, setAddingUnitId] = useState<string | null>(null);
+
+  const totais = useMemo(() => {
+    return inventario.reduce(
+      (acc, item) => {
+        acc.total += item.total;
+        acc.disponivel += item.disponivel;
+        acc.reservada += item.reservada;
+        return acc;
+      },
+      { total: 0, disponivel: 0, reservada: 0 }
+    );
+  }, [inventario]);
 
   function consultar() {
     setError(null);
     startTransition(async () => {
       try {
         const token = getClientToken();
-        if (!token) {
-          throw new Error("Sessão expirada. Faça login novamente.");
-        }
-        if (!produtoId) {
-          throw new Error("Selecione um produto");
-        }
+        if (!token) throw new Error("Sessão expirada. Faça login novamente.");
+        if (!produtoId) throw new Error("Selecione um produto");
         const data = await disponibilidadeEstoque(
           {
             produtoId,
@@ -156,8 +154,79 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
       } catch (err) {
         setResultado(null);
         setError(
-          err instanceof Error ? err.message : "Falha ao consultar disponibilidade"
+          err instanceof Error
+            ? err.message
+            : "Falha ao consultar disponibilidade"
         );
+      }
+    });
+  }
+
+  function sincronizar() {
+    setSyncMsg(null);
+    setError(null);
+    startSync(async () => {
+      try {
+        const token = getClientToken();
+        if (!token) throw new Error("Sessão expirada. Faça login novamente.");
+        const result = await sincronizarCatalogoEstoque(token);
+        setInventario(result.inventario);
+        if (!produtoId && result.inventario[0]) {
+          setProdutoId(result.inventario[0].id);
+        }
+        setSyncMsg(
+          `Inventário sincronizado: ${result.totalProdutos} produtos` +
+            (result.criados.length
+              ? ` · ${result.criados.length} novos`
+              : "")
+        );
+        router.refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Falha ao sincronizar catálogo de inventário"
+        );
+      }
+    });
+  }
+
+  function adicionarUnidade(item: InventarioItem) {
+    setAddingUnitId(item.id);
+    setError(null);
+    startTransition(async () => {
+      try {
+        const token = getClientToken();
+        if (!token) throw new Error("Sessão expirada. Faça login novamente.");
+        const seq = item.total + 1;
+        const codigoQr = `DJ-MANUAL-${item.id.slice(-6).toUpperCase()}-${String(seq).padStart(3, "0")}-${Date.now().toString(36)}`;
+        await createUnidade(
+          item.id,
+          {
+            codigoQr,
+            etiqueta: `${item.nome} #${seq}`,
+            status: "DISPONIVEL",
+          },
+          token
+        );
+        setInventario((prev) =>
+          prev.map((row) =>
+            row.id === item.id
+              ? {
+                  ...row,
+                  total: row.total + 1,
+                  disponivel: row.disponivel + 1,
+                }
+              : row
+          )
+        );
+        router.refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Falha ao adicionar unidade"
+        );
+      } finally {
+        setAddingUnitId(null);
       }
     });
   }
@@ -171,15 +240,12 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
             <p className="text-sm font-medium text-foreground">
               {alertasQr.length} alerta{alertasQr.length === 1 ? "" : "s"} QR
             </p>
-            <span className="rounded-full bg-balloon-sun/20 px-2 py-0.5 text-xs tabular-nums text-balloon-sun">
-              peças sem retorno
-            </span>
           </div>
           <ul className="mt-3 space-y-2">
             {alertasQr.slice(0, 5).map((a) => (
               <li
                 key={a.unidade.id}
-                className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-foreground/90"
+                className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
               >
                 <span>
                   <span className="font-medium">{a.produto.nome}</span>
@@ -187,42 +253,115 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
                   <span className="font-mono text-xs">{a.codigoQr}</span>
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  saída{" "}
-                  {new Date(a.saidaEm).toLocaleString("pt-BR", {
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })}
-                  {a.festaTema ? ` · ${a.festaTema}` : ""}
+                  {a.festaTema ?? "sem festa"}
                 </span>
               </li>
             ))}
           </ul>
-          {alertasQr.length > 5 ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              +{alertasQr.length - 5} outros alertas
-            </p>
-          ) : null}
         </section>
       ) : null}
 
       <section className="space-y-4">
-        <div>
-          <SectionTitle dot="bg-balloon-pink">Catálogo</SectionTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Produtos e unidades físicas com código QR.
-          </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <SectionTitle dot="bg-balloon-pink">Inventário</SectionTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Contagem de peças para fechar festa e comprar com antecedência o
+              que faltar.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={sincronizar}
+            disabled={syncing}
+            className="gap-1.5"
+          >
+            <RefreshCw
+              className={cn("size-4", syncing && "animate-spin")}
+            />
+            {syncing ? "Sincronizando…" : "Sincronizar catálogo"}
+          </Button>
         </div>
 
-        {produtos.length === 0 ? (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl neo-sm p-4">
+            <p className="section-label text-muted-foreground">Produtos</p>
+            <p className="mt-1 font-display text-2xl text-balloon-pink">
+              {inventario.length}
+            </p>
+          </div>
+          <div className="rounded-2xl neo-sm p-4">
+            <p className="section-label text-muted-foreground">Unidades</p>
+            <p className="mt-1 font-display text-2xl text-balloon-sky">
+              {totais.total}
+            </p>
+          </div>
+          <div className="rounded-2xl neo-sm p-4">
+            <p className="section-label text-muted-foreground">Disponíveis</p>
+            <p className="mt-1 font-display text-2xl text-balloon-mint">
+              {totais.disponivel}
+              <span className="ml-2 text-sm text-muted-foreground">
+                · {totais.reservada} reservadas
+              </span>
+            </p>
+          </div>
+        </div>
+
+        {syncMsg ? (
+          <p className="rounded-2xl neo-mint px-4 py-3 text-sm">{syncMsg}</p>
+        ) : null}
+
+        {inventario.length === 0 ? (
           <p className="rounded-2xl px-4 py-6 text-sm text-muted-foreground neo-sm">
-            Nenhum produto cadastrado. Rode o seed da API ou cadastre via{" "}
-            <code className="text-balloon-sky">POST /api/produtos</code>.
+            Inventário vazio. Clique em <strong>Sincronizar catálogo</strong>{" "}
+            para carregar os itens dos kits e add-ons.
           </p>
         ) : (
           <>
             <div className="space-y-3 md:hidden">
-              {produtos.map((p) => (
-                <ProdutoCardMobile key={p.id} produto={p} />
+              {inventario.map((item) => (
+                <article key={item.id} className="rounded-2xl p-4 neo-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{item.nome}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.categoria}
+                      </p>
+                    </div>
+                    <p className="text-sm tabular-nums text-balloon-pink">
+                      {Number(item.valorAluguel).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </p>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-lg chip-mint px-2 py-1">
+                      {item.disponivel} disp.
+                    </span>
+                    <span className="rounded-lg chip-sky px-2 py-1">
+                      {item.reservada} res.
+                    </span>
+                    <span className="rounded-lg chip-lilac px-2 py-1">
+                      {item.emUso} uso
+                    </span>
+                    <span className="rounded-lg neo-inset px-2 py-1">
+                      total {item.total}
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-3 gap-1.5"
+                    disabled={addingUnitId === item.id}
+                    onClick={() => adicionarUnidade(item)}
+                  >
+                    <PackagePlus className="size-3.5" />
+                    +1 unidade
+                  </Button>
+                </article>
               ))}
             </div>
 
@@ -230,46 +369,42 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Produto</TableHead>
+                    <TableHead>Item</TableHead>
                     <TableHead>Categoria</TableHead>
-                    <TableHead>Aluguel</TableHead>
-                    <TableHead>Unidades</TableHead>
-                    <TableHead>QR</TableHead>
+                    <TableHead>Disponível</TableHead>
+                    <TableHead>Reservada</TableHead>
+                    <TableHead>Em uso</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {produtos.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.nome}</TableCell>
-                      <TableCell>{p.categoria}</TableCell>
-                      <TableCell className="text-balloon-pink">
-                        {Number(p.valorAluguel).toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}
+                  {inventario.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.nome}</TableCell>
+                      <TableCell>{item.categoria}</TableCell>
+                      <TableCell className="text-balloon-mint">
+                        {item.disponivel}
                       </TableCell>
-                      <TableCell>
-                        <ul className="space-y-1 text-xs text-muted-foreground">
-                          {p.unidades.map((u) => (
-                            <li key={u.id} className="flex flex-wrap gap-2">
-                              <span className="text-foreground">
-                                {u.etiqueta || u.codigoQr}
-                              </span>
-                              <span
-                                className={cn(
-                                  "rounded-lg px-1.5 py-0.5",
-                                  STATUS_CLASS[u.status] ??
-                                    "bg-balloon-sky/12 text-balloon-sky"
-                                )}
-                              >
-                                {STATUS_LABEL[u.status] ?? u.status}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
+                      <TableCell className="text-balloon-sky">
+                        {item.reservada}
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {p.requerQr ? "Sim" : "Não"}
+                      <TableCell className="text-balloon-lilac">
+                        {item.emUso}
+                      </TableCell>
+                      <TableCell>{item.total}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="outline"
+                          className="gap-1"
+                          disabled={addingUnitId === item.id}
+                          onClick={() => adicionarUnidade(item)}
+                        >
+                          <PackagePlus className="size-3" />
+                          +1
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -284,7 +419,7 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
         <div>
           <SectionTitle dot="bg-balloon-sky">Disponibilidade</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            Consulta anti-overbooking por janela de datas (montagem → retorno + cura).
+            Consulta anti-overbooking por período (montagem → retorno + cura).
           </p>
         </div>
 
@@ -297,7 +432,7 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
               onChange={(e) => setProdutoId(e.target.value)}
               className="flex h-11 w-full rounded-2xl border-0 bg-[var(--neo-bg)] px-3 text-base shadow-[var(--shadow-neo-inset)] outline-none focus-visible:ring-3 focus-visible:ring-balloon-sky/30 md:h-9 md:text-sm"
             >
-              {produtos.map((p) => (
+              {inventario.map((p) => (
                 <option key={p.id} value={p.id} className="bg-background">
                   {p.nome}
                 </option>
@@ -355,20 +490,29 @@ export function EstoquePainel({ produtos, alertasQr = [] }: EstoquePainelProps) 
             </p>
             {resultado.unidades.length === 0 ? (
               <p className="mt-3 text-sm text-muted-foreground">
-                Nenhuma unidade disponível. Reserva seria bloqueada (409).
+                Sem estoque livre — a festa ainda pode ser fechada, com bandeira
+                de compra antecipada.
               </p>
             ) : (
               <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {resultado.unidades.map((u) => (
                   <li
                     key={u.id}
-                    className="rounded-xl px-3 py-2.5 text-sm neo-inset md:py-2"
+                    className="rounded-xl px-3 py-2.5 text-sm neo-inset"
                   >
                     <span className="font-medium">
                       {u.etiqueta || u.codigoQr}
                     </span>
                     <span className="ml-2 font-mono text-xs text-muted-foreground">
                       {u.codigoQr}
+                    </span>
+                    <span
+                      className={cn(
+                        "ml-2 rounded-lg px-1.5 py-0.5 text-[10px]",
+                        STATUS_CLASS[u.status]
+                      )}
+                    >
+                      {STATUS_LABEL[u.status] ?? u.status}
                     </span>
                   </li>
                 ))}

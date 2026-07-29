@@ -6,6 +6,11 @@ import {
   type ReservaEstoque,
 } from "@prisma/client";
 import { z } from "zod";
+import {
+  consolidarNecessidades,
+  INVENTARIO_CATALOGO,
+  normalizarTexto,
+} from "../catalog/inventario";
 import { env } from "../config/env";
 import { prisma } from "../prisma/client";
 
@@ -411,6 +416,213 @@ export class EstoqueService {
     return alertas.sort(
       (a, b) => a.saidaEm.getTime() - b.saidaEm.getTime()
     );
+  }
+
+  /**
+   * Avalia se os itensExtras da festa cabem no estoque no período.
+   * Não bloqueia a venda — apenas lista faltas para compra antecipada.
+   */
+  async avaliarItensFesta(params: {
+    itensExtras: string[];
+    inicio: Date;
+    fim: Date;
+  }): Promise<{
+    alertaCompraEstoque: boolean;
+    itensFaltaEstoque: string[];
+    detalhes: Array<{
+      nome: string;
+      necessario: number;
+      disponivel: number;
+      falta: number;
+    }>;
+  }> {
+    const necessidades = consolidarNecessidades(params.itensExtras);
+    if (necessidades.length === 0) {
+      return { alertaCompraEstoque: false, itensFaltaEstoque: [], detalhes: [] };
+    }
+
+    const produtos = await prisma.produto.findMany({
+      where: { ativo: true },
+      include: {
+        unidades: {
+          where: { status: { not: StatusUnidade.MANUTENCAO } },
+        },
+      },
+    });
+
+    const overlapping = await prisma.reservaEstoque.findMany({
+      where: {
+        inicio: { lt: params.fim },
+        fim: { gt: inicioMenosCura(params.inicio) },
+      },
+      select: { unidadeId: true },
+    });
+    const ocupadas = new Set(overlapping.map((r) => r.unidadeId));
+
+    const detalhes: Array<{
+      nome: string;
+      necessario: number;
+      disponivel: number;
+      falta: number;
+    }> = [];
+    const itensFaltaEstoque: string[] = [];
+
+    for (const necessidade of necessidades) {
+      const def = INVENTARIO_CATALOGO.find((d) => d.chave === necessidade.chave);
+      const produto =
+        produtos.find(
+          (p) => normalizarTexto(p.nome) === normalizarTexto(necessidade.nome)
+        ) ??
+        produtos.find((p) => {
+          if (!def) return false;
+          const aliases = [normalizarTexto(def.nome), ...def.aliases.map(normalizarTexto)];
+          const pn = normalizarTexto(p.nome);
+          return aliases.some((a) => pn === a || pn.includes(a) || a.includes(pn));
+        });
+
+      const disponivel = produto
+        ? produto.unidades.filter((u) => !ocupadas.has(u.id)).length
+        : 0;
+      const falta = Math.max(0, necessidade.quantidade - disponivel);
+
+      detalhes.push({
+        nome: necessidade.nome,
+        necessario: necessidade.quantidade,
+        disponivel,
+        falta,
+      });
+
+      if (falta > 0) {
+        itensFaltaEstoque.push(
+          `${necessidade.nome} (faltam ${falta} · precisa ${necessidade.quantidade}, tem ${disponivel})`
+        );
+      }
+    }
+
+    return {
+      alertaCompraEstoque: itensFaltaEstoque.length > 0,
+      itensFaltaEstoque,
+      detalhes,
+    };
+  }
+
+  /** Resumo do inventário para a tela de estoque. */
+  async inventarioResumo() {
+    const produtos = await prisma.produto.findMany({
+      where: { ativo: true },
+      include: { unidades: true },
+      orderBy: [{ categoria: "asc" }, { nome: "asc" }],
+    });
+
+    return produtos.map((produto) => {
+      const total = produto.unidades.length;
+      const disponivel = produto.unidades.filter(
+        (u) => u.status === StatusUnidade.DISPONIVEL
+      ).length;
+      const reservada = produto.unidades.filter(
+        (u) => u.status === StatusUnidade.RESERVADA
+      ).length;
+      const emUso = produto.unidades.filter(
+        (u) => u.status === StatusUnidade.EM_USO
+      ).length;
+      const manutencao = produto.unidades.filter(
+        (u) => u.status === StatusUnidade.MANUTENCAO
+      ).length;
+
+      return {
+        id: produto.id,
+        nome: produto.nome,
+        categoria: produto.categoria,
+        valorAluguel: produto.valorAluguel,
+        requerQr: produto.requerQr,
+        total,
+        disponivel,
+        reservada,
+        emUso,
+        manutencao,
+        unidades: produto.unidades,
+      };
+    });
+  }
+
+  /**
+   * Upsert dos produtos do catálogo comercial e completa unidades até a qtd padrão.
+   */
+  async sincronizarCatalogo() {
+    const criados: string[] = [];
+    const atualizados: string[] = [];
+
+    for (const item of INVENTARIO_CATALOGO) {
+      let produto = await prisma.produto.findFirst({
+        where: { nome: item.nome },
+        include: { unidades: true },
+      });
+
+      if (!produto) {
+        produto = await prisma.produto.create({
+          data: {
+            nome: item.nome,
+            categoria: item.categoria,
+            valorAluguel: item.valorAluguel,
+            requerQr: item.requerQr ?? false,
+            ativo: true,
+          },
+          include: { unidades: true },
+        });
+        criados.push(item.nome);
+      } else {
+        await prisma.produto.update({
+          where: { id: produto.id },
+          data: {
+            categoria: item.categoria,
+            valorAluguel: item.valorAluguel,
+            requerQr: item.requerQr ?? produto.requerQr,
+            ativo: true,
+          },
+        });
+        atualizados.push(item.nome);
+      }
+
+      const faltam = Math.max(0, item.quantidadePadrao - produto.unidades.length);
+      for (let i = 0; i < faltam; i++) {
+        const seq = produto.unidades.length + i + 1;
+        const codigoQr = `DJ-${item.chave.toUpperCase()}-${String(seq).padStart(3, "0")}`;
+        try {
+          await prisma.unidadeProduto.create({
+            data: {
+              produtoId: produto.id,
+              codigoQr,
+              etiqueta: `${item.nome} #${seq}`,
+              status: StatusUnidade.DISPONIVEL,
+            },
+          });
+        } catch (error) {
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
+          ) {
+            await prisma.unidadeProduto.create({
+              data: {
+                produtoId: produto.id,
+                codigoQr: `${codigoQr}-${Date.now().toString(36)}`,
+                etiqueta: `${item.nome} #${seq}`,
+                status: StatusUnidade.DISPONIVEL,
+              },
+            });
+          } else {
+            throw error;
+          }
+        }
+      }
+    }
+
+    const inventario = await this.inventarioResumo();
+    return {
+      criados,
+      atualizados,
+      totalProdutos: inventario.length,
+      inventario,
+    };
   }
 }
 
