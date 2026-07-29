@@ -14,9 +14,12 @@ import { Separator } from "@/components/ui/separator";
 import { createFesta, sugestoesProdutos } from "@/lib/api";
 import {
   CATALOGO_ADDONS,
+  CATALOGO_EXTRAS_METROS,
   CATALOGO_KITS,
   calcularOrcamento,
+  filtrarAddonsParaKit,
   getCatalogoKit,
+  kitAceitaExtrasMetros,
   montarTextoOrcamento,
   type CatalogoKitId,
 } from "@/lib/catalogo-kits";
@@ -222,6 +225,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
   function selecionarKit(id: CatalogoKitId | "") {
     setKitId(id);
     setValorManual(false);
+    setAddonIds((prev) => filtrarAddonsParaKit(prev, id || null));
     if (!id) {
       setPegueEMonte(false);
       return;
@@ -519,6 +523,49 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
             })}
           </div>
         </div>
+
+        {kitAceitaExtrasMetros(kitId) ? (
+          <>
+            <Separator className="bg-border/60" />
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-balloon-lilac">
+                  Decoração extra (4m e 6m)
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Cantinhos de lembrancinha temáticos para decorações de metros.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {CATALOGO_EXTRAS_METROS.map((addon) => {
+                  const checked = addonIds.includes(addon.id);
+                  return (
+                    <label
+                      key={addon.id}
+                      className={cn(
+                        "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm transition-all md:min-h-0 md:px-3 md:py-2.5",
+                        checked ? "neo-lilac" : "neo-sm"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-balloon-lilac"
+                          checked={checked}
+                          onChange={() => toggleAddon(addon.id)}
+                        />
+                        {addon.nome}
+                      </span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {formatCurrency(addon.valor)}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        ) : null}
 
         <Separator className="bg-border/60" />
 

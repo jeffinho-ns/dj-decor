@@ -46,7 +46,7 @@ export const CATALOGO_KITS: CatalogoKit[] = [
   },
   {
     id: "festa-mesa-com-mesa",
-    nome: "Kit Festa na Mesa (com mesa)",
+    nome: "Kit Festa na Mesa (+ mesa)",
     categoria: "mesa",
     descricaoCurta: "Mesmo kit + mesa inclusa.",
     valorEquipe: 130,
@@ -107,7 +107,7 @@ export const CATALOGO_KITS: CatalogoKit[] = [
   },
   {
     id: "decoracao-4m",
-    nome: "Decoração 4 metros",
+    nome: "Decoração 4 Metros",
     categoria: "metros",
     descricaoCurta: "Montagem pela equipe + transporte (balões do cliente).",
     valorEquipe: 730,
@@ -116,7 +116,7 @@ export const CATALOGO_KITS: CatalogoKit[] = [
   },
   {
     id: "decoracao-6m",
-    nome: "Decoração 6 metros",
+    nome: "Decoração 6 Metros",
     categoria: "metros",
     descricaoCurta: "Montagem pela equipe + transporte (balões do cliente).",
     valorEquipe: 980,
@@ -125,14 +125,43 @@ export const CATALOGO_KITS: CatalogoKit[] = [
   },
 ];
 
+/** Add-ons gerais disponíveis para qualquer kit. */
 export const CATALOGO_ADDONS: CatalogoAddon[] = [
-  { id: "arco", nome: "Arco de balões", valor: 80 },
-  { id: "mesa-cake", nome: "Mesa cake", valor: 50 },
-  { id: "balao-numero", nome: "Balão número", valor: 35 },
-  { id: "escadinha-extra", nome: "Escadinha extra", valor: 40 },
-  { id: "painel-extra", nome: "Painel extra", valor: 120 },
-  { id: "cilindro-extra", nome: "Cilindro extra", valor: 45 },
+  { id: "arco-bola-c", nome: "Arco de bola C", valor: 90 },
+  { id: "balao-lateral", nome: "Balão Lateral", valor: 180 },
+  { id: "baloes-organico", nome: "Balões orgânico", valor: 450 },
+  { id: "painel-extra", nome: "Painel Extra", valor: 70 },
+  { id: "numero-led", nome: "Número LED", valor: 30 },
+  { id: "armario-escada", nome: "Armário escada", valor: 40 },
+  { id: "cilindro-acrilico-trio", nome: "Cilindro Acrílico (trio)", valor: 100 },
+  { id: "mesa-auxiliar", nome: "Mesa auxiliar", valor: 70 },
+  { id: "cilindro-tradi-trio", nome: "Cilindro tradi (Temático trio)", valor: 70 },
 ];
+
+/**
+ * Extras exclusivos das decorações de 4m e 6m.
+ * Só devem aparecer quando um desses kits estiver selecionado.
+ */
+export const CATALOGO_EXTRAS_METROS: CatalogoAddon[] = [
+  {
+    id: "cantinho-lembrancinha-p",
+    nome: "Cantinho de lembrancinha temático Pequeno",
+    valor: 250,
+  },
+  {
+    id: "cantinho-lembrancinha-m",
+    nome: "Cantinho de lembrancinha temático Médio",
+    valor: 380,
+  },
+];
+
+const EXTRA_METROS_IDS = new Set(CATALOGO_EXTRAS_METROS.map((item) => item.id));
+
+export function kitAceitaExtrasMetros(
+  kitId: string | null | undefined
+): boolean {
+  return kitId === "decoracao-4m" || kitId === "decoracao-6m";
+}
 
 export function getCatalogoKit(id: string | null | undefined): CatalogoKit | undefined {
   if (!id) return undefined;
@@ -153,7 +182,18 @@ export function valorDoKit(kit: CatalogoKit, pegueEMonte: boolean): number {
 
 export function getAddonsByIds(addonIds: string[]): CatalogoAddon[] {
   const set = new Set(addonIds);
-  return CATALOGO_ADDONS.filter((addon) => set.has(addon.id));
+  return [...CATALOGO_ADDONS, ...CATALOGO_EXTRAS_METROS].filter((addon) =>
+    set.has(addon.id)
+  );
+}
+
+/** Remove extras de 4m/6m quando o kit selecionado não os permite. */
+export function filtrarAddonsParaKit(
+  addonIds: string[],
+  kitId: string | null | undefined
+): string[] {
+  if (kitAceitaExtrasMetros(kitId)) return addonIds;
+  return addonIds.filter((id) => !EXTRA_METROS_IDS.has(id));
 }
 
 export interface CalcularOrcamentoInput {
