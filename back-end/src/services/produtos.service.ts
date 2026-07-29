@@ -29,6 +29,8 @@ const createProdutoSchema = z.object({
   tema: z.string().trim().min(1).nullable().optional(),
   requerQr: z.boolean().optional().default(false),
   ativo: z.boolean().optional().default(true),
+  /** Quantidade inicial de unidades a criar junto com o produto */
+  quantidadeUnidades: z.coerce.number().int().min(0).max(500).optional().default(1),
 });
 
 const updateProdutoSchema = createProdutoSchema.partial();
@@ -63,6 +65,13 @@ export class CodigoQrInUseError extends Error {
   constructor() {
     super("Código QR já está em uso");
     this.name = "CodigoQrInUseError";
+  }
+}
+
+export class UnidadeEmUsoError extends Error {
+  constructor(message = "Unidade com reserva ativa não pode ser removida") {
+    super(message);
+    this.name = "UnidadeEmUsoError";
   }
 }
 
@@ -227,6 +236,15 @@ export class ProdutosService {
   }
 
   async create(input: CreateProdutoInput): Promise<ProdutoWithUnidades> {
+    const quantidade = input.quantidadeUnidades ?? 1;
+    const slug = input.nome
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 24);
+
     return prisma.produto.create({
       data: {
         nome: input.nome,
@@ -235,8 +253,21 @@ export class ProdutosService {
         tema: input.tema ?? null,
         requerQr: input.requerQr,
         ativo: input.ativo,
+        unidades:
+          quantidade > 0
+            ? {
+                create: Array.from({ length: quantidade }, (_, i) => {
+                  const seq = i + 1;
+                  return {
+                    codigoQr: `DJ-${slug || "ITEM"}-${String(seq).padStart(3, "0")}-${Date.now().toString(36)}${i}`,
+                    etiqueta: `${input.nome} #${seq}`,
+                    status: StatusUnidade.DISPONIVEL,
+                  };
+                }),
+              }
+            : undefined,
       },
-      include: { unidades: true },
+      include: { unidades: { orderBy: { codigoQr: "asc" } } },
     });
   }
 
@@ -283,6 +314,82 @@ export class ProdutosService {
       }
       throw error;
     }
+  }
+
+  /** Remove uma unidade (item único). Bloqueia se houver reserva futura/ativa. */
+  async removeUnidade(produtoId: string, unidadeId: string) {
+    await this.getById(produtoId);
+
+    const unidade = await prisma.unidadeProduto.findFirst({
+      where: { id: unidadeId, produtoId },
+    });
+    if (!unidade) {
+      throw new UnidadeNotFoundError(unidadeId);
+    }
+
+    const agora = new Date();
+    const reservasAtivas = await prisma.reservaEstoque.count({
+      where: {
+        unidadeId,
+        fim: { gt: agora },
+      },
+    });
+    if (reservasAtivas > 0) {
+      throw new UnidadeEmUsoError(
+        "Não dá para excluir: há reserva futura nesta unidade. Libere as reservas antes."
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.reservaEstoque.deleteMany({ where: { unidadeId } });
+      await tx.itemRomaneio.updateMany({
+        where: { unidadeId },
+        data: { unidadeId: null },
+      });
+      await tx.movimentacaoQr.deleteMany({ where: { unidadeId } });
+      await tx.unidadeProduto.delete({ where: { id: unidadeId } });
+    });
+
+    return { ok: true as const, unidadeId };
+  }
+
+  /** Remove o grupo (produto) e todas as unidades. */
+  async removeProduto(id: string) {
+    const produto = await this.getById(id);
+    const unidadeIds = produto.unidades.map((u) => u.id);
+
+    const agora = new Date();
+    if (unidadeIds.length > 0) {
+      const reservasAtivas = await prisma.reservaEstoque.count({
+        where: {
+          unidadeId: { in: unidadeIds },
+          fim: { gt: agora },
+        },
+      });
+      if (reservasAtivas > 0) {
+        throw new UnidadeEmUsoError(
+          "Não dá para excluir o grupo: há reservas futuras. Libere-as antes."
+        );
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (unidadeIds.length > 0) {
+        await tx.reservaEstoque.deleteMany({
+          where: { unidadeId: { in: unidadeIds } },
+        });
+        await tx.itemRomaneio.updateMany({
+          where: { unidadeId: { in: unidadeIds } },
+          data: { unidadeId: null },
+        });
+        await tx.movimentacaoQr.deleteMany({
+          where: { unidadeId: { in: unidadeIds } },
+        });
+      }
+      await tx.produto.delete({ where: { id } });
+    });
+
+    return { ok: true as const, produtoId: id };
   }
 }
 

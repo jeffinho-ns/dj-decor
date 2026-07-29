@@ -2,7 +2,15 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, PackagePlus, RefreshCw, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  PackagePlus,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +24,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  createProduto,
   createUnidade,
+  deleteProduto,
+  deleteUnidade,
   disponibilidadeEstoque,
   sincronizarCatalogoEstoque,
 } from "@/lib/api";
@@ -86,6 +97,117 @@ function toInventarioFromProdutos(produtos: Produto[]): InventarioItem[] {
   }));
 }
 
+function InventoryTableRows({
+  item,
+  open,
+  addingUnitId,
+  onToggle,
+  onAddUnit,
+  onDeleteGroup,
+  onDeleteUnit,
+}: {
+  item: InventarioItem;
+  open: boolean;
+  addingUnitId: string | null;
+  onToggle: () => void;
+  onAddUnit: () => void;
+  onDeleteGroup: () => void;
+  onDeleteUnit: (unidadeId: string, label: string) => void;
+}) {
+  return (
+    <>
+      <TableRow>
+        <TableCell className="font-medium">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 text-left hover:text-balloon-pink"
+            onClick={onToggle}
+          >
+            <ChevronDown
+              className={cn(
+                "size-3.5 transition-transform",
+                open && "rotate-180"
+              )}
+            />
+            {item.nome}
+          </button>
+        </TableCell>
+        <TableCell>{item.categoria}</TableCell>
+        <TableCell className="text-balloon-mint">{item.disponivel}</TableCell>
+        <TableCell>{item.total}</TableCell>
+        <TableCell className="text-right">
+          <div className="inline-flex gap-1.5">
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              className="gap-1"
+              disabled={addingUnitId === item.id}
+              onClick={onAddUnit}
+            >
+              <PackagePlus className="size-3" />
+              +1
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              variant="destructive"
+              className="gap-1"
+              onClick={onDeleteGroup}
+            >
+              <Trash2 className="size-3" />
+              Grupo
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+      {open ? (
+        <TableRow>
+          <TableCell colSpan={5} className="bg-muted/30">
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {item.unidades.map((u) => (
+                <li
+                  key={u.id}
+                  className="flex items-center justify-between gap-2 rounded-xl neo-inset px-3 py-2 text-sm"
+                >
+                  <span>
+                    <span className="font-medium">
+                      {u.etiqueta || u.codigoQr}
+                    </span>
+                    <span className="ml-2 font-mono text-[10px] text-muted-foreground">
+                      {u.codigoQr}
+                    </span>
+                    <span
+                      className={cn(
+                        "ml-2 rounded-lg px-1.5 py-0.5 text-[10px]",
+                        STATUS_CLASS[u.status]
+                      )}
+                    >
+                      {STATUS_LABEL[u.status] ?? u.status}
+                    </span>
+                  </span>
+                  <Button
+                    type="button"
+                    size="icon-xs"
+                    variant="ghost"
+                    className="text-destructive"
+                    onClick={() =>
+                      onDeleteUnit(u.id, u.etiqueta || u.codigoQr)
+                    }
+                    aria-label="Excluir unidade"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </TableCell>
+        </TableRow>
+      ) : null}
+    </>
+  );
+}
+
 export function EstoquePainel({
   produtos,
   inventario: inventarioInicial,
@@ -122,6 +244,17 @@ export function EstoquePainel({
   const [pending, startTransition] = useTransition();
   const [syncing, startSync] = useTransition();
   const [addingUnitId, setAddingUnitId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [novoNome, setNovoNome] = useState("");
+  const [novaCategoria, setNovaCategoria] = useState("Acessórios");
+  const [novoValor, setNovoValor] = useState("50");
+  const [novaQtd, setNovaQtd] = useState("1");
+  const [novoRequerQr, setNovoRequerQr] = useState(false);
+  const [savingProduto, startSaveProduto] = useTransition();
+
+  function itemFromProduto(produto: Produto): InventarioItem {
+    return toInventarioFromProdutos([produto])[0];
+  }
 
   const totais = useMemo(() => {
     return inventario.reduce(
@@ -200,7 +333,7 @@ export function EstoquePainel({
         if (!token) throw new Error("Sessão expirada. Faça login novamente.");
         const seq = item.total + 1;
         const codigoQr = `DJ-MANUAL-${item.id.slice(-6).toUpperCase()}-${String(seq).padStart(3, "0")}-${Date.now().toString(36)}`;
-        await createUnidade(
+        const unidade = await createUnidade(
           item.id,
           {
             codigoQr,
@@ -216,6 +349,7 @@ export function EstoquePainel({
                   ...row,
                   total: row.total + 1,
                   disponivel: row.disponivel + 1,
+                  unidades: [...row.unidades, unidade],
                 }
               : row
           )
@@ -227,6 +361,119 @@ export function EstoquePainel({
         );
       } finally {
         setAddingUnitId(null);
+      }
+    });
+  }
+
+  function criarProduto() {
+    setError(null);
+    setSyncMsg(null);
+    startSaveProduto(async () => {
+      try {
+        const token = getClientToken();
+        if (!token) throw new Error("Sessão expirada. Faça login novamente.");
+        const nome = novoNome.trim();
+        const categoria = novaCategoria.trim();
+        const valorAluguel = Number(novoValor.replace(",", "."));
+        const quantidadeUnidades = Math.max(0, Math.floor(Number(novaQtd) || 0));
+        if (nome.length < 2) throw new Error("Informe o nome do item");
+        if (categoria.length < 2) throw new Error("Informe a categoria");
+        if (!Number.isFinite(valorAluguel) || valorAluguel <= 0) {
+          throw new Error("Valor de aluguel inválido");
+        }
+        const produto = await createProduto(
+          {
+            nome,
+            categoria,
+            valorAluguel,
+            requerQr: novoRequerQr,
+            quantidadeUnidades,
+          },
+          token
+        );
+        const novo = itemFromProduto(produto);
+        setInventario((prev) =>
+          [...prev, novo].sort((a, b) =>
+            a.categoria === b.categoria
+              ? a.nome.localeCompare(b.nome)
+              : a.categoria.localeCompare(b.categoria)
+          )
+        );
+        setProdutoId(novo.id);
+        setNovoNome("");
+        setNovaQtd("1");
+        setSyncMsg(`Item "${produto.nome}" adicionado com ${produto.unidades.length} unidade(s).`);
+        router.refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Falha ao cadastrar item"
+        );
+      }
+    });
+  }
+
+  function excluirGrupo(item: InventarioItem) {
+    const ok = window.confirm(
+      `Excluir o grupo "${item.nome}" e todas as ${item.total} unidade(s)?`
+    );
+    if (!ok) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        const token = getClientToken();
+        if (!token) throw new Error("Sessão expirada. Faça login novamente.");
+        await deleteProduto(item.id, token);
+        setInventario((prev) => prev.filter((row) => row.id !== item.id));
+        if (produtoId === item.id) {
+          setProdutoId("");
+        }
+        if (expandedId === item.id) setExpandedId(null);
+        setSyncMsg(`Grupo "${item.nome}" removido.`);
+        router.refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Falha ao excluir grupo"
+        );
+      }
+    });
+  }
+
+  function excluirUnidade(item: InventarioItem, unidadeId: string, label: string) {
+    const ok = window.confirm(`Excluir a unidade "${label}"?`);
+    if (!ok) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        const token = getClientToken();
+        if (!token) throw new Error("Sessão expirada. Faça login novamente.");
+        await deleteUnidade(item.id, unidadeId, token);
+        setInventario((prev) =>
+          prev.map((row) => {
+            if (row.id !== item.id) return row;
+            const unidades = row.unidades.filter((u) => u.id !== unidadeId);
+            const removida = row.unidades.find((u) => u.id === unidadeId);
+            return {
+              ...row,
+              unidades,
+              total: unidades.length,
+              disponivel:
+                row.disponivel -
+                (removida?.status === "DISPONIVEL" ? 1 : 0),
+              reservada:
+                row.reservada - (removida?.status === "RESERVADA" ? 1 : 0),
+              emUso: row.emUso - (removida?.status === "EM_USO" ? 1 : 0),
+              manutencao:
+                row.manutencao -
+                (removida?.status === "MANUTENCAO" ? 1 : 0),
+            };
+          })
+        );
+        setSyncMsg(`Unidade "${label}" removida.`);
+        router.refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Falha ao excluir unidade"
+        );
       }
     });
   }
@@ -312,102 +559,212 @@ export function EstoquePainel({
           <p className="rounded-2xl neo-mint px-4 py-3 text-sm">{syncMsg}</p>
         ) : null}
 
+        <div className="rounded-2xl neo-sm p-4 sm:p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="balloon-dot bg-balloon-mint" />
+            <h3 className="font-display text-lg text-foreground">
+              Adicionar item
+            </h3>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="space-y-2 sm:col-span-2 lg:col-span-2">
+              <Label htmlFor="novo-nome">Nome</Label>
+              <Input
+                id="novo-nome"
+                value={novoNome}
+                onChange={(e) => setNovoNome(e.target.value)}
+                placeholder="Ex.: Escadinha dourada"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nova-categoria">Categoria</Label>
+              <Input
+                id="nova-categoria"
+                value={novaCategoria}
+                onChange={(e) => setNovaCategoria(e.target.value)}
+                placeholder="Acessórios"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="novo-valor">Aluguel (R$)</Label>
+              <Input
+                id="novo-valor"
+                inputMode="decimal"
+                value={novoValor}
+                onChange={(e) => setNovoValor(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nova-qtd">Qtd. unidades</Label>
+              <Input
+                id="nova-qtd"
+                inputMode="numeric"
+                value={novaQtd}
+                onChange={(e) => setNovaQtd(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                className="size-4 accent-balloon-pink"
+                checked={novoRequerQr}
+                onChange={(e) => setNovoRequerQr(e.target.checked)}
+              />
+              Requer QR code
+            </label>
+            <Button
+              type="button"
+              onClick={criarProduto}
+              disabled={savingProduto}
+              className="gap-1.5"
+            >
+              <Plus className="size-4" />
+              {savingProduto ? "Salvando…" : "Adicionar ao inventário"}
+            </Button>
+          </div>
+        </div>
+
         {inventario.length === 0 ? (
           <p className="rounded-2xl px-4 py-6 text-sm text-muted-foreground neo-sm">
-            Inventário vazio. Clique em <strong>Sincronizar catálogo</strong>{" "}
-            para carregar os itens dos kits e add-ons.
+            Inventário vazio. Adicione um item acima ou clique em{" "}
+            <strong>Sincronizar catálogo</strong>.
           </p>
         ) : (
           <>
             <div className="space-y-3 md:hidden">
-              {inventario.map((item) => (
-                <article key={item.id} className="rounded-2xl p-4 neo-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{item.nome}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {item.categoria}
-                      </p>
+              {inventario.map((item) => {
+                const open = expandedId === item.id;
+                return (
+                  <article key={item.id} className="rounded-2xl p-4 neo-sm">
+                    <button
+                      type="button"
+                      className="flex w-full items-start justify-between gap-3 text-left"
+                      onClick={() =>
+                        setExpandedId(open ? null : item.id)
+                      }
+                    >
+                      <div>
+                        <p className="font-medium">{item.nome}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.categoria}
+                        </p>
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          "size-4 shrink-0 text-muted-foreground transition-transform",
+                          open && "rotate-180"
+                        )}
+                      />
+                    </button>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-lg chip-mint px-2 py-1">
+                        {item.disponivel} disp.
+                      </span>
+                      <span className="rounded-lg neo-inset px-2 py-1">
+                        total {item.total}
+                      </span>
                     </div>
-                    <p className="text-sm tabular-nums text-balloon-pink">
-                      {Number(item.valorAluguel).toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
-                    </p>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-lg chip-mint px-2 py-1">
-                      {item.disponivel} disp.
-                    </span>
-                    <span className="rounded-lg chip-sky px-2 py-1">
-                      {item.reservada} res.
-                    </span>
-                    <span className="rounded-lg chip-lilac px-2 py-1">
-                      {item.emUso} uso
-                    </span>
-                    <span className="rounded-lg neo-inset px-2 py-1">
-                      total {item.total}
-                    </span>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="mt-3 gap-1.5"
-                    disabled={addingUnitId === item.id}
-                    onClick={() => adicionarUnidade(item)}
-                  >
-                    <PackagePlus className="size-3.5" />
-                    +1 unidade
-                  </Button>
-                </article>
-              ))}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        disabled={addingUnitId === item.id}
+                        onClick={() => adicionarUnidade(item)}
+                      >
+                        <PackagePlus className="size-3.5" />
+                        +1 unidade
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="gap-1.5"
+                        onClick={() => excluirGrupo(item)}
+                      >
+                        <Trash2 className="size-3.5" />
+                        Excluir grupo
+                      </Button>
+                    </div>
+                    {open ? (
+                      <ul className="mt-3 space-y-2">
+                        {item.unidades.map((u) => (
+                          <li
+                            key={u.id}
+                            className="flex items-center justify-between gap-2 rounded-xl neo-inset px-3 py-2 text-sm"
+                          >
+                            <span>
+                              <span className="font-medium">
+                                {u.etiqueta || u.codigoQr}
+                              </span>
+                              <span
+                                className={cn(
+                                  "ml-2 rounded-lg px-1.5 py-0.5 text-[10px]",
+                                  STATUS_CLASS[u.status]
+                                )}
+                              >
+                                {STATUS_LABEL[u.status] ?? u.status}
+                              </span>
+                            </span>
+                            <Button
+                              type="button"
+                              size="icon-xs"
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() =>
+                                excluirUnidade(
+                                  item,
+                                  u.id,
+                                  u.etiqueta || u.codigoQr
+                                )
+                              }
+                              aria-label="Excluir unidade"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </article>
+                );
+              })}
             </div>
 
-            <div className="hidden md:block">
+            <div className="hidden space-y-2 md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Item</TableHead>
                     <TableHead>Categoria</TableHead>
                     <TableHead>Disponível</TableHead>
-                    <TableHead>Reservada</TableHead>
-                    <TableHead>Em uso</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {inventario.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.nome}</TableCell>
-                      <TableCell>{item.categoria}</TableCell>
-                      <TableCell className="text-balloon-mint">
-                        {item.disponivel}
-                      </TableCell>
-                      <TableCell className="text-balloon-sky">
-                        {item.reservada}
-                      </TableCell>
-                      <TableCell className="text-balloon-lilac">
-                        {item.emUso}
-                      </TableCell>
-                      <TableCell>{item.total}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          type="button"
-                          size="xs"
-                          variant="outline"
-                          className="gap-1"
-                          disabled={addingUnitId === item.id}
-                          onClick={() => adicionarUnidade(item)}
-                        >
-                          <PackagePlus className="size-3" />
-                          +1
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {inventario.map((item) => {
+                    const open = expandedId === item.id;
+                    return (
+                      <InventoryTableRows
+                        key={item.id}
+                        item={item}
+                        open={open}
+                        addingUnitId={addingUnitId}
+                        onToggle={() =>
+                          setExpandedId(open ? null : item.id)
+                        }
+                        onAddUnit={() => adicionarUnidade(item)}
+                        onDeleteGroup={() => excluirGrupo(item)}
+                        onDeleteUnit={(unidadeId, label) =>
+                          excluirUnidade(item, unidadeId, label)
+                        }
+                      />
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

@@ -5,6 +5,8 @@ import {
   CodigoQrInUseError,
   ProdutoNotFoundError,
   produtosService,
+  UnidadeEmUsoError,
+  UnidadeNotFoundError,
 } from "../services/produtos.service";
 
 export class ProdutosController {
@@ -90,6 +92,50 @@ export class ProdutosController {
         return;
       }
       if (error instanceof CodigoQrInUseError) {
+        res.status(409).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  async removeUnidade(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await produtosService.removeUnidade(
+        req.params.id as string,
+        req.params.unidadeId as string
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      if (
+        error instanceof ProdutoNotFoundError ||
+        error instanceof UnidadeNotFoundError
+      ) {
+        res.status(404).json({ message: error.message });
+        return;
+      }
+      if (error instanceof UnidadeEmUsoError) {
+        res.status(409).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  async remove(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const result = await produtosService.removeProduto(req.params.id as string);
+      res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof ProdutoNotFoundError) {
+        res.status(404).json({ message: error.message });
+        return;
+      }
+      if (error instanceof UnidadeEmUsoError) {
         res.status(409).json({ message: error.message });
         return;
       }

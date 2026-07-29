@@ -43,4 +43,16 @@ produtosRoutes.post(
   (req, res, next) => produtosController.addUnidade(req, res, next)
 );
 
+produtosRoutes.delete(
+  "/:id/unidades/:unidadeId",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => produtosController.removeUnidade(req, res, next)
+);
+
+produtosRoutes.delete(
+  "/:id",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => produtosController.remove(req, res, next)
+);
+
 export { produtosRoutes };

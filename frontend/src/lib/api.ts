@@ -307,6 +307,17 @@ export async function createProduto(
   return handleResponse<Produto>(response);
 }
 
+export async function deleteProduto(
+  produtoId: string,
+  token: string
+): Promise<{ ok: true; produtoId: string }> {
+  const response = await fetch(`${getBaseUrl()}/api/produtos/${produtoId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  return handleResponse<{ ok: true; produtoId: string }>(response);
+}
+
 export async function createUnidade(
   produtoId: string,
   payload: CreateUnidadePayload,
@@ -321,6 +332,21 @@ export async function createUnidade(
     }
   );
   return handleResponse<UnidadeProduto>(response);
+}
+
+export async function deleteUnidade(
+  produtoId: string,
+  unidadeId: string,
+  token: string
+): Promise<{ ok: true; unidadeId: string }> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/produtos/${produtoId}/unidades/${unidadeId}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(token),
+    }
+  );
+  return handleResponse<{ ok: true; unidadeId: string }>(response);
 }
 
 export async function disponibilidadeEstoque(

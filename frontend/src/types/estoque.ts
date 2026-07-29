@@ -31,6 +31,7 @@ export interface CreateProdutoPayload {
   tema?: string | null;
   requerQr?: boolean;
   ativo?: boolean;
+  quantidadeUnidades?: number;
 }
 
 export interface CreateUnidadePayload {
