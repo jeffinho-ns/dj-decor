@@ -22,6 +22,7 @@ type LoginValues = z.infer<typeof loginSchema>;
 
 const ACESSO_RAPIDO = [
   { label: "SuperAdmin", nome: "Jefferson" },
+  { label: "Sócia", nome: "Lorena" },
   { label: "Gerente", nome: "Debora" },
   { label: "Vendedor", nome: "Vitória" },
   { label: "Montador", nome: "Carlos" },

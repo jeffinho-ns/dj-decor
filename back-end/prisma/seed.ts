@@ -26,6 +26,7 @@ const seedUsers: SeedUser[] = [
   { nome: "Jonathan", role: Role.ADMIN },
   { nome: "Debora", role: Role.GERENTE },
   { nome: "Suellem", role: Role.GERENTE },
+  /** Sócia — mesmas permissões de gerente na operação. */
   { nome: "Lorena", role: Role.GERENTE },
   { nome: "Vitória", role: Role.VENDEDOR },
   { nome: "Lais", role: Role.VENDEDOR },

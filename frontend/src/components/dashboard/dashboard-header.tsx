@@ -18,7 +18,9 @@ export function DashboardHeader({ nome, role }: DashboardHeaderProps) {
 
   return (
     <div>
-      <p className="section-label text-muted-foreground">{roleLabel(role)}</p>
+      <p className="section-label text-muted-foreground">
+        {roleLabel(role, nome)}
+      </p>
       <h2 className="mt-1 text-balance font-display text-3xl text-foreground sm:text-4xl">
         {greeting()},{" "}
         <span className="text-balloon-pink">{firstName}</span>

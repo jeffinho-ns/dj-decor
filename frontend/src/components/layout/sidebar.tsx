@@ -127,7 +127,7 @@ export function Sidebar({ user }: SidebarProps) {
             <span className="balloon-dot bg-balloon-sky" />
             <span className="balloon-dot bg-balloon-sun" />
             <span className="ml-1">
-              {isAdmin ? "Gestão festiva" : roleLabel(user.role)}
+              {isAdmin ? "Gestão festiva" : roleLabel(user.role, user.nome)}
             </span>
           </p>
         </div>
@@ -167,7 +167,7 @@ export function Sidebar({ user }: SidebarProps) {
           <div className="min-w-0">
             <p className="truncate text-xs font-semibold">{user.nome}</p>
             <p className="truncate text-[11px] text-muted-foreground">
-              {roleLabel(user.role)}
+              {roleLabel(user.role, user.nome)}
             </p>
           </div>
         </div>

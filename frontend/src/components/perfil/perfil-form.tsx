@@ -131,7 +131,7 @@ export function PerfilForm({ token, user }: PerfilFormProps) {
 
             <div className="space-y-2">
               <Label htmlFor="cargo">Cargo</Label>
-              <Input id="cargo" value={roleLabel(user.role)} disabled readOnly />
+              <Input id="cargo" value={roleLabel(user.role, user.nome)} disabled readOnly />
             </div>
 
             <div className="space-y-2 sm:col-span-2">
