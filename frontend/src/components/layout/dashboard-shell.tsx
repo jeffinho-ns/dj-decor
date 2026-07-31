@@ -55,7 +55,7 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="relative z-10 flex-1 overflow-x-hidden px-4 py-4 pb-nav md:px-8 md:py-6 md:pb-6">
+        <main className="relative z-10 min-w-0 flex-1 overflow-x-hidden px-3 py-4 pb-nav sm:px-4 md:px-8 md:py-6 md:pb-6">
           {children}
         </main>
 

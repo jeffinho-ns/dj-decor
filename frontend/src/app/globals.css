@@ -461,6 +461,18 @@
     );
   }
 
+  /* Calendário: 7 colunas que realmente encolhem no mobile (button min-width:auto). */
+  .cal-month-grid {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .cal-month-grid > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   @media (min-width: 768px) {
     .pb-nav {
       padding-bottom: 0;
