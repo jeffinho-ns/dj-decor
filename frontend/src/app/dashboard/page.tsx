@@ -70,7 +70,11 @@ export default async function DashboardPage() {
           {canSeeQrAlertas ? (
             <QrAlertasStrip count={alertasQrCount} />
           ) : null}
-          <CalendarioAgenda festas={festas} />
+          <CalendarioAgenda
+            festas={festas}
+            token={token}
+            canEdit={user.role !== "MONTADOR"}
+          />
         </>
       )}
     </DashboardShell>

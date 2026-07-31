@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   addMonths,
   format,
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { FestaDetalheModal } from "@/components/vendas/festa-detalhe-modal";
 import {
   dayMeta,
   formatMonthTitle,
@@ -75,11 +76,23 @@ const ICON_ACCENTS = [
 
 interface CalendarioAgendaProps {
   festas: Festa[];
+  token?: string | null;
+  canEdit?: boolean;
 }
 
-export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
+export function CalendarioAgenda({
+  festas: initialFestas,
+  token,
+  canEdit = false,
+}: CalendarioAgendaProps) {
+  const [festas, setFestas] = useState(initialFestas);
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<Date>(() => new Date());
+  const [detalheId, setDetalheId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFestas(initialFestas);
+  }, [initialFestas]);
 
   const byDay = useMemo(() => groupFestasByDay(festas), [festas]);
   const days = useMemo(() => getMonthGridDays(currentMonth), [currentMonth]);
@@ -90,6 +103,9 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
 
   const selectedKey = toDayKey(selectedDay);
   const selectedFestas = byDay.get(selectedKey) ?? [];
+  const festaDetalhe = detalheId
+    ? (festas.find((f) => f.id === detalheId) ?? null)
+    : null;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)]">
@@ -254,7 +270,7 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
         <p className="mt-1 text-sm text-muted-foreground">
           {selectedFestas.length === 0
             ? "Nenhuma festa neste dia."
-            : `${selectedFestas.length} festa${selectedFestas.length > 1 ? "s" : ""} — ordenadas pela montagem.`}
+            : `${selectedFestas.length} festa${selectedFestas.length > 1 ? "s" : ""} — toque para ver detalhes.`}
         </p>
 
         <div className="mt-5 space-y-3">
@@ -263,10 +279,12 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
             const iconAccent = ICON_ACCENTS[index % ICON_ACCENTS.length];
 
             return (
-              <article
+              <button
                 key={festa.id}
+                type="button"
+                onClick={() => setDetalheId(festa.id)}
                 className={cn(
-                  "rounded-xl p-3.5 neo-inset",
+                  "w-full rounded-xl p-3.5 text-left neo-inset transition-all hover:ring-2 hover:ring-balloon-pink/30",
                   isFechado && "ring-1 ring-balloon-sky/30"
                 )}
               >
@@ -347,17 +365,36 @@ export function CalendarioAgenda({ festas }: CalendarioAgendaProps) {
                     <MapPin className={cn("mt-0.5 size-3.5 shrink-0", iconAccent)} />
                     <span>{festa.endereco}</span>
                   </li>
-                  {festa.observacoes ? (
-                    <li className="pt-1 text-xs text-muted-foreground/90">
-                      Obs.: {festa.observacoes}
-                    </li>
-                  ) : null}
                 </ul>
-              </article>
+              </button>
             );
           })}
         </div>
       </aside>
+
+      <FestaDetalheModal
+        festa={festaDetalhe}
+        open={Boolean(festaDetalhe)}
+        onClose={() => setDetalheId(null)}
+        token={token}
+        canEdit={canEdit}
+        onUpdated={(updated) => {
+          setFestas((prev) =>
+            prev.map((f) =>
+              f.id === updated.id
+                ? {
+                    ...f,
+                    ...updated,
+                    risco: updated.risco ?? f.risco,
+                    descontoStatus: updated.descontoStatus ?? f.descontoStatus,
+                    descontoPercentual:
+                      updated.descontoPercentual ?? f.descontoPercentual,
+                  }
+                : f
+            )
+          );
+        }}
+      />
     </div>
   );
 }

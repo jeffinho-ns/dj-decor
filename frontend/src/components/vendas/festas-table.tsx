@@ -45,11 +45,37 @@ const tamanhoLabel: Record<TamanhoDecoracao, string> = {
 
 interface FestasTableProps {
   festas: Festa[];
+  onSelectFesta?: (festa: Festa) => void;
 }
 
-function FestaCardMobile({ festa }: { festa: Festa }) {
+function FestaCardMobile({
+  festa,
+  onSelect,
+}: {
+  festa: Festa;
+  onSelect?: (festa: Festa) => void;
+}) {
   return (
-    <article className="rounded-2xl neo-sm p-4">
+    <article
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onClick={onSelect ? () => onSelect(festa) : undefined}
+      onKeyDown={
+        onSelect
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelect(festa);
+              }
+            }
+          : undefined
+      }
+      className={cn(
+        "rounded-2xl neo-sm p-4",
+        onSelect &&
+          "cursor-pointer transition-all hover:ring-2 hover:ring-balloon-pink/30"
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-medium text-foreground">{festa.cliente.nome}</p>
@@ -133,7 +159,7 @@ function FestaCardMobile({ festa }: { festa: Festa }) {
   );
 }
 
-export function FestasTable({ festas }: FestasTableProps) {
+export function FestasTable({ festas, onSelectFesta }: FestasTableProps) {
   if (festas.length === 0) {
     return (
       <div className="rounded-2xl neo-inset px-6 py-16 text-center">
@@ -151,7 +177,11 @@ export function FestasTable({ festas }: FestasTableProps) {
     <>
       <div className="space-y-3 md:hidden">
         {festas.map((festa) => (
-          <FestaCardMobile key={festa.id} festa={festa} />
+          <FestaCardMobile
+            key={festa.id}
+            festa={festa}
+            onSelect={onSelectFesta}
+          />
         ))}
       </div>
 
@@ -172,7 +202,13 @@ export function FestasTable({ festas }: FestasTableProps) {
             {festas.map((festa) => (
               <TableRow
                 key={festa.id}
-                className="hover:bg-balloon-pink/[0.04]"
+                className={cn(
+                  "hover:bg-balloon-pink/[0.04]",
+                  onSelectFesta && "cursor-pointer"
+                )}
+                onClick={
+                  onSelectFesta ? () => onSelectFesta(festa) : undefined
+                }
               >
                 <TableCell>
                   <p className="font-medium text-foreground">

@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { DescontoBadge } from "@/components/vendas/desconto-badge";
 import { CompraEstoqueBadge } from "@/components/vendas/compra-estoque-badge";
 import { FestaContratoPanel } from "@/components/vendas/festa-contrato-panel";
+import { FestaDetalheModal } from "@/components/vendas/festa-detalhe-modal";
+import { FestaItensEditor } from "@/components/vendas/festa-itens-editor";
 import { PagamentoForm } from "@/components/vendas/pagamento-form";
 import { RiscoBadge } from "@/components/vendas/risco-badge";
 import { FestasTable } from "@/components/vendas/festas-table";
@@ -190,7 +192,18 @@ function FestaCard({
       ) : null}
 
       {expanded ? (
-        <div className="mt-3 border-t border-border/50 pt-3">
+        <div
+          className="mt-3 border-t border-border/50 pt-3"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="mb-4 border-b border-border/50 pb-3">
+            <FestaItensEditor
+              festa={festa}
+              token={token}
+              compact
+              onUpdated={onFestaUpdate}
+            />
+          </div>
           {loadingPagamentos ? (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Loader2 className="size-3 animate-spin" />
@@ -329,6 +342,7 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [activeStatus, setActiveStatus] = useState<StatusFesta>("ORCAMENTO");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detalheId, setDetalheId] = useState<string | null>(null);
   const [pagamentosByFesta, setPagamentosByFesta] = useState<
     Record<string, Pagamento[]>
   >({});
@@ -338,6 +352,27 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
   const [movingId, setMovingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+
+  const festaDetalhe = detalheId
+    ? (festas.find((f) => f.id === detalheId) ?? null)
+    : null;
+
+  function handleFestaUpdate(updated: Festa) {
+    setFestas((prev) =>
+      prev.map((f) =>
+        f.id === updated.id
+          ? {
+              ...f,
+              ...updated,
+              risco: updated.risco ?? f.risco,
+              descontoStatus: updated.descontoStatus ?? f.descontoStatus,
+              descontoPercentual:
+                updated.descontoPercentual ?? f.descontoPercentual,
+            }
+          : f
+      )
+    );
+  }
 
   const byStatus = useMemo(() => {
     const map = Object.fromEntries(
@@ -422,11 +457,7 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
             );
           });
         }}
-        onFestaUpdate={(updated) => {
-          setFestas((prev) =>
-            prev.map((f) => (f.id === updated.id ? updated : f))
-          );
-        }}
+        onFestaUpdate={handleFestaUpdate}
       />
     );
   }
@@ -437,7 +468,8 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Funil por status — clique no card para pagamentos, contrato e WhatsApp.
+          Funil por status — expanda o card para itens, pagamentos e contrato.
+          Na tabela, clique na linha para o modal.
         </p>
         <div className="flex gap-1 rounded-2xl neo-inset p-0.5">
           <Button
@@ -470,7 +502,10 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
       ) : null}
 
       {view === "table" ? (
-        <FestasTable festas={festas} />
+        <FestasTable
+          festas={festas}
+          onSelectFesta={(festa) => setDetalheId(festa.id)}
+        />
       ) : (
         <>
           {/* Mobile: status pills + filtered card list */}
@@ -552,6 +587,15 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
           </div>
         </>
       )}
+
+      <FestaDetalheModal
+        festa={festaDetalhe}
+        open={Boolean(festaDetalhe)}
+        onClose={() => setDetalheId(null)}
+        token={token}
+        canEdit
+        onUpdated={handleFestaUpdate}
+      />
     </div>
   );
 }

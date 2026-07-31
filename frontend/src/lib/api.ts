@@ -25,6 +25,7 @@ import type {
   Pagamento,
   RiscoOrcamento,
   StatusFesta,
+  UpdateFestaPayload,
 } from "@/types/festa";
 import type { Midia, TipoMidia } from "@/types/midia";
 import type { Contrato, MensagemWhatsApp } from "@/types/contrato";
@@ -187,6 +188,19 @@ export async function createFesta(
 ): Promise<Festa> {
   const response = await fetch(`${getBaseUrl()}/api/festas`, {
     method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<Festa>(response);
+}
+
+export async function updateFesta(
+  id: string,
+  payload: UpdateFestaPayload,
+  token: string
+): Promise<Festa> {
+  const response = await fetch(`${getBaseUrl()}/api/festas/${id}`, {
+    method: "PUT",
     headers: authHeaders(token),
     body: JSON.stringify(payload),
   });

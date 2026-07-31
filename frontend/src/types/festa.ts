@@ -88,3 +88,18 @@ export interface CreateFestaPayload {
   endereco: string;
   valor: number;
 }
+
+export interface UpdateFestaPayload {
+  tema?: string;
+  dataEvento?: string;
+  horarioMontagem?: string;
+  tamanhoDecoracao?: TamanhoDecoracao;
+  itensExtras?: string[];
+  kitCatalogo?: string | null;
+  pegueEMonte?: boolean;
+  observacoes?: string | null;
+  endereco?: string;
+  valor?: number;
+  nomeCliente?: string;
+  telefone?: string;
+}
