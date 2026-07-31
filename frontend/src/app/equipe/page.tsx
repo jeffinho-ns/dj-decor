@@ -22,11 +22,11 @@ export default async function EquipePage() {
   }
 
   const hoje = new Date();
-  const fimSemana = new Date(hoje);
-  fimSemana.setDate(fimSemana.getDate() + 7);
+  const fimPeriodo = new Date(hoje);
+  fimPeriodo.setDate(fimPeriodo.getDate() + 30);
 
   const defaultInicio = toLocalDateValue(hoje);
-  const defaultFim = toLocalDateValue(fimSemana);
+  const defaultFim = toLocalDateValue(fimPeriodo);
 
   let montadores: Montador[] = [];
   let agenda: AgendaOs[] = [];

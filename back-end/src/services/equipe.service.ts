@@ -1,4 +1,4 @@
-import { Prisma, Role, StatusFesta } from "@prisma/client";
+import { Prisma, Role, StatusFesta, StatusOS } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
 
@@ -8,6 +8,14 @@ const agendaQuerySchema = z.object({
 });
 
 export type AgendaQuery = z.infer<typeof agendaQuerySchema>;
+
+/** Festas que devem aparecer na alocação de equipe (já pagas / em operação). */
+const STATUS_EQUIPE: StatusFesta[] = [
+  StatusFesta.PAGO,
+  StatusFesta.FECHADO,
+  StatusFesta.EM_MONTAGEM,
+  StatusFesta.CONCLUIDO,
+];
 
 const agendaOsInclude = {
   festa: {
@@ -39,14 +47,44 @@ export class EquipeService {
 
   async listMontadores() {
     return prisma.user.findMany({
-      where: { role: Role.MONTADOR },
+      where: { role: Role.MONTADOR, ativo: true },
       select: { id: true, nome: true },
       orderBy: { nome: "asc" },
     });
   }
 
+  /**
+   * Garante OS para festas pagas/fechadas no período (sem OS ainda),
+   * para a gestão poder atribuir montador antes/ junto do fechamento.
+   */
+  private async ensureOsNoPeriodo(inicio: Date, fim: Date) {
+    const festas = await prisma.festa.findMany({
+      where: {
+        status: { in: STATUS_EQUIPE },
+        OR: [
+          { horarioMontagem: { gte: inicio, lte: fim } },
+          { dataEvento: { gte: inicio, lte: fim } },
+        ],
+        ordemServico: null,
+      },
+      select: { id: true },
+    });
+
+    if (festas.length === 0) return;
+
+    await prisma.ordemServico.createMany({
+      data: festas.map((f) => ({
+        festaId: f.id,
+        status: StatusOS.ABERTA,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
   async listAgenda(query: unknown) {
     const { inicio, fim } = this.parseAgendaQuery(query);
+
+    await this.ensureOsNoPeriodo(inicio, fim);
 
     return prisma.ordemServico.findMany({
       where: {
@@ -55,7 +93,7 @@ export class EquipeService {
             { horarioMontagem: { gte: inicio, lte: fim } },
             { dataEvento: { gte: inicio, lte: fim } },
           ],
-          status: { not: StatusFesta.CANCELADO },
+          status: { in: STATUS_EQUIPE },
         },
       },
       include: agendaOsInclude,
