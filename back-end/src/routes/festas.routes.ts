@@ -9,6 +9,11 @@ const festasRoutes = Router();
 festasRoutes.use(auth);
 
 festasRoutes.get(
+  "/follow-ups",
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  (req, res, next) => festasController.listFollowUps(req, res, next)
+);
+festasRoutes.get(
   "/descontos/pendentes",
   requireRoles(Role.GERENTE, Role.ADMIN),
   (req, res, next) => descontosController.listPendentes(req, res, next)
@@ -23,10 +28,20 @@ festasRoutes.get(
   requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
   (req, res, next) => festasController.risco(req, res, next)
 );
+festasRoutes.get(
+  "/:id/conflitos",
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  (req, res, next) => festasController.conflitos(req, res, next)
+);
 festasRoutes.post(
   "/:id/portal-link",
   requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
   (req, res, next) => festasController.portalLink(req, res, next)
+);
+festasRoutes.post(
+  "/:id/follow-ups",
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  (req, res, next) => festasController.registrarFollowUp(req, res, next)
 );
 festasRoutes.get(
   "/:id",

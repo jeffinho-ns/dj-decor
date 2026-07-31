@@ -63,6 +63,10 @@ export interface Pagamento {
   criadoEm: string;
   festaId: string;
   comprovanteMidiaId?: string | null;
+  pixTxid?: string | null;
+  pixQrCode?: string | null;
+  pixCopiaCola?: string | null;
+  pixExpiresAt?: string | null;
 }
 
 export interface CreatePagamentoPayload {

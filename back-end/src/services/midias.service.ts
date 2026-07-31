@@ -2,7 +2,7 @@ import { TipoMidia } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
 
-export const MAX_MIDIA_BYTES = 2 * 1024 * 1024; // 2 MB
+export const MAX_MIDIA_BYTES = 8 * 1024 * 1024; // 8 MB
 export const ALLOWED_MIME_TYPES = [
   "image/jpeg",
   "image/png",
@@ -41,7 +41,7 @@ export class MidiasService {
     }
 
     if (file.size > MAX_MIDIA_BYTES) {
-      throw new MidiaValidationError("Arquivo excede o limite de 2 MB");
+      throw new MidiaValidationError("Arquivo excede o limite de 8 MB");
     }
 
     if (
@@ -60,7 +60,7 @@ export class MidiasService {
   async create(
     file: Express.Multer.File,
     meta: UploadMidiaMeta,
-    uploadedById: string
+    uploadedById?: string | null
   ) {
     if (meta.festaId) {
       const festa = await prisma.festa.findUnique({
@@ -80,7 +80,7 @@ export class MidiasService {
         tipo: meta.tipo,
         filename: file.originalname || null,
         festaId: meta.festaId ?? null,
-        uploadedById,
+        uploadedById: uploadedById ?? null,
       },
       select: {
         id: true,
@@ -95,6 +95,29 @@ export class MidiasService {
     });
 
     return midia;
+  }
+
+  async listByFesta(
+    festaId: string,
+    tipos?: TipoMidia[]
+  ) {
+    return prisma.midia.findMany({
+      where: {
+        festaId,
+        ...(tipos?.length ? { tipo: { in: tipos } } : {}),
+      },
+      select: {
+        id: true,
+        mimeType: true,
+        tamanho: true,
+        tipo: true,
+        filename: true,
+        festaId: true,
+        uploadedById: true,
+        criadoEm: true,
+      },
+      orderBy: { criadoEm: "desc" },
+    });
   }
 
   async getById(id: string) {

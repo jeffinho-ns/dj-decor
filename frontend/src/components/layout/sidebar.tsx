@@ -13,6 +13,7 @@ import {
   Sparkles,
   UserRound,
   Users,
+  UserCog,
   Wallet,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ const GESTAO_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
+  { href: "/follow-ups", label: "Follow-up", icon: Sparkles },
   { href: "/estoque", label: "Estoque", icon: Package },
   { href: "/equipe", label: "Equipe", icon: Users },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
@@ -43,8 +45,10 @@ const ADMIN_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
+  { href: "/follow-ups", label: "Follow-up", icon: Sparkles },
   { href: "/estoque", label: "Estoque", icon: Package },
   { href: "/equipe", label: "Equipe", icon: Users },
+  { href: "/usuarios", label: "Usuários", icon: UserCog },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
   { href: "/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/perfil", label: "Perfil", icon: UserRound },

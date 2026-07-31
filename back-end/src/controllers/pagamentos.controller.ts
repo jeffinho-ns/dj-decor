@@ -62,6 +62,20 @@ export class PagamentosController {
     }
   }
 
+  async gerarPix(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const id = getParamId(req.params.id);
+      if (!id) {
+        res.status(400).json({ error: "ID do pagamento é obrigatório" });
+        return;
+      }
+      const pagamento = await pagamentosService.gerarPix(id);
+      res.status(200).json(pagamento);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
   private handleError(error: unknown, res: Response, next: NextFunction) {
     if (error instanceof ZodError) {
       res.status(400).json({

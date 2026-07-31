@@ -188,6 +188,39 @@ export class PagamentosService {
 
     return pagamentoAtualizado;
   }
+
+  /**
+   * Gera dados de PIX (stub local até integrar PSP real).
+   * Preenche pixTxid / pixCopiaCola / pixQrCode / pixExpiresAt.
+   */
+  async gerarPix(pagamentoId: string) {
+    const pagamento = await prisma.pagamento.findUnique({
+      where: { id: pagamentoId },
+      include: {
+        festa: { select: { id: true, tema: true, cliente: { select: { nome: true } } } },
+      },
+    });
+    if (!pagamento) throw new PagamentoNotFoundError(pagamentoId);
+    if (pagamento.status === StatusPagamento.CONFIRMADO) {
+      throw new PagamentoJaConfirmadoError(pagamentoId);
+    }
+
+    const txid = `DJ${pagamento.id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 20).toUpperCase()}`;
+    const valor = Number(pagamento.valor).toFixed(2);
+    const copiaCola = `00020126580014BR.GOV.BCB.PIX0136${txid}520400005303986540${valor.length}${valor}5802BR5925DJ DECOR6009SAO PAULO62070503***6304ABCD`;
+    const expires = new Date(Date.now() + 60 * 60 * 1000);
+
+    return prisma.pagamento.update({
+      where: { id: pagamentoId },
+      data: {
+        tipo: TipoPagamento.PIX,
+        pixTxid: txid,
+        pixCopiaCola: copiaCola,
+        pixQrCode: copiaCola,
+        pixExpiresAt: expires,
+      },
+    });
+  }
 }
 
 export const pagamentosService = new PagamentosService();

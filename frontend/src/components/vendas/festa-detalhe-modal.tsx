@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { CompraEstoqueBadge } from "@/components/vendas/compra-estoque-badge";
 import { DescontoBadge } from "@/components/vendas/desconto-badge";
 import { FestaItensEditor } from "@/components/vendas/festa-itens-editor";
+import { FestaGaleriaEditor } from "@/components/vendas/festa-galeria-editor";
 import { RiscoBadge } from "@/components/vendas/risco-badge";
 import { formatCurrency } from "@/lib/format";
 import { nomeDoKit } from "@/lib/catalogo-kits";
@@ -217,11 +218,14 @@ export function FestaDetalheModal({
           ) : null}
 
           {canEdit && token ? (
-            <FestaItensEditor
-              festa={current}
-              token={token}
-              onUpdated={handleUpdated}
-            />
+            <>
+              <FestaItensEditor
+                festa={current}
+                token={token}
+                onUpdated={handleUpdated}
+              />
+              <FestaGaleriaEditor festaId={current.id} token={token} />
+            </>
           ) : (
             <div>
               <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">

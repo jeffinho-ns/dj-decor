@@ -19,6 +19,35 @@ export class ComissoesController {
       next(error);
     }
   }
+
+  async pendentes(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const list = await comissoesService.listPendentes();
+      res.status(200).json(list);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async marcarPagas(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+      const result = await comissoesService.marcarPagas(
+        ids.filter((id: unknown) => typeof id === "string")
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const comissoesController = new ComissoesController();

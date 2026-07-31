@@ -1,9 +1,13 @@
 export type TipoMidia =
   | "REFERENCIA_FESTA"
+  | "CLIENTE_REFERENCIA"
   | "ITEM"
   | "COMPROVANTE_PIX"
   | "MONTAGEM_FINAL"
-  | "CONTRATO";
+  | "CONTRATO"
+  | "LOGO_EMPRESA"
+  | "CATALOGO_ITEM"
+  | "ASSINATURA_CLIENTE";
 
 export interface Midia {
   id: string;
@@ -13,5 +17,5 @@ export interface Midia {
   filename: string | null;
   criadoEm: string;
   festaId: string | null;
-  uploadedById: string;
+  uploadedById: string | null;
 }

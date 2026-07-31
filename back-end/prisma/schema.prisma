@@ -61,10 +61,19 @@ enum StatusOS {
 
 enum TipoMidia {
   REFERENCIA_FESTA
+  CLIENTE_REFERENCIA
   ITEM
   COMPROVANTE_PIX
   MONTAGEM_FINAL
   CONTRATO
+  LOGO_EMPRESA
+  CATALOGO_ITEM
+  ASSINATURA_CLIENTE
+}
+
+enum TipoCatalogoAddon {
+  ADDON
+  EXTRA_METROS
 }
 
 enum TipoMovimentacao {
@@ -97,6 +106,7 @@ model User {
   email  String? @unique
   senha  String
   role   Role    @default(VENDEDOR)
+  ativo  Boolean @default(true)
 
   festas                    Festa[]            @relation("FestaVendedor")
   midiasUploaded            Midia[]            @relation("MidiaUploadedBy")
@@ -105,6 +115,7 @@ model User {
   movimentacoesQr           MovimentacaoQr[]
   descontosSolicitados      Festa[]            @relation("DescontoSolicitadoPor")
   descontosAprovados        Festa[]            @relation("DescontoAprovadoPor")
+  followUpsRegistrados      FollowUpContato[]
 
   @@map("users")
 }
@@ -134,6 +145,11 @@ model Festa {
   endereco              String
   alertaCompraEstoque   Boolean           @default(false) @map("alerta_compra_estoque")
   itensFaltaEstoque     String[]          @default([]) @map("itens_falta_estoque")
+  portalToken           String?           @unique @map("portal_token")
+  assinaturaClienteEm   DateTime?         @map("assinatura_cliente_em")
+  avaliacaoNota         Int?              @map("avaliacao_nota")
+  avaliacaoComentario   String?           @map("avaliacao_comentario") @db.Text
+  avaliacaoEm           DateTime?         @map("avaliacao_em")
   criadoEm              DateTime          @default(now()) @map("criado_em")
 
   clienteId  String @map("cliente_id")
@@ -157,6 +173,7 @@ model Festa {
   midias            Midia[]
   contrato          Contrato?
   mensagensWhatsApp MensagemWhatsApp[]
+  followUps         FollowUpContato[]
 
   @@map("festas")
 }
@@ -218,6 +235,12 @@ model Pagamento {
   confirmadoEm DateTime?       @map("confirmado_em")
   criadoEm     DateTime        @default(now()) @map("criado_em")
 
+  /** Campos para PIX automático (PSP) — preenchidos quando integrado. */
+  pixTxid      String?   @map("pix_txid")
+  pixQrCode    String?   @map("pix_qr_code") @db.Text
+  pixCopiaCola String?   @map("pix_copia_cola") @db.Text
+  pixExpiresAt DateTime? @map("pix_expires_at")
+
   festaId String @map("festa_id")
   festa   Festa  @relation(fields: [festaId], references: [id], onDelete: Cascade)
 
@@ -225,6 +248,7 @@ model Pagamento {
   comprovanteMidia   Midia?  @relation("PagamentoComprovante", fields: [comprovanteMidiaId], references: [id])
 
   @@index([festaId])
+  @@index([pixTxid])
   @@map("pagamentos")
 }
 
@@ -233,6 +257,7 @@ model Comissao {
   percentual Decimal        @db.Decimal(5, 2)
   valor      Decimal        @db.Decimal(10, 2)
   status     StatusComissao @default(PENDENTE)
+  pagoEm     DateTime?      @map("pago_em")
   criadoEm   DateTime       @default(now()) @map("criado_em")
 
   festaId String @map("festa_id")
@@ -298,13 +323,17 @@ model Midia {
   festaId String? @map("festa_id")
   festa   Festa?  @relation(fields: [festaId], references: [id], onDelete: SetNull)
 
-  uploadedById String @map("uploaded_by_id")
-  uploadedBy   User   @relation("MidiaUploadedBy", fields: [uploadedById], references: [id])
+  uploadedById String? @map("uploaded_by_id")
+  uploadedBy   User?   @relation("MidiaUploadedBy", fields: [uploadedById], references: [id])
 
-  pagamentoComprovante Pagamento? @relation("PagamentoComprovante")
+  pagamentoComprovante Pagamento?     @relation("PagamentoComprovante")
   itemRomaneioFoto     ItemRomaneio[] @relation("ItemRomaneioFoto")
+  catalogoKits         CatalogoKit[]  @relation("CatalogoKitImagem")
+  catalogoAddons       CatalogoAddon[] @relation("CatalogoAddonImagem")
+  configuracaoLogo     ConfiguracaoNegocio? @relation("ConfigLogo")
 
   @@index([festaId])
+  @@index([tipo])
   @@map("midias")
 }
 
@@ -358,4 +387,70 @@ model MensagemWhatsApp {
 
   @@index([festaId])
   @@map("mensagens_whatsapp")
+}
+
+/** Singleton de configurações de negócio (sempre id = "default"). */
+model ConfiguracaoNegocio {
+  id                   String   @id @default("default")
+  comissaoPercentual   Decimal  @default(5) @map("comissao_percentual") @db.Decimal(5, 2)
+  comissaoMetaSemanal  Decimal  @default(500) @map("comissao_meta_semanal") @db.Decimal(10, 2)
+  clausulasContrato    String?  @map("clausulas_contrato") @db.Text
+  nomeEmpresa          String   @default("DJ Decor") @map("nome_empresa")
+  sloganEmpresa        String   @default("Decoração de Festas · Locação de Materiais") @map("slogan_empresa")
+  atualizadoEm         DateTime @updatedAt @map("atualizado_em")
+
+  logoMidiaId String? @unique @map("logo_midia_id")
+  logoMidia   Midia?  @relation("ConfigLogo", fields: [logoMidiaId], references: [id], onDelete: SetNull)
+
+  @@map("configuracao_negocio")
+}
+
+model CatalogoKit {
+  id               String            @id
+  nome             String
+  categoria        String
+  descricaoCurta   String            @map("descricao_curta")
+  valorEquipe      Decimal           @map("valor_equipe") @db.Decimal(10, 2)
+  valorPegueEMonte Decimal?          @map("valor_pegue_e_monte") @db.Decimal(10, 2)
+  tamanhoSugerido  TamanhoDecoracao  @map("tamanho_sugerido")
+  itens            String[]          @default([])
+  ativo            Boolean           @default(true)
+  ordem            Int               @default(0)
+  criadoEm         DateTime          @default(now()) @map("criado_em")
+
+  imagemMidiaId String? @map("imagem_midia_id")
+  imagemMidia   Midia?  @relation("CatalogoKitImagem", fields: [imagemMidiaId], references: [id], onDelete: SetNull)
+
+  @@map("catalogo_kits")
+}
+
+model CatalogoAddon {
+  id     String            @id
+  nome   String
+  valor  Decimal           @db.Decimal(10, 2)
+  tipo   TipoCatalogoAddon @default(ADDON)
+  ativo  Boolean           @default(true)
+  ordem  Int               @default(0)
+  criadoEm DateTime        @default(now()) @map("criado_em")
+
+  imagemMidiaId String? @map("imagem_midia_id")
+  imagemMidia   Midia?  @relation("CatalogoAddonImagem", fields: [imagemMidiaId], references: [id], onDelete: SetNull)
+
+  @@map("catalogo_addons")
+}
+
+model FollowUpContato {
+  id        String   @id @default(cuid())
+  canal     String   @default("WHATSAPP")
+  nota      String?  @db.Text
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  festaId String @map("festa_id")
+  festa   Festa  @relation(fields: [festaId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([festaId])
+  @@map("follow_up_contatos")
 }

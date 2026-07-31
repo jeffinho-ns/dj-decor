@@ -1,20 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   CalendarDays,
   Check,
   Clock,
+  ImagePlus,
   Loader2,
   MapPin,
   PartyPopper,
   Share2,
   Sparkles,
+  Star,
 } from "lucide-react";
 
-import { getPortalStatus } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  assinarPortal,
+  avaliarPortal,
+  getPortalMidiaUrl,
+  getPortalStatus,
+  uploadPortalMidia,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { PortalFestaStatus, PortalTimelineStep } from "@/types/os";
 
@@ -69,8 +80,15 @@ const TIMELINE_COLORS = [
   },
 ];
 
+const TIPO_LABEL: Record<string, string> = {
+  REFERENCIA_FESTA: "Referência DJ Decor",
+  CLIENTE_REFERENCIA: "Sua referência",
+  MONTAGEM_FINAL: "Montagem final",
+};
+
 interface PortalPageProps {
-  festaId: string | null;
+  token: string | null;
+  legacyId?: string | null;
 }
 
 function findCurrentStepIndex(timeline: PortalTimelineStep[]): number {
@@ -79,21 +97,25 @@ function findCurrentStepIndex(timeline: PortalTimelineStep[]): number {
   return timeline.length - 1;
 }
 
-export function PortalClientView({ festaId }: PortalPageProps) {
-  const [loading, setLoading] = useState(Boolean(festaId));
+export function PortalClientView({ token, legacyId }: PortalPageProps) {
+  const [loading, setLoading] = useState(Boolean(token));
   const [erro, setErro] = useState<string | null>(null);
   const [data, setData] = useState<PortalFestaStatus | null>(null);
   const [copied, setCopied] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [nota, setNota] = useState(5);
+  const [comentario, setComentario] = useState("");
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!festaId) {
+    if (!token) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
     setErro(null);
-    getPortalStatus(festaId)
+    getPortalStatus(token)
       .then(setData)
       .catch((err) => {
         setErro(
@@ -101,7 +123,7 @@ export function PortalClientView({ festaId }: PortalPageProps) {
         );
       })
       .finally(() => setLoading(false));
-  }, [festaId]);
+  }, [token]);
 
   const currentStepIndex = useMemo(
     () => (data ? findCurrentStepIndex(data.timeline) : -1),
@@ -109,8 +131,8 @@ export function PortalClientView({ festaId }: PortalPageProps) {
   );
 
   async function handleShare() {
-    if (!festaId || typeof window === "undefined") return;
-    const url = `${window.location.origin}/portal?id=${festaId}`;
+    if (!token || typeof window === "undefined") return;
+    const url = `${window.location.origin}/portal?t=${encodeURIComponent(token)}`;
     try {
       if (navigator.share) {
         await navigator.share({
@@ -124,11 +146,63 @@ export function PortalClientView({ festaId }: PortalPageProps) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      /* usuário cancelou ou clipboard indisponível */
+      /* cancelado */
     }
   }
 
-  if (!festaId) {
+  function onUploadCliente(file: File | undefined) {
+    if (!token || !file) return;
+    setActionMsg(null);
+    startTransition(async () => {
+      try {
+        await uploadPortalMidia(token, file);
+        const next = await getPortalStatus(token);
+        setData(next);
+        setActionMsg("Foto enviada com sucesso!");
+      } catch (err) {
+        setActionMsg(
+          err instanceof Error ? err.message : "Falha ao enviar foto"
+        );
+      }
+    });
+  }
+
+  function onAssinar(file: File | undefined) {
+    if (!token || !file) return;
+    setActionMsg(null);
+    startTransition(async () => {
+      try {
+        const next = await assinarPortal(token, file);
+        setData(next);
+        setActionMsg("Assinatura registrada!");
+      } catch (err) {
+        setActionMsg(
+          err instanceof Error ? err.message : "Falha ao assinar"
+        );
+      }
+    });
+  }
+
+  function onAvaliar() {
+    if (!token) return;
+    setActionMsg(null);
+    startTransition(async () => {
+      try {
+        const next = await avaliarPortal(token, {
+          nota,
+          comentario: comentario.trim() || undefined,
+        });
+        setData(next);
+        setActionMsg("Obrigado pela avaliação!");
+      } catch (err) {
+        setActionMsg(
+          err instanceof Error ? err.message : "Falha ao avaliar"
+        );
+      }
+    });
+  }
+
+  if (!token) {
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-5 py-16 text-center">
         <div className="neo-sm rounded-full p-5">
@@ -138,17 +212,10 @@ export function PortalClientView({ festaId }: PortalPageProps) {
           Portal do cliente
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Use o link enviado pela equipe DJ Decor para acompanhar sua festa.
+          {legacyId
+            ? "Este link antigo não é mais válido. Peça um novo link seguro à equipe DJ Decor."
+            : "Use o link enviado pela equipe DJ Decor para acompanhar sua festa."}
         </p>
-        <span
-          aria-hidden
-          className="mt-4 inline-flex items-center gap-1.5"
-        >
-          <span className="balloon-dot bg-balloon-pink" />
-          <span className="balloon-dot bg-balloon-sky" />
-          <span className="balloon-dot bg-balloon-sun" />
-          <span className="balloon-dot bg-balloon-mint" />
-        </span>
       </div>
     );
   }
@@ -173,24 +240,11 @@ export function PortalClientView({ festaId }: PortalPageProps) {
 
   const statusLabel = STATUS_LABEL[data.status] ?? data.status;
   const statusBadge =
-    STATUS_BADGE[data.status] ??
-    "neo-sm bg-muted/60 text-muted-foreground";
+    STATUS_BADGE[data.status] ?? "neo-sm bg-muted/60 text-muted-foreground";
+  const galeria = data.galeria ?? [];
 
   return (
     <div className="relative mx-auto min-h-screen max-w-lg px-4 pb-12 pt-8 sm:px-6">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-balloon-pink/12 via-balloon-sky/8 to-transparent"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-8 top-12 size-28 rounded-full bg-balloon-sun/20 blur-2xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -left-6 top-24 size-24 rounded-full bg-balloon-mint/15 blur-2xl"
-      />
-
       <header className="relative text-center">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-balloon-sky">
           DJ Decor
@@ -216,7 +270,7 @@ export function PortalClientView({ festaId }: PortalPageProps) {
           <button
             type="button"
             onClick={() => void handleShare()}
-            className="neo-sm inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:-translate-y-0.5 hover:text-balloon-sky"
+            className="neo-sm inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground"
           >
             <Share2 className="size-3.5" />
             {copied ? "Link copiado!" : "Compartilhar"}
@@ -229,9 +283,12 @@ export function PortalClientView({ festaId }: PortalPageProps) {
           <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             Tema
           </p>
-          <p className="mt-1 text-lg font-medium leading-snug text-foreground">
-            {data.tema}
-          </p>
+          <p className="mt-1 text-lg font-medium text-foreground">{data.tema}</p>
+          {data.itensExtras?.length ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Itens: {data.itensExtras.join(", ")}
+            </p>
+          ) : null}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -248,7 +305,6 @@ export function PortalClientView({ festaId }: PortalPageProps) {
               </p>
             </div>
           </div>
-
           <div className="neo-sm flex items-start gap-2.5 rounded-xl px-3 py-2.5">
             <Clock className="mt-0.5 size-4 shrink-0 text-balloon-sky" />
             <div>
@@ -273,22 +329,56 @@ export function PortalClientView({ festaId }: PortalPageProps) {
             <p className="mt-0.5 text-sm font-medium text-foreground">
               {data.enderecoResumo}
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {data.endereco}
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{data.endereco}</p>
           </div>
         </div>
       </article>
 
       <section className="relative mt-8">
-        <h2 className="mb-4 text-sm font-medium text-foreground">Andamento</h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-medium text-foreground">Galeria</h2>
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-balloon-sky">
+            <ImagePlus className="size-3.5" />
+            Enviar foto
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              disabled={pending}
+              onChange={(e) => onUploadCliente(e.target.files?.[0])}
+            />
+          </label>
+        </div>
+        {galeria.length === 0 ? (
+          <p className="rounded-2xl neo-inset px-4 py-6 text-center text-sm text-muted-foreground">
+            Ainda sem fotos. Envie uma referência da decoração que deseja.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {galeria.map((item) => (
+              <figure key={item.id} className="overflow-hidden rounded-xl neo-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={getPortalMidiaUrl(token, item.id)}
+                  alt={TIPO_LABEL[item.tipo] ?? "Foto"}
+                  className="aspect-square w-full object-cover"
+                />
+                <figcaption className="px-2 py-1.5 text-[10px] text-muted-foreground">
+                  {TIPO_LABEL[item.tipo] ?? item.tipo}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        )}
+      </section>
 
+      <section className="relative mt-8">
+        <h2 className="mb-4 text-sm font-medium text-foreground">Andamento</h2>
         <ol className="space-y-0">
           {data.timeline.map((step, index) => {
             const isCurrent = index === currentStepIndex && !step.done;
             const isLast = index === data.timeline.length - 1;
             const colors = TIMELINE_COLORS[index % TIMELINE_COLORS.length];
-
             return (
               <li key={`${step.key}-${index}`} className="relative flex gap-3">
                 {!isLast ? (
@@ -300,10 +390,9 @@ export function PortalClientView({ festaId }: PortalPageProps) {
                     )}
                   />
                 ) : null}
-
                 <span
                   className={cn(
-                    "relative z-10 mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                    "relative z-10 mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2",
                     step.done
                       ? colors.done
                       : isCurrent
@@ -317,16 +406,8 @@ export function PortalClientView({ festaId }: PortalPageProps) {
                     <span className="size-2 rounded-full bg-current opacity-60" />
                   )}
                 </span>
-
                 <div className={cn("min-w-0 flex-1 pb-6", isLast && "pb-0")}>
-                  <p
-                    className={cn(
-                      "text-sm font-medium",
-                      step.done || isCurrent
-                        ? "text-foreground"
-                        : "text-muted-foreground"
-                    )}
-                  >
+                  <p className="text-sm font-medium text-foreground">
                     {step.label}
                   </p>
                   {step.at ? (
@@ -335,10 +416,6 @@ export function PortalClientView({ festaId }: PortalPageProps) {
                         locale: ptBR,
                       })}
                     </p>
-                  ) : isCurrent ? (
-                    <p className={cn("mt-0.5 text-xs font-medium", colors.active)}>
-                      Em andamento
-                    </p>
                   ) : null}
                 </div>
               </li>
@@ -346,6 +423,72 @@ export function PortalClientView({ festaId }: PortalPageProps) {
           })}
         </ol>
       </section>
+
+      {data.podeAssinar ? (
+        <section className="mt-8 rounded-2xl neo p-4">
+          <h2 className="text-sm font-medium">Assinar contrato</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Envie uma foto da sua assinatura (ou print assinado).
+          </p>
+          <Input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="mt-3"
+            disabled={pending}
+            onChange={(e) => onAssinar(e.target.files?.[0])}
+          />
+        </section>
+      ) : data.assinaturaClienteEm ? (
+        <p className="mt-6 text-center text-xs text-balloon-mint">
+          Contrato assinado em{" "}
+          {format(parseISO(data.assinaturaClienteEm), "dd/MM/yyyy HH:mm")}
+        </p>
+      ) : null}
+
+      {data.status === "CONCLUIDO" && data.avaliacaoNota == null ? (
+        <section className="mt-8 space-y-3 rounded-2xl neo p-4">
+          <h2 className="flex items-center gap-1.5 text-sm font-medium">
+            <Star className="size-4 text-balloon-sun" />
+            Avalie sua festa
+          </h2>
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setNota(n)}
+                className={cn(
+                  "rounded-lg p-1.5",
+                  n <= nota ? "text-balloon-sun" : "text-muted-foreground/40"
+                )}
+              >
+                <Star className="size-5 fill-current" />
+              </button>
+            ))}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="comentario">Comentário (opcional)</Label>
+            <Input
+              id="comentario"
+              value={comentario}
+              onChange={(e) => setComentario(e.target.value)}
+              placeholder="Como foi a experiência?"
+            />
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            disabled={pending}
+            onClick={onAvaliar}
+          >
+            Enviar avaliação
+          </Button>
+        </section>
+      ) : null}
+
+      {actionMsg ? (
+        <p className="mt-4 text-center text-xs text-balloon-mint">{actionMsg}</p>
+      ) : null}
 
       <p className="mt-8 text-center text-[11px] text-muted-foreground/80">
         Dúvidas? Fale com sua consultora DJ Decor.

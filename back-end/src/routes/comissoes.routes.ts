@@ -13,4 +13,16 @@ comissoesRoutes.get(
   (req, res, next) => comissoesController.ranking(req, res, next)
 );
 
+comissoesRoutes.get(
+  "/pendentes",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => comissoesController.pendentes(req, res, next)
+);
+
+comissoesRoutes.post(
+  "/marcar-pagas",
+  requireRoles(Role.ADMIN),
+  (req, res, next) => comissoesController.marcarPagas(req, res, next)
+);
+
 export { comissoesRoutes };

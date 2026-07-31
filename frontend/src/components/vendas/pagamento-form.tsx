@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import {
   confirmarPagamento,
   createPagamento,
+  gerarPixQr,
   uploadMidia,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
@@ -144,6 +145,11 @@ export function PagamentoForm({
                       </span>
                     ) : null}
                   </p>
+                  {pagamento.pixCopiaCola ? (
+                    <p className="mt-1 break-all rounded-lg bg-muted/40 px-2 py-1 text-[10px] text-muted-foreground">
+                      PIX: {pagamento.pixCopiaCola.slice(0, 48)}…
+                    </p>
+                  ) : null}
                 </div>
                 {pagamento.status === "CONFIRMADO" ? (
                   <span className="inline-flex shrink-0 items-center gap-1 self-start rounded-full bg-balloon-mint/12 px-2.5 py-1 text-xs font-semibold text-balloon-mint shadow-[var(--shadow-neo-sm)] sm:self-auto">
@@ -154,19 +160,50 @@ export function PagamentoForm({
                     Estornado
                   </span>
                 ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-h-10 w-full sm:w-auto"
-                    disabled={confirmandoId === pagamento.id}
-                    onClick={() => confirmarSemComprovante(pagamento.id)}
-                  >
-                    {confirmandoId === pagamento.id ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      "Confirmar"
-                    )}
-                  </Button>
+                  <div className="flex w-full flex-col gap-2 sm:w-auto">
+                    {!pagamento.pixCopiaCola && pagamento.tipo === "PIX" ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={confirmandoId === pagamento.id}
+                        onClick={() => {
+                          setConfirmandoId(pagamento.id);
+                          void gerarPixQr(pagamento.id, token)
+                            .then((atualizado) => {
+                              onPagamentosChange(
+                                pagamentos.map((p) =>
+                                  p.id === atualizado.id ? atualizado : p
+                                )
+                              );
+                            })
+                            .catch((err) =>
+                              setError(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Falha ao gerar PIX"
+                              )
+                            )
+                            .finally(() => setConfirmandoId(null));
+                        }}
+                      >
+                        Gerar QR PIX
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-10 w-full sm:w-auto"
+                      disabled={confirmandoId === pagamento.id}
+                      onClick={() => confirmarSemComprovante(pagamento.id)}
+                    >
+                      {confirmandoId === pagamento.id ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        "Confirmar"
+                      )}
+                    </Button>
+                  </div>
                 )}
               </li>
             ))}

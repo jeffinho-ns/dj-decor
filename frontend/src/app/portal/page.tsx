@@ -15,16 +15,17 @@ export const metadata: Metadata = {
 };
 
 interface PortalPageProps {
-  searchParams: Promise<{ id?: string }>;
+  searchParams: Promise<{ t?: string; id?: string }>;
 }
 
 export default async function PortalPage({ searchParams }: PortalPageProps) {
   const params = await searchParams;
-  const festaId = params.id?.trim() || null;
+  const token = params.t?.trim() || null;
+  const legacyId = params.id?.trim() || null;
 
   return (
     <main className="relative z-10 min-h-screen bg-transparent">
-      <PortalClientView festaId={festaId} />
+      <PortalClientView token={token} legacyId={legacyId} />
     </main>
   );
 }

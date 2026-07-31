@@ -89,6 +89,13 @@ export interface PortalTimelineStep {
   at?: string;
 }
 
+export interface PortalGaleriaItem {
+  id: string;
+  tipo: string;
+  mimeType: string;
+  filename: string | null;
+}
+
 export interface PortalFestaStatus {
   tema: string;
   status: string;
@@ -99,10 +106,18 @@ export interface PortalFestaStatus {
   clienteNomePrimeiro: string;
   timeline: PortalTimelineStep[];
   montagemStatus?: string;
+  itensExtras?: string[];
+  kitCatalogo?: string | null;
+  pegueEMonte?: boolean;
+  galeria?: PortalGaleriaItem[];
+  podeAssinar?: boolean;
+  assinaturaClienteEm?: string | null;
+  avaliacaoNota?: number | null;
 }
 
 export interface PortalLinkResponse {
   url: string;
+  token?: string;
 }
 
 export interface CheckinPayload {

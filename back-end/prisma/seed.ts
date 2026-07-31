@@ -47,12 +47,14 @@ async function seedUsuarios() {
         role: seedUser.role,
         senha: senhaHash,
         email: null,
+        ativo: true,
       },
       create: {
         nome: seedUser.nome,
         role: seedUser.role,
         senha: senhaHash,
         email: null,
+        ativo: true,
       },
     });
 
@@ -247,9 +249,234 @@ async function seedOrdemServicoDemo() {
   }
 }
 
+async function seedConfigECatalogoVendas() {
+  const { randomBytes } = await import("node:crypto");
+  const { TipoCatalogoAddon, TamanhoDecoracao } = await import("@prisma/client");
+
+  await prisma.configuracaoNegocio.upsert({
+    where: { id: "default" },
+    update: {},
+    create: {
+      id: "default",
+      comissaoPercentual: 5,
+      comissaoMetaSemanal: 500,
+      nomeEmpresa: "DJ Decor",
+      sloganEmpresa: "Decoração de Festas · Locação de Materiais",
+    },
+  });
+  console.log("[seed] configuração de negócio pronta");
+
+  const kits: Array<{
+    id: string;
+    nome: string;
+    categoria: string;
+    descricaoCurta: string;
+    valorEquipe: number;
+    valorPegueEMonte?: number;
+    tamanhoSugerido: TamanhoDecoracao;
+    itens: string[];
+    ordem: number;
+  }> = [
+    {
+      id: "festa-mesa",
+      nome: "Kit Festa na Mesa",
+      categoria: "mesa",
+      descricaoCurta: "Painel pequeno, bandejas e cachepô — ideal para mesa de bolo.",
+      valorEquipe: 80,
+      tamanhoSugerido: TamanhoDecoracao.P,
+      itens: ["Painel 50x50", "3 bandejas", "Cachepô"],
+      ordem: 1,
+    },
+    {
+      id: "festa-mesa-com-mesa",
+      nome: "Kit Festa na Mesa (+ mesa)",
+      categoria: "mesa",
+      descricaoCurta: "Mesmo kit + mesa inclusa.",
+      valorEquipe: 130,
+      tamanhoSugerido: TamanhoDecoracao.P,
+      itens: ["Painel 50x50", "3 bandejas", "Cachepô", "Mesa"],
+      ordem: 2,
+    },
+    {
+      id: "pocket",
+      nome: "Kit Festa Pocket",
+      categoria: "pocket",
+      descricaoCurta: "Painel, cilindros e tapete — formato compacto.",
+      valorEquipe: 250,
+      valorPegueEMonte: 150,
+      tamanhoSugerido: TamanhoDecoracao.P,
+      itens: [
+        "Painel redondo/romano",
+        "3 mesas cilíndricas (P/M/G)",
+        "6 bandejas",
+        "Cachepô",
+        "Tapete",
+      ],
+      ordem: 3,
+    },
+    {
+      id: "intermediaria",
+      nome: "Kit Festa Intermediária",
+      categoria: "intermediaria",
+      descricaoCurta: "Painel, mesa retangular, trio de cilindros e 10 bandejas.",
+      valorEquipe: 350,
+      valorPegueEMonte: 250,
+      tamanhoSugerido: TamanhoDecoracao.M,
+      itens: [
+        "Painel",
+        "Mesa retangular",
+        "Trio de cilindros",
+        "10 bandejas",
+        "Cachepô",
+        "Tapete",
+        "Escadinha/cabideiro",
+      ],
+      ordem: 4,
+    },
+    {
+      id: "media",
+      nome: "Kit Festa Média",
+      categoria: "media",
+      descricaoCurta: "Dois painéis, tapete 3M e estrutura completa.",
+      valorEquipe: 450,
+      valorPegueEMonte: 350,
+      tamanhoSugerido: TamanhoDecoracao.G,
+      itens: [
+        "2 painéis",
+        "Mesa retangular",
+        "Trio de cilindros",
+        "10 bandejas",
+        "2 cachepôs",
+        "Tapete 3M",
+        "Escadinha/cabideiro",
+      ],
+      ordem: 5,
+    },
+    {
+      id: "decoracao-4m",
+      nome: "Decoração 4 Metros",
+      categoria: "metros",
+      descricaoCurta: "Montagem pela equipe + transporte (balões do cliente).",
+      valorEquipe: 730,
+      tamanhoSugerido: TamanhoDecoracao.G,
+      itens: ["Montagem pela equipe", "Transporte"],
+      ordem: 6,
+    },
+    {
+      id: "decoracao-6m",
+      nome: "Decoração 6 Metros",
+      categoria: "metros",
+      descricaoCurta: "Montagem pela equipe + transporte (balões do cliente).",
+      valorEquipe: 980,
+      tamanhoSugerido: TamanhoDecoracao.GG,
+      itens: ["Montagem pela equipe", "Transporte"],
+      ordem: 7,
+    },
+  ];
+
+  for (const kit of kits) {
+    await prisma.catalogoKit.upsert({
+      where: { id: kit.id },
+      update: {
+        nome: kit.nome,
+        categoria: kit.categoria,
+        descricaoCurta: kit.descricaoCurta,
+        valorEquipe: kit.valorEquipe,
+        valorPegueEMonte: kit.valorPegueEMonte ?? null,
+        tamanhoSugerido: kit.tamanhoSugerido,
+        itens: kit.itens,
+        ordem: kit.ordem,
+        ativo: true,
+      },
+      create: {
+        id: kit.id,
+        nome: kit.nome,
+        categoria: kit.categoria,
+        descricaoCurta: kit.descricaoCurta,
+        valorEquipe: kit.valorEquipe,
+        valorPegueEMonte: kit.valorPegueEMonte ?? null,
+        tamanhoSugerido: kit.tamanhoSugerido,
+        itens: kit.itens,
+        ordem: kit.ordem,
+        ativo: true,
+      },
+    });
+  }
+  console.log(`[seed] ${kits.length} kits de venda prontos`);
+
+  const addons: Array<{
+    id: string;
+    nome: string;
+    valor: number;
+    tipo: TipoCatalogoAddon;
+    ordem: number;
+  }> = [
+    { id: "arco-bola-c", nome: "Arco de bola C", valor: 90, tipo: TipoCatalogoAddon.ADDON, ordem: 1 },
+    { id: "balao-lateral", nome: "Balão Lateral", valor: 180, tipo: TipoCatalogoAddon.ADDON, ordem: 2 },
+    { id: "baloes-organico", nome: "Balões orgânico", valor: 450, tipo: TipoCatalogoAddon.ADDON, ordem: 3 },
+    { id: "painel-extra", nome: "Painel Extra", valor: 70, tipo: TipoCatalogoAddon.ADDON, ordem: 4 },
+    { id: "numero-led", nome: "Número LED", valor: 30, tipo: TipoCatalogoAddon.ADDON, ordem: 5 },
+    { id: "armario-escada", nome: "Armário escada", valor: 40, tipo: TipoCatalogoAddon.ADDON, ordem: 6 },
+    { id: "cilindro-acrilico-trio", nome: "Cilindro Acrílico (trio)", valor: 100, tipo: TipoCatalogoAddon.ADDON, ordem: 7 },
+    { id: "mesa-auxiliar", nome: "Mesa auxiliar", valor: 70, tipo: TipoCatalogoAddon.ADDON, ordem: 8 },
+    { id: "cilindro-tradi-trio", nome: "Cilindro tradi (Temático trio)", valor: 70, tipo: TipoCatalogoAddon.ADDON, ordem: 9 },
+    {
+      id: "cantinho-lembrancinha-p",
+      nome: "Cantinho de lembrancinha temático Pequeno",
+      valor: 250,
+      tipo: TipoCatalogoAddon.EXTRA_METROS,
+      ordem: 10,
+    },
+    {
+      id: "cantinho-lembrancinha-m",
+      nome: "Cantinho de lembrancinha temático Médio",
+      valor: 380,
+      tipo: TipoCatalogoAddon.EXTRA_METROS,
+      ordem: 11,
+    },
+  ];
+
+  for (const addon of addons) {
+    await prisma.catalogoAddon.upsert({
+      where: { id: addon.id },
+      update: {
+        nome: addon.nome,
+        valor: addon.valor,
+        tipo: addon.tipo,
+        ordem: addon.ordem,
+        ativo: true,
+      },
+      create: {
+        id: addon.id,
+        nome: addon.nome,
+        valor: addon.valor,
+        tipo: addon.tipo,
+        ordem: addon.ordem,
+        ativo: true,
+      },
+    });
+  }
+  console.log(`[seed] ${addons.length} add-ons de venda prontos`);
+
+  const semToken = await prisma.festa.findMany({
+    where: { portalToken: null },
+    select: { id: true },
+  });
+  for (const festa of semToken) {
+    await prisma.festa.update({
+      where: { id: festa.id },
+      data: { portalToken: randomBytes(24).toString("base64url") },
+    });
+  }
+  if (semToken.length > 0) {
+    console.log(`[seed] portalToken gerado para ${semToken.length} festa(s)`);
+  }
+}
+
 async function main() {
   await seedUsuarios();
   await seedCatalogoEstoque();
+  await seedConfigECatalogoVendas();
   await seedFestaDemo();
   await seedOrdemServicoDemo();
 }

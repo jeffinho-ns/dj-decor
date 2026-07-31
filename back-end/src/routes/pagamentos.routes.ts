@@ -30,4 +30,10 @@ pagamentosRoutes.patch(
   (req, res, next) => pagamentosController.confirmar(req, res, next)
 );
 
+pagamentosRoutes.post(
+  "/pagamentos/:id/pix",
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  (req, res, next) => pagamentosController.gerarPix(req, res, next)
+);
+
 export { pagamentosRoutes };

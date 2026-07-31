@@ -72,6 +72,10 @@ export class AuthService {
       throw new InvalidCredentialsError();
     }
 
+    if (!user.ativo) {
+      throw new InvalidCredentialsError();
+    }
+
     const authUser: AuthUser = {
       id: user.id,
       nome: user.nome,

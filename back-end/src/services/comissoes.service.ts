@@ -3,6 +3,7 @@ import { StatusComissao } from "@prisma/client";
 import { z } from "zod";
 import { env } from "../config/env";
 import { prisma } from "../prisma/client";
+import { configuracoesService } from "./configuracoes.service";
 
 const rankingQuerySchema = z.object({
   periodo: z.enum(["semana", "mes"]).default("semana"),
@@ -28,10 +29,6 @@ export class ComissoesService {
     return env.COMISSAO_PERCENTUAL_DEFAULT;
   }
 
-  /**
-   * Cria a comissão do vendedor referente a um pagamento confirmado.
-   * Deve ser chamado dentro da mesma transação que confirma o pagamento.
-   */
   async criarParaPagamento(
     tx: Prisma.TransactionClient,
     params: {
@@ -40,7 +37,12 @@ export class ComissoesService {
       valorPagamento: Prisma.Decimal | number;
     }
   ) {
-    const percentual = this.percentualPadrao;
+    let percentual = this.percentualPadrao;
+    try {
+      percentual = await configuracoesService.getComissaoPercentual();
+    } catch {
+      // fallback env
+    }
     const valorPagamentoNum =
       typeof params.valorPagamento === "number"
         ? params.valorPagamento
@@ -70,6 +72,30 @@ export class ComissoesService {
     return prisma.comissao.findMany({
       where: { vendedorId },
       orderBy: { criadoEm: "desc" },
+    });
+  }
+
+  async listPendentes() {
+    return prisma.comissao.findMany({
+      where: { status: StatusComissao.PENDENTE },
+      include: {
+        vendedor: { select: { id: true, nome: true } },
+        festa: {
+          select: {
+            id: true,
+            tema: true,
+            cliente: { select: { nome: true } },
+          },
+        },
+      },
+      orderBy: { criadoEm: "desc" },
+    });
+  }
+
+  async marcarPagas(ids: string[]) {
+    return prisma.comissao.updateMany({
+      where: { id: { in: ids }, status: StatusComissao.PENDENTE },
+      data: { status: StatusComissao.PAGA, pagoEm: new Date() },
     });
   }
 
@@ -108,10 +134,13 @@ export class ComissoesService {
       porVendedor.set(comissao.vendedorId, atual);
     }
 
-    const meta =
-      periodo === "mes"
-        ? env.COMISSAO_META_SEMANAL * 4
-        : env.COMISSAO_META_SEMANAL;
+    let metaSemanal = env.COMISSAO_META_SEMANAL;
+    try {
+      metaSemanal = await configuracoesService.getComissaoMetaSemanal();
+    } catch {
+      // fallback
+    }
+    const meta = periodo === "mes" ? metaSemanal * 4 : metaSemanal;
 
     const ranking = [...porVendedor.values()]
       .sort((a, b) => b.totalComissao - a.totalComissao)
@@ -119,15 +148,11 @@ export class ComissoesService {
         ...item,
         posicao: index + 1,
         atingiuMeta: item.totalComissao >= meta,
-        progressoMeta: meta > 0 ? Math.min(100, (item.totalComissao / meta) * 100) : 0,
+        progressoMeta:
+          meta > 0 ? Math.min(100, (item.totalComissao / meta) * 100) : 0,
       }));
 
-    return {
-      periodo,
-      inicio: inicio.toISOString(),
-      meta,
-      ranking,
-    };
+    return { periodo, inicio: inicio.toISOString(), meta, ranking };
   }
 }
 

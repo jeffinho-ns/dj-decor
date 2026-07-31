@@ -1,5 +1,7 @@
 import type { NextFunction, Response } from "express";
+import { TipoMidia } from "@prisma/client";
 import { ZodError } from "zod";
+import { pdfAdapter } from "../integrations/pdf";
 import type { AuthenticatedRequest } from "../middlewares/auth";
 import {
   MidiaNotFoundError,
@@ -20,6 +22,20 @@ export class MidiasController {
       );
       const meta = midiasService.parseMeta(req.body);
       const midia = await midiasService.create(file, meta, req.user.id);
+
+      if (
+        meta.festaId &&
+        (meta.tipo === TipoMidia.REFERENCIA_FESTA ||
+          meta.tipo === TipoMidia.ASSINATURA_CLIENTE)
+      ) {
+        void pdfAdapter.gerarContratoLocacao(meta.festaId).catch((error) => {
+          console.error(
+            "[midias] falha ao regenerar contrato após upload",
+            error
+          );
+        });
+      }
+
       res.status(201).json(midia);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -33,6 +49,28 @@ export class MidiasController {
         res.status(400).json({ message: error.message });
         return;
       }
+      next(error);
+    }
+  }
+
+  async listByFesta(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const festaId = req.params.festaId as string;
+      const tiposRaw = typeof req.query.tipos === "string" ? req.query.tipos : "";
+      const tipos = tiposRaw
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean) as TipoMidia[];
+      const list = await midiasService.listByFesta(
+        festaId,
+        tipos.length ? tipos : undefined
+      );
+      res.status(200).json(list);
+    } catch (error) {
       next(error);
     }
   }

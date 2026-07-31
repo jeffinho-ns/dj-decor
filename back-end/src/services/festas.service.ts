@@ -2,6 +2,7 @@ import { StatusFesta, TamanhoDecoracao } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
 import { pdfAdapter } from "../integrations/pdf";
+import { generatePortalToken } from "../lib/portal-token";
 import { estoqueService } from "./estoque.service";
 import { osService } from "./os.service";
 import { riscoService } from "./risco.service";
@@ -168,6 +169,7 @@ export class FestasService {
         endereco: data.endereco,
         clienteId: cliente.id,
         vendedorId,
+        portalToken: generatePortalToken(),
         alertaCompraEstoque: avaliacao.alertaCompraEstoque,
         itensFaltaEstoque: avaliacao.itensFaltaEstoque,
       },

@@ -471,13 +471,58 @@ export async function listOsRotaHoje(token: string): Promise<RotaDiaItem[]> {
   return handleResponse<RotaDiaItem[]>(response);
 }
 
-/** Status público da festa (GET /api/portal/:festaId/status). */
+/** Status público da festa (GET /api/portal/:token/status). */
 export async function getPortalStatus(
-  festaId: string
+  token: string
 ): Promise<PortalFestaStatus> {
   const response = await fetch(
-    `${getBaseUrl()}/api/portal/${festaId}/status`,
+    `${getBaseUrl()}/api/portal/${encodeURIComponent(token)}/status`,
     { cache: "no-store" }
+  );
+  return handleResponse<PortalFestaStatus>(response);
+}
+
+export function getPortalMidiaUrl(token: string, midiaId: string): string {
+  return `${getBaseUrl()}/api/portal/${encodeURIComponent(token)}/midias/${midiaId}`;
+}
+
+export async function uploadPortalMidia(
+  token: string,
+  file: File
+): Promise<Midia> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(
+    `${getBaseUrl()}/api/portal/${encodeURIComponent(token)}/midias`,
+    { method: "POST", body: formData }
+  );
+  return handleResponse<Midia>(response);
+}
+
+export async function assinarPortal(
+  token: string,
+  file: File
+): Promise<PortalFestaStatus> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(
+    `${getBaseUrl()}/api/portal/${encodeURIComponent(token)}/assinar`,
+    { method: "POST", body: formData }
+  );
+  return handleResponse<PortalFestaStatus>(response);
+}
+
+export async function avaliarPortal(
+  token: string,
+  payload: { nota: number; comentario?: string }
+): Promise<PortalFestaStatus> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/portal/${encodeURIComponent(token)}/avaliar`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
   );
   return handleResponse<PortalFestaStatus>(response);
 }
@@ -495,6 +540,230 @@ export async function getPortalLink(
     }
   );
   return handleResponse<PortalLinkResponse>(response);
+}
+
+export async function listMidiasFesta(
+  festaId: string,
+  authToken: string,
+  tipos?: string[]
+): Promise<Midia[]> {
+  const qs = tipos?.length ? `?tipos=${tipos.join(",")}` : "";
+  const response = await fetch(
+    `${getBaseUrl()}/api/midias/festa/${festaId}${qs}`,
+    { headers: authHeaders(authToken), cache: "no-store" }
+  );
+  return handleResponse<Midia[]>(response);
+}
+
+export function getMidiaAuthUrl(midiaId: string): string {
+  return `${getBaseUrl()}/api/midias/${midiaId}`;
+}
+
+export async function listUsers(token: string): Promise<import("@/types/admin").UserAdmin[]> {
+  const response = await fetch(`${getBaseUrl()}/api/users`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse(response);
+}
+
+export async function createUser(
+  payload: {
+    nome: string;
+    role: string;
+    email?: string | null;
+    senha?: string;
+  },
+  token: string
+): Promise<import("@/types/admin").UserAdmin> {
+  const response = await fetch(`${getBaseUrl()}/api/users`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function updateUser(
+  id: string,
+  payload: Partial<{
+    nome: string;
+    role: string;
+    email: string | null;
+    ativo: boolean;
+    senha: string;
+  }>,
+  token: string
+): Promise<import("@/types/admin").UserAdmin> {
+  const response = await fetch(`${getBaseUrl()}/api/users/${id}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function getConfiguracoes(
+  token: string
+): Promise<import("@/types/admin").ConfiguracaoNegocio> {
+  const response = await fetch(`${getBaseUrl()}/api/configuracoes`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse(response);
+}
+
+export async function updateConfiguracoes(
+  payload: Partial<import("@/types/admin").ConfiguracaoNegocio>,
+  token: string
+): Promise<import("@/types/admin").ConfiguracaoNegocio> {
+  const response = await fetch(`${getBaseUrl()}/api/configuracoes`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function getCatalogo(
+  token: string
+): Promise<import("@/types/admin").CatalogoPublico> {
+  const response = await fetch(`${getBaseUrl()}/api/catalogo`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse(response);
+}
+
+export async function listCatalogoKitsAdmin(
+  token: string
+): Promise<import("@/types/admin").CatalogoKitApi[]> {
+  const response = await fetch(`${getBaseUrl()}/api/catalogo/kits`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse(response);
+}
+
+export async function listCatalogoAddonsAdmin(
+  token: string
+): Promise<import("@/types/admin").CatalogoAddonApi[]> {
+  const response = await fetch(`${getBaseUrl()}/api/catalogo/addons`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse(response);
+}
+
+export async function upsertCatalogoKit(
+  payload: Record<string, unknown>,
+  token: string
+): Promise<import("@/types/admin").CatalogoKitApi> {
+  const response = await fetch(`${getBaseUrl()}/api/catalogo/kits`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function upsertCatalogoAddon(
+  payload: Record<string, unknown>,
+  token: string
+): Promise<import("@/types/admin").CatalogoAddonApi> {
+  const response = await fetch(`${getBaseUrl()}/api/catalogo/addons`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function setCatalogoKitAtivo(
+  id: string,
+  ativo: boolean,
+  token: string
+): Promise<unknown> {
+  const response = await fetch(`${getBaseUrl()}/api/catalogo/kits/${id}/ativo`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ ativo }),
+  });
+  return handleResponse(response);
+}
+
+export async function setCatalogoAddonAtivo(
+  id: string,
+  ativo: boolean,
+  token: string
+): Promise<unknown> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/catalogo/addons/${id}/ativo`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify({ ativo }),
+    }
+  );
+  return handleResponse(response);
+}
+
+export async function marcarComissoesPagas(
+  ids: string[],
+  token: string
+): Promise<{ count: number }> {
+  const response = await fetch(`${getBaseUrl()}/api/comissoes/marcar-pagas`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ ids }),
+  });
+  return handleResponse(response);
+}
+
+export async function listComissoesPendentes(token: string): Promise<unknown[]> {
+  const response = await fetch(`${getBaseUrl()}/api/comissoes/pendentes`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse(response);
+}
+
+export async function listFollowUps(token: string): Promise<unknown[]> {
+  const response = await fetch(`${getBaseUrl()}/api/festas/follow-ups`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse(response);
+}
+
+export async function registrarFollowUp(
+  festaId: string,
+  payload: { canal?: string; nota?: string },
+  token: string
+): Promise<unknown> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/festas/${festaId}/follow-ups`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(payload),
+    }
+  );
+  return handleResponse(response);
+}
+
+export async function gerarPixQr(
+  pagamentoId: string,
+  token: string
+): Promise<import("@/types/festa").Pagamento> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/pagamentos/${pagamentoId}/pix`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+    }
+  );
+  return handleResponse(response);
 }
 
 /** OS atribuídas ao montador logado (GET /api/os/mine). */

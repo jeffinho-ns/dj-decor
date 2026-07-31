@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { FinanceiroPainel } from "@/components/financeiro/financeiro-painel";
+import { ComissoesPagar } from "@/components/financeiro/comissoes-pagar";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
   getComissaoRanking,
@@ -63,11 +64,14 @@ export default async function FinanceiroPage() {
           <p className="mt-1 opacity-90">{error}</p>
         </div>
       ) : resumo ? (
-        <FinanceiroPainel
-          resumo={resumo}
-          previsao={previsao}
-          comissaoRanking={comissaoRanking}
-        />
+        <div className="space-y-6">
+          <FinanceiroPainel
+            resumo={resumo}
+            previsao={previsao}
+            comissaoRanking={comissaoRanking}
+          />
+          <ComissoesPagar token={token} />
+        </div>
       ) : null}
     </DashboardShell>
   );

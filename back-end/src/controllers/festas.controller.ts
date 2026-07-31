@@ -10,6 +10,8 @@ import {
   PortalFestaNotFoundError,
   portalService,
 } from "../services/portal.service";
+import { followUpService } from "../services/follow-up.service";
+import { conflitosService } from "../services/conflitos.service";
 import {
   RiscoFestaNotFoundError,
   riscoService,
@@ -151,14 +153,63 @@ export class FestasController {
         res.status(400).json({ error: "ID é obrigatório" });
         return;
       }
-      await portalService.getFestaStatus(id);
-      res.status(200).json(portalService.buildPortalUrl(id));
+      await portalService.ensurePortalToken(id);
+      res.status(200).json(await portalService.buildPortalLink(id));
     } catch (error) {
       if (error instanceof PortalFestaNotFoundError) {
         res.status(404).json({ error: error.message });
         return;
       }
       next(error);
+    }
+  }
+
+  async listFollowUps(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const fila = await followUpService.listFila();
+      res.status(200).json(fila);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async registrarFollowUp(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const id = getParamId(req.params.id);
+      if (!id || !req.user) {
+        res.status(400).json({ error: "ID é obrigatório" });
+        return;
+      }
+      const row = await followUpService.registrar(id, req.user.id, req.body);
+      res.status(201).json(row);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  async conflitos(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const id = getParamId(req.params.id);
+      if (!id) {
+        res.status(400).json({ error: "ID é obrigatório" });
+        return;
+      }
+      const result = await conflitosService.paraFesta(id);
+      res.status(200).json(result);
+    } catch (error) {
+      this.handleError(error, res, next);
     }
   }
 

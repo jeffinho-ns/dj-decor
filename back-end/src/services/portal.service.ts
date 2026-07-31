@@ -1,10 +1,15 @@
-import { StatusFesta, StatusOS } from "@prisma/client";
+import { StatusFesta, StatusOS, TipoMidia } from "@prisma/client";
 import { env } from "../config/env";
+import { generatePortalToken } from "../lib/portal-token";
 import { prisma } from "../prisma/client";
+import {
+  MidiaValidationError,
+  midiasService,
+} from "./midias.service";
 
 export class PortalFestaNotFoundError extends Error {
-  constructor(id: string) {
-    super(`Festa não encontrada: ${id}`);
+  constructor(token: string) {
+    super(`Portal não encontrado: ${token}`);
     this.name = "PortalFestaNotFoundError";
   }
 }
@@ -16,7 +21,14 @@ export interface PortalTimelineStep {
   at?: string;
 }
 
-/** Status público da festa — sem valor, telefone ou dados internos. */
+export interface PortalGaleriaItem {
+  id: string;
+  tipo: TipoMidia;
+  mimeType: string;
+  filename: string | null;
+}
+
+/** Status público da festa — sem telefone do cliente. */
 export interface PortalFestaStatus {
   tema: string;
   status: string;
@@ -27,10 +39,18 @@ export interface PortalFestaStatus {
   clienteNomePrimeiro: string;
   timeline: PortalTimelineStep[];
   montagemStatus?: string;
+  itensExtras: string[];
+  kitCatalogo: string | null;
+  pegueEMonte: boolean;
+  galeria: PortalGaleriaItem[];
+  podeAssinar: boolean;
+  assinaturaClienteEm: string | null;
+  avaliacaoNota: number | null;
 }
 
 export interface PortalLinkResponse {
   url: string;
+  token: string;
 }
 
 const FESTA_RANK: Record<StatusFesta, number> = {
@@ -51,6 +71,12 @@ const OS_RANK: Record<StatusOS, number> = {
   FINALIZADA: 4,
 };
 
+const GALERIA_TIPOS: TipoMidia[] = [
+  TipoMidia.REFERENCIA_FESTA,
+  TipoMidia.CLIENTE_REFERENCIA,
+  TipoMidia.MONTAGEM_FINAL,
+];
+
 function primeiroNome(nome: string): string {
   const part = nome.trim().split(/\s+/)[0];
   return part || nome.trim();
@@ -59,17 +85,9 @@ function primeiroNome(nome: string): string {
 function enderecoResumo(endereco: string): string {
   const trimmed = endereco.trim();
   const commaIdx = trimmed.indexOf(",");
-  if (commaIdx > 0) {
-    return trimmed.slice(0, commaIdx).trim();
-  }
+  if (commaIdx > 0) return trimmed.slice(0, commaIdx).trim();
   const dashIdx = trimmed.indexOf(" - ");
-  if (dashIdx > 0) {
-    return trimmed.slice(0, dashIdx).trim();
-  }
-  const parts = trimmed.split(",").map((p) => p.trim()).filter(Boolean);
-  if (parts.length >= 2) {
-    return parts[parts.length - 1]!;
-  }
+  if (dashIdx > 0) return trimmed.slice(0, dashIdx).trim();
   return trimmed.length > 72 ? `${trimmed.slice(0, 69)}…` : trimmed;
 }
 
@@ -83,9 +101,6 @@ function buildTimeline(
   const osRank = os ? OS_RANK[os.status] : -1;
   const cancelled = festaStatus === StatusFesta.CANCELADO;
 
-  const orcamentoDone =
-    !cancelled && festaRank > FESTA_RANK.ORCAMENTO;
-
   const pagamentoDone = festaRank >= FESTA_RANK.PAGO;
   const pagamentoKey = pagamentoDone ? "PAGO" : "AGUARDANDO_PAGAMENTO";
   const pagamentoLabel = pagamentoDone
@@ -93,8 +108,6 @@ function buildTimeline(
     : festaRank >= FESTA_RANK.AGUARDANDO_PAGAMENTO
       ? "Aguardando pagamento"
       : "Pagamento";
-
-  const fechadoDone = festaRank >= FESTA_RANK.FECHADO;
 
   let montagemKey = "EM_MONTAGEM";
   let montagemLabel = "Em montagem";
@@ -105,17 +118,11 @@ function buildTimeline(
     montagemLabel = "Preparando montagem";
   }
 
-  const montagemDone =
-    festaRank >= FESTA_RANK.EM_MONTAGEM || osRank >= OS_RANK.ROMANEIO;
-  const checkinDone = osRank >= OS_RANK.CHECKIN;
-  const concluidoDone =
-    festaRank >= FESTA_RANK.CONCLUIDO || os?.status === StatusOS.FINALIZADA;
-
   return [
     {
       key: "ORCAMENTO",
       label: "Orçamento",
-      done: orcamentoDone,
+      done: !cancelled && festaRank > FESTA_RANK.ORCAMENTO,
       at: festa.criadoEm.toISOString(),
     },
     {
@@ -127,45 +134,72 @@ function buildTimeline(
     {
       key: "FECHADO",
       label: "Reserva fechada",
-      done: fechadoDone && !cancelled,
+      done: festaRank >= FESTA_RANK.FECHADO && !cancelled,
     },
     {
       key: montagemKey,
       label: montagemLabel,
-      done: montagemDone && !cancelled,
-      at: montagemDone ? festa.horarioMontagem.toISOString() : undefined,
+      done:
+        (festaRank >= FESTA_RANK.EM_MONTAGEM || osRank >= OS_RANK.ROMANEIO) &&
+        !cancelled,
+      at:
+        festaRank >= FESTA_RANK.EM_MONTAGEM || osRank >= OS_RANK.ROMANEIO
+          ? festa.horarioMontagem.toISOString()
+          : undefined,
     },
     {
       key: "CHECKIN",
       label: "Equipe no local",
-      done: checkinDone && !cancelled,
+      done: osRank >= OS_RANK.CHECKIN && !cancelled,
       at: os?.checkinAt?.toISOString(),
     },
     {
       key: "CONCLUIDO",
       label: "Decoração concluída",
-      done: concluidoDone && !cancelled,
+      done:
+        (festaRank >= FESTA_RANK.CONCLUIDO ||
+          os?.status === StatusOS.FINALIZADA) &&
+        !cancelled,
     },
   ];
 }
 
 export class PortalService {
-  async getFestaStatus(festaId: string): Promise<PortalFestaStatus> {
+  async ensurePortalToken(festaId: string): Promise<string> {
     const festa = await prisma.festa.findUnique({
       where: { id: festaId },
+      select: { id: true, portalToken: true },
+    });
+    if (!festa) throw new PortalFestaNotFoundError(festaId);
+    if (festa.portalToken) return festa.portalToken;
+
+    const token = generatePortalToken();
+    await prisma.festa.update({
+      where: { id: festaId },
+      data: { portalToken: token },
+    });
+    return token;
+  }
+
+  async getFestaByToken(token: string) {
+    const festa = await prisma.festa.findUnique({
+      where: { portalToken: token },
       select: {
+        id: true,
         status: true,
         dataEvento: true,
         horarioMontagem: true,
         tema: true,
         endereco: true,
         criadoEm: true,
+        itensExtras: true,
+        kitCatalogo: true,
+        pegueEMonte: true,
+        assinaturaClienteEm: true,
+        avaliacaoNota: true,
         cliente: { select: { nome: true } },
         ordemServico: {
-          select: {
-            status: true,
-            checkinAt: true,
-          },
+          select: { status: true, checkinAt: true },
         },
         pagamentos: {
           where: { status: "CONFIRMADO" },
@@ -173,15 +207,26 @@ export class PortalService {
           take: 1,
           select: { confirmadoEm: true },
         },
+        midias: {
+          where: { tipo: { in: GALERIA_TIPOS } },
+          select: {
+            id: true,
+            tipo: true,
+            mimeType: true,
+            filename: true,
+          },
+          orderBy: { criadoEm: "desc" },
+        },
       },
     });
 
-    if (!festa) {
-      throw new PortalFestaNotFoundError(festaId);
-    }
+    if (!festa) throw new PortalFestaNotFoundError(token);
+    return festa;
+  }
 
-    const pagamentoConfirmadoEm =
-      festa.pagamentos[0]?.confirmadoEm ?? null;
+  async getFestaStatusByToken(token: string): Promise<PortalFestaStatus> {
+    const festa = await this.getFestaByToken(token);
+    const pagamentoConfirmadoEm = festa.pagamentos[0]?.confirmadoEm ?? null;
 
     return {
       tema: festa.tema,
@@ -198,13 +243,100 @@ export class PortalService {
         pagamentoConfirmadoEm
       ),
       montagemStatus: festa.ordemServico?.status,
+      itensExtras: festa.itensExtras,
+      kitCatalogo: festa.kitCatalogo,
+      pegueEMonte: festa.pegueEMonte,
+      galeria: festa.midias,
+      podeAssinar:
+        !festa.assinaturaClienteEm &&
+        festa.status !== StatusFesta.CANCELADO &&
+        festa.status !== StatusFesta.ORCAMENTO,
+      assinaturaClienteEm: festa.assinaturaClienteEm?.toISOString() ?? null,
+      avaliacaoNota: festa.avaliacaoNota,
     };
   }
 
-  buildPortalUrl(festaId: string): PortalLinkResponse {
+  async getMidiaForToken(token: string, midiaId: string) {
+    const festa = await prisma.festa.findUnique({
+      where: { portalToken: token },
+      select: { id: true },
+    });
+    if (!festa) throw new PortalFestaNotFoundError(token);
+
+    const midia = await midiasService.getById(midiaId);
+    if (midia.festaId !== festa.id) {
+      throw new PortalFestaNotFoundError(token);
+    }
+    return midia;
+  }
+
+  async uploadClienteMidia(
+    token: string,
+    file: Express.Multer.File
+  ) {
+    const festa = await prisma.festa.findUnique({
+      where: { portalToken: token },
+      select: { id: true },
+    });
+    if (!festa) throw new PortalFestaNotFoundError(token);
+
+    const validated = midiasService.validateFile(file);
+    return midiasService.create(
+      validated,
+      { tipo: TipoMidia.CLIENTE_REFERENCIA, festaId: festa.id },
+      null
+    );
+  }
+
+  async buildPortalLink(festaId: string): Promise<PortalLinkResponse> {
+    const token = await this.ensurePortalToken(festaId);
     return {
-      url: `${env.FRONTEND_URL}/portal?id=${festaId}`,
+      token,
+      url: `${env.FRONTEND_URL}/portal?t=${encodeURIComponent(token)}`,
     };
+  }
+
+  async assinar(token: string, file: Express.Multer.File) {
+    const festa = await prisma.festa.findUnique({
+      where: { portalToken: token },
+      select: { id: true, assinaturaClienteEm: true, status: true },
+    });
+    if (!festa) throw new PortalFestaNotFoundError(token);
+    if (festa.assinaturaClienteEm) {
+      throw new MidiaValidationError("Contrato já assinado");
+    }
+
+    const validated = midiasService.validateFile(file);
+    await midiasService.create(
+      validated,
+      { tipo: TipoMidia.ASSINATURA_CLIENTE, festaId: festa.id },
+      null
+    );
+    await prisma.festa.update({
+      where: { id: festa.id },
+      data: { assinaturaClienteEm: new Date() },
+    });
+    return this.getFestaStatusByToken(token);
+  }
+
+  async avaliar(token: string, nota: number, comentario?: string | null) {
+    const festa = await prisma.festa.findUnique({
+      where: { portalToken: token },
+      select: { id: true },
+    });
+    if (!festa) throw new PortalFestaNotFoundError(token);
+    if (!Number.isInteger(nota) || nota < 1 || nota > 5) {
+      throw new MidiaValidationError("Nota deve ser entre 1 e 5");
+    }
+    await prisma.festa.update({
+      where: { id: festa.id },
+      data: {
+        avaliacaoNota: nota,
+        avaliacaoComentario: comentario?.trim() || null,
+        avaliacaoEm: new Date(),
+      },
+    });
+    return this.getFestaStatusByToken(token);
   }
 }
 

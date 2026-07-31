@@ -15,7 +15,7 @@ function handleMulter(req: Request, res: Response, next: NextFunction): void {
   upload.single("file")(req, res, (err: unknown) => {
     if (err instanceof MulterError) {
       if (err.code === "LIMIT_FILE_SIZE") {
-        res.status(400).json({ message: "Arquivo excede o limite de 2 MB" });
+        res.status(400).json({ message: "Arquivo excede o limite de 8 MB" });
         return;
       }
       res.status(400).json({ message: err.message });
@@ -38,6 +38,12 @@ midiasRoutes.post(
   requireRoles(Role.ADMIN, Role.GERENTE, Role.VENDEDOR, Role.MONTADOR),
   handleMulter,
   (req, res, next) => midiasController.upload(req, res, next)
+);
+
+midiasRoutes.get(
+  "/festa/:festaId",
+  requireRoles(Role.ADMIN, Role.GERENTE, Role.VENDEDOR),
+  (req, res, next) => midiasController.listByFesta(req, res, next)
 );
 
 midiasRoutes.get(

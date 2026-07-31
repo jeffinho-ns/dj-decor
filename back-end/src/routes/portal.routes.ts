@@ -1,11 +1,25 @@
 import { Router } from "express";
-import { portalController } from "../controllers/portal.controller";
+import {
+  portalController,
+  portalUpload,
+} from "../controllers/portal.controller";
 
 const portalRoutes = Router();
 
-/** Portal do cliente — leitura pública (demo tokenless). */
-portalRoutes.get("/:festaId/status", (req, res, next) =>
+portalRoutes.get("/:token/status", (req, res, next) =>
   portalController.getStatus(req, res, next)
+);
+portalRoutes.get("/:token/midias/:midiaId", (req, res, next) =>
+  portalController.getMidia(req, res, next)
+);
+portalRoutes.post("/:token/midias", portalUpload, (req, res, next) =>
+  portalController.uploadMidia(req, res, next)
+);
+portalRoutes.post("/:token/assinar", portalUpload, (req, res, next) =>
+  portalController.assinar(req, res, next)
+);
+portalRoutes.post("/:token/avaliar", (req, res, next) =>
+  portalController.avaliar(req, res, next)
 );
 
 export { portalRoutes };
