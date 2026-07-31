@@ -184,6 +184,14 @@ function endOfToday(): Date {
   return d;
 }
 
+/** Horizonte padrão das montagens do montador (hoje + N dias). */
+function endOfHorizon(daysAhead = 30): Date {
+  const d = startOfToday();
+  d.setDate(d.getDate() + daysAhead);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
 export class OsNotFoundError extends Error {
   constructor(id: string) {
     super(`Ordem de serviço não encontrada: ${id}`);
@@ -346,7 +354,7 @@ export class OsService {
 
   async listMine(montadorId: string) {
     const inicio = startOfToday();
-    const fim = endOfToday();
+    const fim = endOfHorizon(30);
 
     return prisma.ordemServico.findMany({
       where: {
@@ -356,7 +364,14 @@ export class OsService {
             { horarioMontagem: { gte: inicio, lte: fim } },
             { dataEvento: { gte: inicio, lte: fim } },
           ],
-          status: { not: StatusFesta.CANCELADO },
+          status: {
+            in: [
+              StatusFesta.PAGO,
+              StatusFesta.FECHADO,
+              StatusFesta.EM_MONTAGEM,
+              StatusFesta.CONCLUIDO,
+            ],
+          },
         },
       },
       include: osInclude,

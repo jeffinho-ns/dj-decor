@@ -70,17 +70,33 @@ function safeTime(value: string | null | undefined): string {
   }
 }
 
+function safeDayLabel(value: string | null | undefined): string {
+  if (!value) return "";
+  try {
+    return format(parseISO(value), "EEE, d MMM", { locale: ptBR });
+  } catch {
+    return "";
+  }
+}
+
 interface MontagemHojeProps {
   itens: MontagemListaItem[];
   token: string;
+  /** `hoje` = gestão (só o dia); `proximas` = montador (próximos dias atribuídos) */
+  modo?: "hoje" | "proximas";
 }
 
-export function MontagemHoje({ itens, token }: MontagemHojeProps) {
+export function MontagemHoje({
+  itens,
+  token,
+  modo = "hoje",
+}: MontagemHojeProps) {
   const hoje = new Date();
   const [rotaAberta, setRotaAberta] = useState(false);
   const [rota, setRota] = useState<RotaDiaItem[] | null>(null);
   const [rotaErro, setRotaErro] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const mostrarRota = modo === "hoje" && itens.length > 1;
 
   function carregarRota() {
     setRotaErro(null);
@@ -110,14 +126,16 @@ export function MontagemHoje({ itens, token }: MontagemHojeProps) {
             {format(hoje, "EEEE", { locale: ptBR })}
           </p>
           <h2 className="mt-1 font-display text-2xl text-foreground sm:text-3xl">
-            Montagem de hoje
+            {modo === "proximas" ? "Minhas montagens" : "Montagem de hoje"}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground capitalize">
-            {format(hoje, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+            {modo === "proximas"
+              ? "Próximos 30 dias atribuídos a você"
+              : format(hoje, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          {itens.length > 1 ? (
+          {mostrarRota ? (
             <Button
               type="button"
               variant="outline"
@@ -158,16 +176,25 @@ export function MontagemHoje({ itens, token }: MontagemHojeProps) {
       {itens.length === 0 ? (
         <div className="rounded-2xl p-6 text-center sm:p-8 neo-sm">
           <p className="font-display text-lg text-foreground">
-            Nenhuma montagem agendada para hoje
+            {modo === "proximas"
+              ? "Nenhuma montagem atribuída"
+              : "Nenhuma montagem agendada para hoje"}
           </p>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Aproveite para revisar o material e conferir o calendário do mês.
+            {modo === "proximas"
+              ? "Quando a gestão te atribuir uma festa em Equipe, ela aparece aqui."
+              : "Aproveite para revisar o material e conferir o calendário do mês."}
           </p>
         </div>
       ) : (
         <div className="space-y-3">
           {itens.map((item, index) => (
-            <MontagemCard key={item.festaId} item={item} accentIndex={index} />
+            <MontagemCard
+              key={item.osId ?? item.festaId}
+              item={item}
+              accentIndex={index}
+              mostrarData={modo === "proximas"}
+            />
           ))}
         </div>
       )}
@@ -178,9 +205,11 @@ export function MontagemHoje({ itens, token }: MontagemHojeProps) {
 function MontagemCard({
   item,
   accentIndex,
+  mostrarData = false,
 }: {
   item: MontagemListaItem;
   accentIndex: number;
+  mostrarData?: boolean;
 }) {
   const badge = badgeMontagem(item);
   const accent = CARD_ACCENTS[accentIndex % CARD_ACCENTS.length];
@@ -188,6 +217,7 @@ function MontagemCard({
     item.totalItens > 0
       ? item.totalItens - item.itensPendentes
       : 0;
+  const diaLabel = safeDayLabel(item.horarioMontagem);
 
   const conteudo = (
     <article
@@ -215,6 +245,14 @@ function MontagemCard({
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Clock3 className={cn("size-4 shrink-0", accent.icon)} />
           <span>
+            {mostrarData && diaLabel ? (
+              <>
+                <span className="font-medium capitalize text-foreground">
+                  {diaLabel}
+                </span>
+                {" · "}
+              </>
+            ) : null}
             Montagem{" "}
             <span className="font-medium text-foreground">
               {safeTime(item.horarioMontagem)}

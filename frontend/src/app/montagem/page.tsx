@@ -1,9 +1,13 @@
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { OfflineQueueSync } from "@/components/layout/offline-queue-sync";
 import { MontagemHoje } from "@/components/montagem/montagem-hoje";
-import { listFestas, listOsHoje } from "@/lib/api";
+import { listFestas, listOsHoje, listOsMine } from "@/lib/api";
 import { festasDoDia } from "@/lib/montagem";
-import { normalizarListaMontagem, type MontagemListaItem } from "@/lib/montagem-os";
+import {
+  normalizarListaMontagem,
+  normalizarListaMontagemFromOs,
+  type MontagemListaItem,
+} from "@/lib/montagem-os";
 import { requireSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -13,10 +17,16 @@ export default async function MontagemPage() {
 
   let itens: MontagemListaItem[] = [];
   let loadError: string | null = null;
+  const isMontador = user.role === "MONTADOR";
 
   try {
-    const festasOs = await listOsHoje(token);
-    itens = normalizarListaMontagem(festasOs);
+    if (isMontador) {
+      const minhas = await listOsMine(token);
+      itens = normalizarListaMontagemFromOs(minhas);
+    } else {
+      const festasOs = await listOsHoje(token);
+      itens = normalizarListaMontagem(festasOs);
+    }
   } catch {
     try {
       const festas = await listFestas(token);
@@ -48,7 +58,11 @@ export default async function MontagemPage() {
     <DashboardShell
       user={user}
       title="Montagem"
-      description="Ordens de serviço do dia — toque para iniciar o fluxo."
+      description={
+        isMontador
+          ? "Suas montagens dos próximos dias — toque para iniciar o fluxo."
+          : "Ordens de serviço do dia — toque para iniciar o fluxo."
+      }
     >
       <OfflineQueueSync token={token} className="mb-4" />
       {loadError ? (
@@ -57,7 +71,11 @@ export default async function MontagemPage() {
           <p className="mt-1 opacity-90">{loadError}</p>
         </div>
       ) : (
-        <MontagemHoje itens={itens} token={token} />
+        <MontagemHoje
+          itens={itens}
+          token={token}
+          modo={isMontador ? "proximas" : "hoje"}
+        />
       )}
     </DashboardShell>
   );
