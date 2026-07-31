@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/table";
 import { assignMontadorOs, listEquipeAgenda } from "@/lib/api";
 import { getClientToken } from "@/lib/auth";
-import { toLocalDateValue } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import type { AgendaOs, Montador } from "@/types/equipe";
 
