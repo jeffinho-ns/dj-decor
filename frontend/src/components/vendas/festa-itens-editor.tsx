@@ -231,7 +231,7 @@ export function FestaItensEditor({
       </div>
 
       <div className="space-y-2 rounded-xl neo-sm p-3">
-        <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="flex flex-col gap-3">
           <div>
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
               Valor sugerido (catálogo)
@@ -246,33 +246,33 @@ export function FestaItensEditor({
             </Label>
             <Input
               id={`valor-manual-${festa.id}`}
-              className="h-9 w-36 tabular-nums"
+              className="h-9 w-full tabular-nums"
               value={valorManual}
               disabled={pending}
               onChange={(e) => setValorManual(e.target.value)}
             />
           </div>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-col gap-2">
           <Button
             type="button"
             size="sm"
-            className="gap-1.5"
+            className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-left leading-snug"
             disabled={pending}
             onClick={() => salvar({ usarValorCatalogo: true })}
           >
-            {pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            Salvar com valor do catálogo
+            {pending ? <Loader2 className="size-3.5 shrink-0 animate-spin" /> : null}
+            {compact ? "Salvar (catálogo)" : "Salvar com valor do catálogo"}
           </Button>
           <Button
             type="button"
             size="sm"
             variant="secondary"
-            className="gap-1.5"
+            className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-left leading-snug"
             disabled={pending}
             onClick={() => salvar({ usarValorCatalogo: false })}
           >
-            Confirmar valor manual
+            {compact ? "Confirmar valor" : "Confirmar valor manual"}
           </Button>
         </div>
         <p className="text-[11px] text-muted-foreground">
