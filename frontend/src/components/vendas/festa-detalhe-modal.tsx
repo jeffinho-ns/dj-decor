@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -62,6 +63,11 @@ export function FestaDetalheModal({
   onUpdated,
 }: FestaDetalheModalProps) {
   const [current, setCurrent] = useState<Festa | null>(festa);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setCurrent(festa);
@@ -81,21 +87,18 @@ export function FestaDetalheModal({
     };
   }, [open, onClose]);
 
-  if (!open || !current) return null;
+  if (!open || !current || !mounted) return null;
 
   function handleUpdated(updated: Festa) {
     setCurrent(updated);
     onUpdated?.(updated);
   }
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-    >
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-end justify-center md:items-center md:p-6">
       <button
         type="button"
-        className="absolute inset-0 bg-[#2a3142]/45 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-[#2a3142]/55 backdrop-blur-[2px]"
         aria-label="Fechar"
         onClick={onClose}
       />
@@ -103,9 +106,14 @@ export function FestaDetalheModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={`festa-modal-${current.id}`}
-        className="relative z-10 flex max-h-[min(92dvh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl neo sm:rounded-3xl"
+        className={cn(
+          "relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-t-3xl neo md:rounded-3xl",
+          "mb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom,0px)+0.75rem)]",
+          "max-h-[min(88dvh,calc(100dvh-var(--mobile-nav-h)-env(safe-area-inset-bottom,0px)-1.75rem))]",
+          "md:mb-0 md:max-h-[min(92dvh,720px)]"
+        )}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-border/40 px-4 py-4 sm:px-5">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/40 px-4 py-4 sm:px-5">
           <div className="min-w-0">
             <div className="mb-1 flex flex-wrap items-center gap-1.5">
               <span
@@ -145,7 +153,7 @@ export function FestaDetalheModal({
           </Button>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 pb-8 sm:px-5 sm:pb-5">
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-start gap-2">
               <Clock3 className="mt-0.5 size-4 shrink-0 text-balloon-sky" />
@@ -202,7 +210,7 @@ export function FestaDetalheModal({
             </li>
             <li className="flex items-start gap-2">
               <MapPin className="mt-0.5 size-4 shrink-0 text-balloon-sky" />
-              <span>{current.endereco}</span>
+              <span className="min-w-0 break-words">{current.endereco}</span>
             </li>
           </ul>
 
@@ -259,6 +267,7 @@ export function FestaDetalheModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
