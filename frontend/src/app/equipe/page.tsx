@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import {
-  EquipePainel,
-  toLocalDateValue,
-} from "@/components/equipe/equipe-painel";
+import { EquipePainel } from "@/components/equipe/equipe-painel";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { listEquipeAgenda, listMontadores } from "@/lib/api";
+import { toLocalDateValue } from "@/lib/date";
 import { requireSession } from "@/lib/session";
 import type { AgendaOs, Montador } from "@/types/equipe";
 
@@ -35,15 +33,11 @@ export default async function EquipePage() {
   let error: string | null = null;
 
   try {
+    const inicioIso = new Date(`${defaultInicio}T00:00:00`).toISOString();
+    const fimIso = new Date(`${defaultFim}T23:59:59`).toISOString();
     [montadores, agenda] = await Promise.all([
       listMontadores(token),
-      listEquipeAgenda(
-        {
-          inicio: new Date(defaultInicio).toISOString(),
-          fim: new Date(defaultFim + "T23:59:59").toISOString(),
-        },
-        token
-      ),
+      listEquipeAgenda({ inicio: inicioIso, fim: fimIso }, token),
     ]);
   } catch (err) {
     error =

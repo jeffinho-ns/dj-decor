@@ -15,13 +15,9 @@ import {
 } from "@/components/ui/table";
 import { assignMontadorOs, listEquipeAgenda } from "@/lib/api";
 import { getClientToken } from "@/lib/auth";
+import { toLocalDateValue } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import type { AgendaOs, Montador } from "@/types/equipe";
-
-function toLocalDateValue(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -335,5 +331,3 @@ export function EquipePainel({
     </div>
   );
 }
-
-export { toLocalDateValue };
