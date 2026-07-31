@@ -296,6 +296,16 @@ export class PortalService {
     };
   }
 
+  /** Compatibilidade: resolve festaId antigo → token seguro. */
+  async resolveLegacyFestaId(festaId: string): Promise<PortalLinkResponse> {
+    const festa = await prisma.festa.findUnique({
+      where: { id: festaId },
+      select: { id: true },
+    });
+    if (!festa) throw new PortalFestaNotFoundError(festaId);
+    return this.buildPortalLink(festa.id);
+  }
+
   async assinar(token: string, file: Express.Multer.File) {
     const festa = await prisma.festa.findUnique({
       where: { portalToken: token },

@@ -24,6 +24,7 @@ import {
   avaliarPortal,
   getPortalMidiaUrl,
   getPortalStatus,
+  resolvePortalLegacyLink,
   uploadPortalMidia,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -98,7 +99,8 @@ function findCurrentStepIndex(timeline: PortalTimelineStep[]): number {
 }
 
 export function PortalClientView({ token, legacyId }: PortalPageProps) {
-  const [loading, setLoading] = useState(Boolean(token));
+  const [resolvedToken, setResolvedToken] = useState<string | null>(token);
+  const [loading, setLoading] = useState(Boolean(token || legacyId));
   const [erro, setErro] = useState<string | null>(null);
   const [data, setData] = useState<PortalFestaStatus | null>(null);
   const [copied, setCopied] = useState(false);
@@ -108,22 +110,65 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
   const [actionMsg, setActionMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) {
+    let cancelled = false;
+
+    async function boot() {
+      setErro(null);
+
+      if (token) {
+        setResolvedToken(token);
+        setLoading(true);
+        try {
+          const status = await getPortalStatus(token);
+          if (!cancelled) setData(status);
+        } catch (err) {
+          if (!cancelled) {
+            setErro(
+              err instanceof Error ? err.message : "Não foi possível carregar"
+            );
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+        return;
+      }
+
+      if (legacyId) {
+        setLoading(true);
+        try {
+          const link = await resolvePortalLegacyLink(legacyId);
+          if (cancelled) return;
+          setResolvedToken(link.token ?? null);
+          if (typeof window !== "undefined" && link.token) {
+            const next = `${window.location.pathname}?t=${encodeURIComponent(link.token)}`;
+            window.history.replaceState(null, "", next);
+          }
+          const status = await getPortalStatus(link.token!);
+          if (!cancelled) setData(status);
+        } catch (err) {
+          if (!cancelled) {
+            setErro(
+              err instanceof Error
+                ? err.message
+                : "Link inválido ou festa não encontrada"
+            );
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+        return;
+      }
+
       setLoading(false);
-      return;
     }
 
-    setLoading(true);
-    setErro(null);
-    getPortalStatus(token)
-      .then(setData)
-      .catch((err) => {
-        setErro(
-          err instanceof Error ? err.message : "Não foi possível carregar"
-        );
-      })
-      .finally(() => setLoading(false));
-  }, [token]);
+    void boot();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, legacyId]);
+
+  const activeToken = resolvedToken;
 
   const currentStepIndex = useMemo(
     () => (data ? findCurrentStepIndex(data.timeline) : -1),
@@ -131,8 +176,8 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
   );
 
   async function handleShare() {
-    if (!token || typeof window === "undefined") return;
-    const url = `${window.location.origin}/portal?t=${encodeURIComponent(token)}`;
+    if (!activeToken || typeof window === "undefined") return;
+    const url = `${window.location.origin}/portal?t=${encodeURIComponent(activeToken)}`;
     try {
       if (navigator.share) {
         await navigator.share({
@@ -151,12 +196,12 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
   }
 
   function onUploadCliente(file: File | undefined) {
-    if (!token || !file) return;
+    if (!activeToken || !file) return;
     setActionMsg(null);
     startTransition(async () => {
       try {
-        await uploadPortalMidia(token, file);
-        const next = await getPortalStatus(token);
+        await uploadPortalMidia(activeToken, file);
+        const next = await getPortalStatus(activeToken);
         setData(next);
         setActionMsg("Foto enviada com sucesso!");
       } catch (err) {
@@ -168,11 +213,11 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
   }
 
   function onAssinar(file: File | undefined) {
-    if (!token || !file) return;
+    if (!activeToken || !file) return;
     setActionMsg(null);
     startTransition(async () => {
       try {
-        const next = await assinarPortal(token, file);
+        const next = await assinarPortal(activeToken, file);
         setData(next);
         setActionMsg("Assinatura registrada!");
       } catch (err) {
@@ -184,11 +229,11 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
   }
 
   function onAvaliar() {
-    if (!token) return;
+    if (!activeToken) return;
     setActionMsg(null);
     startTransition(async () => {
       try {
-        const next = await avaliarPortal(token, {
+        const next = await avaliarPortal(activeToken, {
           nota,
           comentario: comentario.trim() || undefined,
         });
@@ -202,7 +247,7 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
     });
   }
 
-  if (!token) {
+  if (!activeToken && !loading && !erro) {
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-5 py-16 text-center">
         <div className="neo-sm rounded-full p-5">
@@ -212,9 +257,7 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
           Portal do cliente
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          {legacyId
-            ? "Este link antigo não é mais válido. Peça um novo link seguro à equipe DJ Decor."
-            : "Use o link enviado pela equipe DJ Decor para acompanhar sua festa."}
+          Use o link enviado pela equipe DJ Decor para acompanhar sua festa.
         </p>
       </div>
     );
@@ -228,7 +271,7 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
     );
   }
 
-  if (erro || !data) {
+  if (erro || !data || !activeToken) {
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-5 py-16 text-center">
         <p className="text-sm text-destructive">
@@ -359,7 +402,7 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
               <figure key={item.id} className="overflow-hidden rounded-xl neo-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={getPortalMidiaUrl(token, item.id)}
+                  src={getPortalMidiaUrl(activeToken, item.id)}
                   alt={TIPO_LABEL[item.tipo] ?? "Foto"}
                   className="aspect-square w-full object-cover"
                 />

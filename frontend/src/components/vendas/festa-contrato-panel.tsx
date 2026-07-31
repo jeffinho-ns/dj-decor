@@ -17,6 +17,7 @@ import {
   downloadContratoPdf,
   gerarContrato,
   getContrato,
+  getPortalLink,
   listMensagensWhatsApp,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -124,11 +125,7 @@ export function FestaContratoPanel({
     setError(null);
     setCopiandoLink(true);
     try {
-      const url =
-        typeof window !== "undefined"
-          ? `${window.location.origin}/portal?id=${festaId}`
-          : "";
-      if (!url) return;
+      const { url } = await getPortalLink(festaId, token);
       await navigator.clipboard.writeText(url);
       setLinkCopiado(true);
       window.setTimeout(() => setLinkCopiado(false), 2500);

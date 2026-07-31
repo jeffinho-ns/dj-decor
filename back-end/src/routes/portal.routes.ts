@@ -6,6 +6,11 @@ import {
 
 const portalRoutes = Router();
 
+/** Compatibilidade com links antigos /portal?id=festaId */
+portalRoutes.get("/legacy/:festaId/link", (req, res, next) =>
+  portalController.resolveLegacy(req, res, next)
+);
+
 portalRoutes.get("/:token/status", (req, res, next) =>
   portalController.getStatus(req, res, next)
 );

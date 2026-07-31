@@ -17,6 +17,20 @@ const upload = multer({
 export const portalUpload = upload.single("file");
 
 export class PortalController {
+  async resolveLegacy(req: Request, res: Response, next: NextFunction) {
+    try {
+      const festaId = req.params.festaId as string;
+      const link = await portalService.resolveLegacyFestaId(festaId);
+      res.status(200).json(link);
+    } catch (error) {
+      if (error instanceof PortalFestaNotFoundError) {
+        res.status(404).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
   async getStatus(req: Request, res: Response, next: NextFunction) {
     try {
       const token = req.params.token as string;

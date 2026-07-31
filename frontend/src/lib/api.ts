@@ -471,6 +471,16 @@ export async function listOsRotaHoje(token: string): Promise<RotaDiaItem[]> {
   return handleResponse<RotaDiaItem[]>(response);
 }
 
+export async function resolvePortalLegacyLink(
+  festaId: string
+): Promise<PortalLinkResponse> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/portal/legacy/${encodeURIComponent(festaId)}/link`,
+    { cache: "no-store" }
+  );
+  return handleResponse<PortalLinkResponse>(response);
+}
+
 /** Status público da festa (GET /api/portal/:token/status). */
 export async function getPortalStatus(
   token: string
