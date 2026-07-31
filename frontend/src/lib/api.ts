@@ -138,8 +138,12 @@ export async function logout(token?: string | null): Promise<void> {
   }
 }
 
-export async function listFestas(token: string): Promise<Festa[]> {
-  const response = await fetch(`${getBaseUrl()}/api/festas`, {
+export async function listFestas(
+  token: string,
+  options?: { lixeira?: boolean }
+): Promise<Festa[]> {
+  const qs = options?.lixeira ? "?lixeira=1" : "";
+  const response = await fetch(`${getBaseUrl()}/api/festas${qs}`, {
     headers: authHeaders(token),
     cache: "no-store",
   });
@@ -231,6 +235,14 @@ export async function updateFestaStatus(
     body: JSON.stringify({ status }),
   });
   return handleResponse<Festa>(response);
+}
+
+export async function deleteFesta(id: string, token: string): Promise<void> {
+  const response = await fetch(`${getBaseUrl()}/api/festas/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  await handleResponse(response);
 }
 
 export async function listPagamentos(

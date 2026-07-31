@@ -28,9 +28,14 @@ function getParamId(value: string | string[] | undefined): string | null {
 }
 
 export class FestasController {
-  async list(_req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const festas = await festasService.list();
+      const raw = req.query.lixeira;
+      const lixeira =
+        raw === "1" ||
+        raw === "true" ||
+        (Array.isArray(raw) && (raw[0] === "1" || raw[0] === "true"));
+      const festas = await festasService.list({ lixeira });
       res.status(200).json(festas);
     } catch (error) {
       next(error);

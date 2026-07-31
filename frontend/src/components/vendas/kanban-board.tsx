@@ -33,7 +33,6 @@ const KANBAN_COLUMNS: StatusFesta[] = [
   "FECHADO",
   "EM_MONTAGEM",
   "CONCLUIDO",
-  "CANCELADO",
 ];
 
 const statusLabel: Record<StatusFesta, string> = {
@@ -43,7 +42,7 @@ const statusLabel: Record<StatusFesta, string> = {
   FECHADO: "Fechado",
   EM_MONTAGEM: "Em montagem",
   CONCLUIDO: "Concluído",
-  CANCELADO: "Cancelado",
+  CANCELADO: "Cancelar (lixeira)",
 };
 
 /** Espelha as transições do back-end (festas.service STATUS_TRANSITIONS). */
@@ -54,7 +53,7 @@ const STATUS_TRANSITIONS: Record<StatusFesta, StatusFesta[]> = {
   FECHADO: ["EM_MONTAGEM", "CANCELADO"],
   EM_MONTAGEM: ["CONCLUIDO", "CANCELADO"],
   CONCLUIDO: [],
-  CANCELADO: [],
+  CANCELADO: ["ORCAMENTO"],
 };
 
 const columnAccent: Record<StatusFesta, string> = {
@@ -389,9 +388,15 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
     setMovingId(festaId);
     try {
       const atualizada = await updateFestaStatus(festaId, status, token);
-      setFestas((prev) =>
-        prev.map((f) => (f.id === atualizada.id ? atualizada : f))
-      );
+      if (atualizada.status === "CANCELADO") {
+        setFestas((prev) => prev.filter((f) => f.id !== atualizada.id));
+        if (expandedId === atualizada.id) setExpandedId(null);
+        if (detalheId === atualizada.id) setDetalheId(null);
+      } else {
+        setFestas((prev) =>
+          prev.map((f) => (f.id === atualizada.id ? atualizada : f))
+        );
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Falha ao atualizar status"

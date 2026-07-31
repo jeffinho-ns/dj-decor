@@ -11,6 +11,7 @@ import {
   PlusCircle,
   Settings,
   Sparkles,
+  Trash2,
   UserRound,
   Users,
   UserCog,
@@ -25,6 +26,7 @@ const DEFAULT_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
+  { href: "/lixeira", label: "Lixeira", icon: Trash2 },
   { href: "/perfil", label: "Perfil", icon: UserRound },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
@@ -34,6 +36,7 @@ const GESTAO_NAV = [
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
   { href: "/follow-ups", label: "Follow-up", icon: Sparkles },
+  { href: "/lixeira", label: "Lixeira", icon: Trash2 },
   { href: "/estoque", label: "Estoque", icon: Package },
   { href: "/equipe", label: "Equipe", icon: Users },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
@@ -46,6 +49,7 @@ const ADMIN_NAV = [
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
   { href: "/follow-ups", label: "Follow-up", icon: Sparkles },
+  { href: "/lixeira", label: "Lixeira", icon: Trash2 },
   { href: "/estoque", label: "Estoque", icon: Package },
   { href: "/equipe", label: "Equipe", icon: Users },
   { href: "/usuarios", label: "Usuários", icon: UserCog },
@@ -94,6 +98,9 @@ export function isNavActive(pathname: string, href: string): boolean {
   }
   if (href === "/aprovacoes") {
     return pathname === "/aprovacoes" || pathname.startsWith("/aprovacoes/");
+  }
+  if (href === "/lixeira") {
+    return pathname === "/lixeira" || pathname.startsWith("/lixeira/");
   }
   if (href === "/configuracoes") {
     return (

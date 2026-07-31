@@ -79,19 +79,24 @@ const STATUS_TRANSITIONS: Record<StatusFesta, StatusFesta[]> = {
   [StatusFesta.FECHADO]: [StatusFesta.EM_MONTAGEM, StatusFesta.CANCELADO],
   [StatusFesta.EM_MONTAGEM]: [StatusFesta.CONCLUIDO, StatusFesta.CANCELADO],
   [StatusFesta.CONCLUIDO]: [],
-  [StatusFesta.CANCELADO]: [],
+  [StatusFesta.CANCELADO]: [StatusFesta.ORCAMENTO],
 };
 
 export class FestasService {
-  async list() {
+  async list(options?: { lixeira?: boolean }) {
     const festas = await prisma.festa.findMany({
+      where: options?.lixeira
+        ? { status: StatusFesta.CANCELADO }
+        : { status: { not: StatusFesta.CANCELADO } },
       include: {
         cliente: true,
         vendedor: {
           select: { id: true, nome: true, email: true, role: true },
         },
       },
-      orderBy: [{ dataEvento: "asc" }, { horarioMontagem: "asc" }],
+      orderBy: options?.lixeira
+        ? [{ criadoEm: "desc" }]
+        : [{ dataEvento: "asc" }, { horarioMontagem: "asc" }],
     });
 
     const riscoMap = await riscoService.computeForFestas(festas.map((f) => f.id));
