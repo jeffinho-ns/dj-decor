@@ -391,10 +391,13 @@ export class FestasService {
       },
     });
 
-    if (
-      data.status === StatusFesta.FECHADO ||
-      data.status === StatusFesta.EM_MONTAGEM
-    ) {
+    if (data.status === StatusFesta.FECHADO) {
+      try {
+        await osService.prepararMontagemParaFesta(id);
+      } catch (error) {
+        console.error("[festas] falha ao preparar montagem ao fechar", error);
+      }
+    } else if (data.status === StatusFesta.EM_MONTAGEM) {
       await osService.ensureForFesta(id);
     }
 

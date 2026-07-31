@@ -269,6 +269,27 @@ export class OsController {
     }
   }
 
+  async concluirMontagemLocal(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const os = await osService.concluirMontagemLocal(req.params.id as string);
+      res.status(200).json(os);
+    } catch (error) {
+      if (error instanceof OsNotFoundError) {
+        res.status(404).json({ message: error.message });
+        return;
+      }
+      if (error instanceof OsValidationError) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
   async fotoFinal(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) {

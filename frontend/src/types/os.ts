@@ -27,6 +27,7 @@ export interface ItemRomaneio {
   descricao: string | null;
   carregado: boolean;
   conferido: boolean;
+  montado: boolean;
   osId: string;
   unidadeId: string | null;
   fotoMidiaId: string | null;
@@ -40,6 +41,7 @@ export interface OrdemServico {
   checkinLng: number | null;
   checkinAt: string | null;
   romaneioConcluido: boolean;
+  montagemLocalConcluida: boolean;
   criadoEm: string;
   festaId: string;
   montadorId: string | null;
@@ -64,6 +66,7 @@ export interface FestaMontagemHoje {
 export interface UpdateRomaneioItemPayload {
   carregado?: boolean;
   conferido?: boolean;
+  montado?: boolean;
   fotoMidiaId?: string | null;
 }
 

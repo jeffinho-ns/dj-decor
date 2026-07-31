@@ -10,6 +10,7 @@ import {
   consolidarNecessidades,
   INVENTARIO_CATALOGO,
   normalizarTexto,
+  type NecessidadeInventario,
 } from "../catalog/inventario";
 import { env } from "../config/env";
 import { prisma } from "../prisma/client";
@@ -622,6 +623,167 @@ export class EstoqueService {
       atualizados,
       totalProdutos: inventario.length,
       inventario,
+    };
+  }
+
+  private findProdutoParaNecessidade(
+    necessidade: NecessidadeInventario,
+    produtos: Array<{ id: string; nome: string }>
+  ) {
+    const def = INVENTARIO_CATALOGO.find((d) => d.chave === necessidade.chave);
+    return (
+      produtos.find(
+        (p) => normalizarTexto(p.nome) === normalizarTexto(necessidade.nome)
+      ) ??
+      produtos.find((p) => {
+        if (!def) return false;
+        const aliases = [
+          normalizarTexto(def.nome),
+          ...def.aliases.map(normalizarTexto),
+        ];
+        const pn = normalizarTexto(p.nome);
+        return aliases.some((a) => pn === a || pn.includes(a) || a.includes(pn));
+      })
+    );
+  }
+
+  /**
+   * Reserva estoque automaticamente ao fechar a festa (kit + extras).
+   * Não falha se faltar estoque — registra faltantes em festa.itensFaltaEstoque.
+   *
+   * TODO: retorno de estoque pós-evento (liberar reservas / ENTRADA_RETORNO) — não implementado.
+   */
+  async prepararReservaFesta(festaId: string): Promise<{
+    reservadas: number;
+    faltantes: string[];
+  }> {
+    const festa = await prisma.festa.findUnique({
+      where: { id: festaId },
+      select: {
+        id: true,
+        kitCatalogo: true,
+        itensExtras: true,
+        horarioMontagem: true,
+        dataEvento: true,
+      },
+    });
+
+    if (!festa) {
+      throw new FestaNotFoundForReservaError(festaId);
+    }
+
+    const inicio = festa.horarioMontagem;
+    const fim = festa.dataEvento;
+
+    const linhasPedido: string[] = [...festa.itensExtras];
+    if (festa.kitCatalogo) {
+      const kit = await prisma.catalogoKit.findUnique({
+        where: { id: festa.kitCatalogo },
+        select: { itens: true },
+      });
+      if (kit) {
+        linhasPedido.unshift(...kit.itens);
+      }
+    }
+
+    const necessidades = consolidarNecessidades(linhasPedido);
+
+    const reservasExistentes = await prisma.reservaEstoque.findMany({
+      where: { festaId },
+      include: {
+        unidade: { select: { produtoId: true } },
+      },
+    });
+
+    const reservadasPorProduto = new Map<string, number>();
+    for (const reserva of reservasExistentes) {
+      reservadasPorProduto.set(
+        reserva.unidade.produtoId,
+        (reservadasPorProduto.get(reserva.unidade.produtoId) ?? 0) + 1
+      );
+    }
+
+    const produtos = await prisma.produto.findMany({
+      where: { ativo: true },
+      include: {
+        unidades: {
+          where: { status: { not: StatusUnidade.MANUTENCAO } },
+          orderBy: { codigoQr: "asc" },
+        },
+      },
+    });
+
+    const overlapping = await prisma.reservaEstoque.findMany({
+      where: {
+        inicio: { lt: fim },
+        fim: { gt: inicioMenosCura(inicio) },
+      },
+      select: { unidadeId: true },
+    });
+    const ocupadas = new Set(overlapping.map((r) => r.unidadeId));
+
+    const faltantes: string[] = [];
+    let novasReservadas = 0;
+
+    for (const necessidade of necessidades) {
+      const produto = this.findProdutoParaNecessidade(necessidade, produtos);
+
+      if (!produto) {
+        faltantes.push(
+          `${necessidade.nome} (sem produto no inventário · precisa ${necessidade.quantidade})`
+        );
+        continue;
+      }
+
+      const produtoCompleto = produtos.find((p) => p.id === produto.id)!;
+      const jaReservadas = reservadasPorProduto.get(produto.id) ?? 0;
+      const faltamReservar = Math.max(0, necessidade.quantidade - jaReservadas);
+
+      if (faltamReservar === 0) continue;
+
+      const livres = produtoCompleto.unidades.filter((u) => !ocupadas.has(u.id));
+      let reservadasNestaRodada = 0;
+
+      for (const unidade of livres) {
+        if (reservadasNestaRodada >= faltamReservar) break;
+
+        try {
+          await this.reservar({
+            unidadeId: unidade.id,
+            festaId,
+            inicio,
+            fim,
+          });
+          ocupadas.add(unidade.id);
+          reservadasNestaRodada++;
+          novasReservadas++;
+        } catch {
+          // Unidade indisponível no momento — tenta a próxima
+        }
+      }
+
+      const totalReservadas = jaReservadas + reservadasNestaRodada;
+      reservadasPorProduto.set(produto.id, totalReservadas);
+
+      const aindaFalta = necessidade.quantidade - totalReservadas;
+      if (aindaFalta > 0) {
+        faltantes.push(
+          `${necessidade.nome} (faltam ${aindaFalta} · precisa ${necessidade.quantidade}, reservadas ${totalReservadas})`
+        );
+      }
+    }
+
+    const itensFaltaEstoque = faltantes;
+    const alertaCompraEstoque = faltantes.length > 0;
+
+    await prisma.festa.update({
+      where: { id: festaId },
+      data: { alertaCompraEstoque, itensFaltaEstoque },
+    });
+
+    return {
+      reservadas: reservasExistentes.length + novasReservadas,
+      faltantes: itensFaltaEstoque,
     };
   }
 }

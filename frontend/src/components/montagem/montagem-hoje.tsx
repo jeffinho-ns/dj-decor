@@ -19,15 +19,39 @@ import { Button } from "@/components/ui/button";
 import { listOsRotaHoje } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { MontagemListaItem } from "@/lib/montagem-os";
-import type { RotaDiaItem, StatusOS } from "@/types/os";
+import type { RotaDiaItem } from "@/types/os";
 
-const STATUS_OS_LABEL: Record<StatusOS, string> = {
-  ABERTA: "Aberta",
-  ROMANEIO: "Romaneio",
-  EM_TRANSITO: "Em trânsito",
-  CHECKIN: "No local",
-  FINALIZADA: "Finalizada",
-};
+const BADGE_MONTAGEM = {
+  separar: {
+    label: "Separar",
+    badge: "bg-balloon-pink/12 text-balloon-pink",
+  },
+  aCaminho: {
+    label: "A caminho",
+    badge: "bg-balloon-sun/12 text-balloon-sun",
+  },
+  noLocal: {
+    label: "No local",
+    badge: "bg-balloon-sky/12 text-balloon-sky",
+  },
+  concluida: {
+    label: "Concluída",
+    badge: "bg-balloon-mint/12 text-balloon-mint",
+  },
+} as const;
+
+function badgeMontagem(item: MontagemListaItem) {
+  if (item.statusOs === "FINALIZADA" || item.montagemLocalConcluida) {
+    return BADGE_MONTAGEM.concluida;
+  }
+  if (item.checkinAt) {
+    return BADGE_MONTAGEM.noLocal;
+  }
+  if (item.romaneioConcluido) {
+    return BADGE_MONTAGEM.aCaminho;
+  }
+  return BADGE_MONTAGEM.separar;
+}
 
 const CARD_ACCENTS = [
   { tema: "text-balloon-pink", badge: "bg-balloon-pink/12 text-balloon-pink", icon: "text-balloon-pink/80", hover: "hover:ring-balloon-pink/25" },
@@ -158,7 +182,7 @@ function MontagemCard({
   item: MontagemListaItem;
   accentIndex: number;
 }) {
-  const statusOs = item.statusOs as StatusOS | null;
+  const badge = badgeMontagem(item);
   const accent = CARD_ACCENTS[accentIndex % CARD_ACCENTS.length];
   const progressoRomaneio =
     item.totalItens > 0
@@ -177,20 +201,14 @@ function MontagemCard({
           <p className="font-medium text-foreground">{item.clienteNome}</p>
           <p className={cn("truncate text-sm", accent.tema)}>{item.tema}</p>
         </div>
-        {statusOs ? (
-          <span
-            className={cn(
-              "shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-medium",
-              accent.badge
-            )}
-          >
-            {STATUS_OS_LABEL[statusOs]}
-          </span>
-        ) : (
-          <span className="shrink-0 rounded-lg bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-            Sem OS
-          </span>
-        )}
+        <span
+          className={cn(
+            "shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-medium",
+            item.osId ? badge.badge : "bg-muted text-muted-foreground"
+          )}
+        >
+          {item.osId ? badge.label : "Sem OS"}
+        </span>
       </div>
 
       <div className="mt-4 space-y-2">

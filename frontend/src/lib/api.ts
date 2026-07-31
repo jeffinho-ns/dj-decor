@@ -856,6 +856,36 @@ export async function concluirRomaneio(
   return handleResponse<OrdemServico>(response);
 }
 
+/** Gera itens do romaneio a partir das reservas (POST /api/os/:id/romaneio/seed). */
+export async function seedRomaneio(
+  osId: string,
+  token: string
+): Promise<OrdemServico> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/os/${osId}/romaneio/seed`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+    }
+  );
+  return handleResponse<OrdemServico>(response);
+}
+
+/** Marca montagem no local como concluída (POST /api/os/:id/montagem-local/concluir). */
+export async function concluirMontagemLocal(
+  osId: string,
+  token: string
+): Promise<OrdemServico> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/os/${osId}/montagem-local/concluir`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+    }
+  );
+  return handleResponse<OrdemServico>(response);
+}
+
 export async function checkinOs(
   osId: string,
   payload: CheckinPayload,

@@ -31,6 +31,8 @@ export default async function MontagemPage() {
         dataEvento: festa.dataEvento,
         statusOs: null,
         romaneioConcluido: false,
+        montagemLocalConcluida: false,
+        checkinAt: null,
         itensPendentes: 0,
         totalItens: 0,
       }));

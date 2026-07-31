@@ -277,8 +277,9 @@ model OrdemServico {
   checkinLat        Float?    @map("checkin_lat")
   checkinLng        Float?    @map("checkin_lng")
   checkinAt         DateTime? @map("checkin_at")
-  romaneioConcluido Boolean   @default(false) @map("romaneio_concluido")
-  criadoEm          DateTime  @default(now()) @map("criado_em")
+  romaneioConcluido         Boolean   @default(false) @map("romaneio_concluido")
+  montagemLocalConcluida    Boolean   @default(false) @map("montagem_local_concluida")
+  criadoEm                  DateTime  @default(now()) @map("criado_em")
 
   festaId String @unique @map("festa_id")
   festa   Festa  @relation(fields: [festaId], references: [id], onDelete: Cascade)
@@ -297,6 +298,7 @@ model ItemRomaneio {
   descricao  String?
   carregado  Boolean @default(false)
   conferido  Boolean @default(false)
+  montado    Boolean @default(false) @map("montado")
 
   osId String       @map("os_id")
   os   OrdemServico @relation(fields: [osId], references: [id], onDelete: Cascade)

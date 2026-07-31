@@ -10,6 +10,8 @@ export interface MontagemListaItem {
   dataEvento: string;
   statusOs: string | null;
   romaneioConcluido: boolean;
+  montagemLocalConcluida: boolean;
+  checkinAt: string | null;
   itensPendentes: number;
   totalItens: number;
 }
@@ -36,6 +38,8 @@ export function normalizarListaMontagem(
         dataEvento: festa.dataEvento,
         statusOs: os?.status ?? null,
         romaneioConcluido: os?.romaneioConcluido ?? false,
+        montagemLocalConcluida: os?.montagemLocalConcluida ?? false,
+        checkinAt: os?.checkinAt ?? null,
         itensPendentes: pendentes,
         totalItens: itens.length,
       };

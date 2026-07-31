@@ -3,12 +3,13 @@
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import {
+  AlertTriangle,
   ArrowLeft,
   Camera,
   CheckCircle2,
   Circle,
+  Hammer,
   Loader2,
   MapPin,
   Navigation,
@@ -19,8 +20,10 @@ import { MontagemQrScanner } from "@/components/montagem/montagem-qr-scanner";
 import { Button } from "@/components/ui/button";
 import {
   checkinOs,
+  concluirMontagemLocal,
   concluirRomaneio,
   scanQr,
+  seedRomaneio,
   updateRomaneioItem,
   uploadFotoFinalOs,
   uploadItemFotoRomaneio,
@@ -38,7 +41,9 @@ const STATUS_OS_LABEL: Record<StatusOS, string> = {
   FINALIZADA: "Finalizada",
 };
 
-type Etapa = "romaneio" | "checkin" | "foto" | "qr";
+type Etapa = "romaneio" | "checkin" | "montagem" | "foto" | "qr";
+
+const ETAPAS: Etapa[] = ["romaneio", "checkin", "montagem", "foto", "qr"];
 
 const ETAPA_ACCENT: Record<
   Etapa,
@@ -55,6 +60,12 @@ const ETAPA_ACCENT: Record<
     icon: "text-balloon-sky",
     badge: "bg-balloon-sky/12 text-balloon-sky",
     progress: "bg-balloon-sky",
+  },
+  montagem: {
+    ring: "ring-balloon-sun/35",
+    icon: "text-balloon-sun",
+    badge: "bg-balloon-sun/12 text-balloon-sun",
+    progress: "bg-balloon-sun",
   },
   foto: {
     ring: "ring-balloon-mint/35",
@@ -110,16 +121,18 @@ export function MontagemOsDetalhe({
 
   const romaneioOk = os.romaneioConcluido;
   const checkinOk = Boolean(os.checkinAt);
+  const montagemOk = os.montagemLocalConcluida;
   const fotoOk = os.status === "FINALIZADA";
 
   const etapaAtiva: Etapa = useMemo(() => {
     if (!romaneioOk) return "romaneio";
     if (!checkinOk) return "checkin";
+    if (!montagemOk) return "montagem";
     if (!fotoOk) return "foto";
     return "qr";
-  }, [romaneioOk, checkinOk, fotoOk]);
+  }, [romaneioOk, checkinOk, montagemOk, fotoOk]);
 
-  const todosItensOk =
+  const todosItensSeparados =
     itens.length > 0 &&
     itens.every((i) => i.carregado && i.conferido) &&
     itens.every(
@@ -127,13 +140,23 @@ export function MontagemOsDetalhe({
         !i.unidade?.produto?.requerQr || Boolean(i.fotoMidiaId)
     );
 
+  const todosItensMontados =
+    itens.length > 0 &&
+    itens.every((i) => i.montado) &&
+    itens.every(
+      (i) =>
+        !i.unidade?.produto?.requerQr || Boolean(i.fotoMidiaId)
+    );
+
+  const itensFaltaEstoque = festa.itensFaltaEstoque ?? [];
+
   function itemAltoValor(item: (typeof itens)[0]): boolean {
     return item.unidade?.produto?.requerQr === true;
   }
 
   async function toggleItem(
     itemId: string,
-    campo: "carregado" | "conferido",
+    campo: "carregado" | "conferido" | "montado",
     valor: boolean
   ) {
     setErro(null);
@@ -202,6 +225,38 @@ export function MontagemOsDetalhe({
       } catch (err) {
         setErro(
           err instanceof Error ? err.message : "Não foi possível concluir"
+        );
+      }
+    });
+  }
+
+  function seedRomaneioHandler() {
+    setErro(null);
+    startTransition(async () => {
+      try {
+        const atualizada = await seedRomaneio(os.id, token);
+        setOs(atualizada);
+      } catch (err) {
+        setErro(
+          err instanceof Error
+            ? err.message
+            : "Não foi possível gerar a lista do pedido"
+        );
+      }
+    });
+  }
+
+  function concluirMontagemHandler() {
+    setErro(null);
+    startTransition(async () => {
+      try {
+        const atualizada = await concluirMontagemLocal(os.id, token);
+        setOs(atualizada);
+      } catch (err) {
+        setErro(
+          err instanceof Error
+            ? err.message
+            : "Não foi possível concluir a montagem"
         );
       }
     });
@@ -340,11 +395,29 @@ export function MontagemOsDetalhe({
         </div>
       </header>
 
+      {itensFaltaEstoque.length > 0 ? (
+        <div
+          className="flex gap-3 rounded-2xl border border-balloon-sun/40 bg-balloon-sun/10 p-4 text-sm neo-sm"
+          role="alert"
+        >
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-balloon-sun" />
+          <div className="min-w-0">
+            <p className="font-medium text-foreground">
+              Comprar ou substituir antes de separar
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              {itensFaltaEstoque.join(" · ")}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <ol className="flex gap-1" aria-label="Progresso da montagem">
-        {(["romaneio", "checkin", "foto", "qr"] as Etapa[]).map((etapa) => {
+        {ETAPAS.map((etapa) => {
           const done =
             (etapa === "romaneio" && romaneioOk) ||
             (etapa === "checkin" && checkinOk) ||
+            (etapa === "montagem" && montagemOk) ||
             (etapa === "foto" && fotoOk) ||
             (etapa === "qr" && fotoOk);
           const active = etapa === etapaAtiva;
@@ -373,14 +446,31 @@ export function MontagemOsDetalhe({
             <PackageCheck className={cn("size-5", ETAPA_ACCENT.romaneio.icon)} />
           )}
           <h3 className="font-display text-lg text-foreground">
-            1. Romaneio
+            1. Separar no estoque
           </h3>
         </div>
 
         {itens.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Nenhum item no romaneio. Solicite ao gerente o preenchimento.
-          </p>
+          <div className="mt-3 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Nenhum item na lista. Gere a partir do pedido ou peça ajuda ao
+              gerente.
+            </p>
+            {!romaneioOk ? (
+              <Button
+                type="button"
+                className="w-full"
+                disabled={pending}
+                onClick={seedRomaneioHandler}
+              >
+                {pending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  "Gerar lista do pedido"
+                )}
+              </Button>
+            ) : null}
+          </div>
         ) : (
           <ul className="mt-4 space-y-3">
             {itens.map((item) => (
@@ -449,19 +539,18 @@ export function MontagemOsDetalhe({
           <Button
             type="button"
             className="mt-4 hidden w-full md:inline-flex"
-            disabled={!todosItensOk || pending}
+            disabled={!todosItensSeparados || pending}
             onClick={concluirRomaneioHandler}
           >
             {pending ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
-              "Concluir romaneio"
+              "Tudo separado — pronto para levar"
             )}
           </Button>
         ) : romaneioOk ? (
           <p className="mt-3 text-xs text-balloon-mint">
-            Romaneio concluído{" "}
-            {format(new Date(), "HH:mm", { locale: ptBR })}
+            Separação concluída — pronto para levar
           </p>
         ) : null}
       </section>
@@ -532,7 +621,103 @@ export function MontagemOsDetalhe({
         )}
       </section>
 
-      <section className={sectionClass("foto", etapaAtiva, !checkinOk)}>
+      <section className={sectionClass("montagem", etapaAtiva, !checkinOk)}>
+        <div className="flex items-center gap-2">
+          {montagemOk ? (
+            <CheckCircle2 className="size-5 text-balloon-mint" />
+          ) : (
+            <Hammer className={cn("size-5", ETAPA_ACCENT.montagem.icon)} />
+          )}
+          <h3 className="font-display text-lg text-foreground">
+            3. Montagem no local
+          </h3>
+        </div>
+
+        {!checkinOk ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Faça o check-in no endereço antes de marcar os itens montados.
+          </p>
+        ) : montagemOk ? (
+          <p className="mt-3 text-sm text-balloon-mint">
+            Montagem no local concluída.
+          </p>
+        ) : itens.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Nenhum item na lista para montar.
+          </p>
+        ) : (
+          <>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Marque cada peça conforme for montada no salão.
+            </p>
+            <ul className="mt-4 space-y-3">
+              {itens.map((item) => (
+                <li
+                  key={item.id}
+                  className="rounded-xl p-3 neo-inset"
+                >
+                  <p className="text-sm font-medium text-foreground">
+                    {item.descricao ??
+                      item.unidade?.produto?.nome ??
+                      "Item sem descrição"}
+                    {itemAltoValor(item) ? (
+                      <span className="ml-2 rounded-lg bg-balloon-sun/12 px-1.5 py-0.5 text-[10px] font-medium uppercase text-balloon-sun">
+                        Foto crítica
+                      </span>
+                    ) : null}
+                  </p>
+                  <div className="mt-2">
+                    <ToggleChip
+                      label="Montado"
+                      checked={item.montado}
+                      disabled={!checkinOk || montagemOk || pending}
+                      onChange={(v) => void toggleItem(item.id, "montado", v)}
+                    />
+                  </div>
+                  {itemAltoValor(item) && checkinOk && !montagemOk ? (
+                    <div className="mt-2">
+                      {item.fotoMidiaId ? (
+                        <p className="text-xs text-balloon-mint">
+                          Foto registrada
+                        </p>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="min-h-9"
+                          disabled={pending}
+                          onClick={() => {
+                            setItemFotoAlvo(item.id);
+                            itemFotoInputRef.current?.click();
+                          }}
+                        >
+                          <Camera className="size-3.5" />
+                          Foto obrigatória
+                        </Button>
+                      )}
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+            <Button
+              type="button"
+              className="mt-4 hidden w-full md:inline-flex"
+              disabled={!todosItensMontados || pending}
+              onClick={concluirMontagemHandler}
+            >
+              {pending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                "Tudo montado OK"
+              )}
+            </Button>
+          </>
+        )}
+      </section>
+
+      <section className={sectionClass("foto", etapaAtiva, !montagemOk)}>
         <div className="flex items-center gap-2">
           {fotoOk ? (
             <CheckCircle2 className="size-5 text-balloon-mint" />
@@ -540,7 +725,7 @@ export function MontagemOsDetalhe({
             <Camera className={cn("size-5", ETAPA_ACCENT.foto.icon)} />
           )}
           <h3 className="font-display text-lg text-foreground">
-            3. Foto da montagem
+            4. Foto da montagem
           </h3>
         </div>
 
@@ -567,7 +752,7 @@ export function MontagemOsDetalhe({
               accept="image/*"
               capture="environment"
               className="sr-only"
-              disabled={!checkinOk || pending}
+              disabled={!montagemOk || pending}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) fotoHandler(file);
@@ -580,7 +765,7 @@ export function MontagemOsDetalhe({
                 accept="image/*"
                 capture="environment"
                 className="sr-only"
-                disabled={!checkinOk || pending}
+                disabled={!montagemOk || pending}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) fotoHandler(file);
@@ -589,8 +774,8 @@ export function MontagemOsDetalhe({
               />
               <span
                 className={cn(
-                  "inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium transition-colors neo-inset",
-                  checkinOk && !pending
+                  "inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium transition-colors neo-inset",
+                  montagemOk && !pending
                     ? "cursor-pointer hover:text-balloon-mint"
                     : "cursor-not-allowed opacity-50"
                 )}
@@ -613,7 +798,7 @@ export function MontagemOsDetalhe({
         <div className="flex items-center gap-2">
           <Circle className={cn("size-5", ETAPA_ACCENT.qr.icon)} />
           <h3 className="font-display text-lg text-foreground">
-            4. Scan QR
+            5. Scan QR
           </h3>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -650,13 +835,16 @@ export function MontagemOsDetalhe({
         etapaAtiva={etapaAtiva}
         romaneioOk={romaneioOk}
         checkinOk={checkinOk}
+        montagemOk={montagemOk}
         fotoOk={fotoOk}
         itensLength={itens.length}
-        todosItensOk={todosItensOk}
+        todosItensSeparados={todosItensSeparados}
+        todosItensMontados={todosItensMontados}
         pending={pending}
         geoStatus={geoStatus}
         onConcluirRomaneio={concluirRomaneioHandler}
         onCheckin={checkinHandler}
+        onConcluirMontagem={concluirMontagemHandler}
         onFotoClick={() => fotoInputRef.current?.click()}
       />
     </div>
@@ -667,25 +855,31 @@ function MontagemStickyAction({
   etapaAtiva,
   romaneioOk,
   checkinOk,
+  montagemOk,
   fotoOk,
   itensLength,
-  todosItensOk,
+  todosItensSeparados,
+  todosItensMontados,
   pending,
   geoStatus,
   onConcluirRomaneio,
   onCheckin,
+  onConcluirMontagem,
   onFotoClick,
 }: {
   etapaAtiva: Etapa;
   romaneioOk: boolean;
   checkinOk: boolean;
+  montagemOk: boolean;
   fotoOk: boolean;
   itensLength: number;
-  todosItensOk: boolean;
+  todosItensSeparados: boolean;
+  todosItensMontados: boolean;
   pending: boolean;
   geoStatus: string | null;
   onConcluirRomaneio: () => void;
   onCheckin: () => void;
+  onConcluirMontagem: () => void;
   onFotoClick: () => void;
 }) {
   let action: React.ReactNode = null;
@@ -694,14 +888,14 @@ function MontagemStickyAction({
     action = (
       <Button
         type="button"
-        className="w-full"
-        disabled={!todosItensOk || pending}
+        className="w-full min-h-11"
+        disabled={!todosItensSeparados || pending}
         onClick={onConcluirRomaneio}
       >
         {pending ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (
-          "Concluir romaneio"
+          "Tudo separado — pronto para levar"
         )}
       </Button>
     );
@@ -709,7 +903,7 @@ function MontagemStickyAction({
     action = (
       <Button
         type="button"
-        className="w-full"
+        className="w-full min-h-11"
         disabled={!romaneioOk || pending}
         onClick={onCheckin}
       >
@@ -723,12 +917,27 @@ function MontagemStickyAction({
         )}
       </Button>
     );
+  } else if (etapaAtiva === "montagem" && !montagemOk && itensLength > 0) {
+    action = (
+      <Button
+        type="button"
+        className="w-full min-h-11"
+        disabled={!checkinOk || !todosItensMontados || pending}
+        onClick={onConcluirMontagem}
+      >
+        {pending ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          "Tudo montado OK"
+        )}
+      </Button>
+    );
   } else if (etapaAtiva === "foto" && !fotoOk) {
     action = (
       <Button
         type="button"
-        className="w-full"
-        disabled={!checkinOk || pending}
+        className="w-full min-h-11"
+        disabled={!montagemOk || pending}
         onClick={onFotoClick}
       >
         {pending ? (
@@ -769,7 +978,7 @@ function ToggleChip({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors neo-inset",
+        "inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors neo-inset min-h-9",
         checked
           ? "text-balloon-mint ring-1 ring-balloon-mint/30"
           : "text-muted-foreground hover:text-foreground",

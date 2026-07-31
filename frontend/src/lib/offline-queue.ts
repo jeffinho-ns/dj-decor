@@ -22,7 +22,7 @@ export interface RomaneioToggleEntry extends OfflineQueueEntryBase {
   type: "romaneio_toggle";
   osId: string;
   itemId: string;
-  payload: { carregado?: boolean; conferido?: boolean };
+  payload: { carregado?: boolean; conferido?: boolean; montado?: boolean };
 }
 
 export interface FestaChecklistEntry extends OfflineQueueEntryBase {
@@ -47,7 +47,7 @@ export interface OfflineQueueExecutor {
   romaneioToggle?: (
     osId: string,
     itemId: string,
-    payload: { carregado?: boolean; conferido?: boolean }
+    payload: { carregado?: boolean; conferido?: boolean; montado?: boolean }
   ) => Promise<void>;
   festaChecklist?: (
     festaId: string,
@@ -92,7 +92,7 @@ function newId(suffix: string): string {
 export function enqueueRomaneioToggle(
   osId: string,
   itemId: string,
-  payload: { carregado?: boolean; conferido?: boolean }
+  payload: { carregado?: boolean; conferido?: boolean; montado?: boolean }
 ): void {
   enqueue({
     id: newId(itemId),

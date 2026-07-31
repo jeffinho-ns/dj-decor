@@ -94,7 +94,12 @@ function enderecoResumo(endereco: string): string {
 function buildTimeline(
   festaStatus: StatusFesta,
   festa: { criadoEm: Date; horarioMontagem: Date },
-  os: { status: StatusOS; checkinAt: Date | null } | null,
+  os: {
+    status: StatusOS;
+    checkinAt: Date | null;
+    romaneioConcluido: boolean;
+    montagemLocalConcluida: boolean;
+  } | null,
   pagamentoConfirmadoEm: Date | null
 ): PortalTimelineStep[] {
   const festaRank = FESTA_RANK[festaStatus] ?? 0;
@@ -111,11 +116,25 @@ function buildTimeline(
 
   let montagemKey = "EM_MONTAGEM";
   let montagemLabel = "Em montagem";
-  if (os?.status === StatusOS.EM_TRANSITO) {
+  if (
+    os?.montagemLocalConcluida ||
+    os?.status === StatusOS.FINALIZADA ||
+    festaRank >= FESTA_RANK.CONCLUIDO
+  ) {
+    montagemKey = "CONCLUIDO";
+    montagemLabel = "Decoração concluída";
+  } else if (os?.checkinAt || os?.status === StatusOS.CHECKIN) {
+    montagemKey = "CHECKIN";
+    montagemLabel = "Equipe no local";
+  } else if (os?.status === StatusOS.EM_TRANSITO) {
     montagemKey = "EM_TRANSITO";
     montagemLabel = "Equipe a caminho";
-  } else if (os?.status === StatusOS.ROMANEIO) {
-    montagemLabel = "Preparando montagem";
+  } else if (
+    os?.status === StatusOS.ROMANEIO ||
+    (os && !os.romaneioConcluido)
+  ) {
+    montagemKey = "ROMANEIO";
+    montagemLabel = "Separando material";
   }
 
   return [
@@ -199,7 +218,12 @@ export class PortalService {
         avaliacaoNota: true,
         cliente: { select: { nome: true } },
         ordemServico: {
-          select: { status: true, checkinAt: true },
+          select: {
+            status: true,
+            checkinAt: true,
+            romaneioConcluido: true,
+            montagemLocalConcluida: true,
+          },
         },
         pagamentos: {
           where: { status: "CONFIRMADO" },

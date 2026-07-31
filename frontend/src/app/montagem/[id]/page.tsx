@@ -24,7 +24,7 @@ export default async function MontagemDetalhePage({
       <DashboardShell
         user={user}
         title="Montagem"
-        description="Romaneio, check-in, foto e QR."
+        description="Separar, check-in, montagem, foto e QR."
       >
         <MontagemOsDetalhe osInicial={os} token={token} />
       </DashboardShell>

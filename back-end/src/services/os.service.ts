@@ -6,8 +6,15 @@ import {
   TipoMidia,
 } from "@prisma/client";
 import { z } from "zod";
+import {
+  encontrarDefInventario,
+  isItemServico,
+  normalizarTexto,
+  parseLinhaInventario,
+} from "../catalog/inventario";
 import { dispatchWhatsAppSafe } from "../integrations/whatsapp";
 import { prisma } from "../prisma/client";
+import { estoqueService } from "./estoque.service";
 
 const addRomaneioItemSchema = z
   .object({
@@ -21,6 +28,7 @@ const addRomaneioItemSchema = z
 const updateRomaneioItemSchema = z.object({
   carregado: z.boolean().optional(),
   conferido: z.boolean().optional(),
+  montado: z.boolean().optional(),
   fotoMidiaId: z.string().min(1).nullable().optional(),
 });
 
@@ -463,6 +471,7 @@ export class OsService {
       data: {
         ...(data.carregado !== undefined ? { carregado: data.carregado } : {}),
         ...(data.conferido !== undefined ? { conferido: data.conferido } : {}),
+        ...(data.montado !== undefined ? { montado: data.montado } : {}),
         ...(data.fotoMidiaId !== undefined
           ? { fotoMidiaId: data.fotoMidiaId }
           : {}),
@@ -511,13 +520,29 @@ export class OsService {
       );
     }
 
-    const osAtualizada = await prisma.ordemServico.update({
-      where: { id: osId },
-      data: {
-        romaneioConcluido: true,
-        status: StatusOS.EM_TRANSITO,
-      },
-      include: osInclude,
+    const osAtualizada = await prisma.$transaction(async (tx) => {
+      const updated = await tx.ordemServico.update({
+        where: { id: osId },
+        data: {
+          romaneioConcluido: true,
+          status: StatusOS.EM_TRANSITO,
+        },
+        include: osInclude,
+      });
+
+      const festaStatus = os.festa.status;
+      if (
+        festaStatus === StatusFesta.FECHADO ||
+        festaStatus === StatusFesta.PAGO
+      ) {
+        await tx.festa.update({
+          where: { id: os.festaId },
+          data: { status: StatusFesta.EM_MONTAGEM },
+        });
+        updated.festa.status = StatusFesta.EM_MONTAGEM;
+      }
+
+      return updated;
     });
 
     dispatchWhatsAppSafe({
@@ -584,6 +609,94 @@ export class OsService {
     return this.getById(osId);
   }
 
+  async prepararMontagemParaFesta(festaId: string) {
+    const os = await this.ensureForFesta(festaId);
+
+    await estoqueService.prepararReservaFesta(festaId);
+    await this.seedRomaneioFromReservas(os.id);
+
+    const osAtual = await this.getById(os.id);
+
+    const festa = await prisma.festa.findUnique({
+      where: { id: festaId },
+      select: { kitCatalogo: true, itensExtras: true },
+    });
+
+    const linhasPedido: string[] = [...(festa?.itensExtras ?? [])];
+    if (festa?.kitCatalogo) {
+      const kit = await prisma.catalogoKit.findUnique({
+        where: { id: festa.kitCatalogo },
+        select: { itens: true },
+      });
+      if (kit) {
+        linhasPedido.unshift(...kit.itens);
+      }
+    }
+
+    const descricoesExistentes = new Set(
+      osAtual.itensRomaneio
+        .map((item) => normalizarTexto(item.descricao ?? ""))
+        .filter(Boolean)
+    );
+
+    const linhasParaCriar: string[] = [];
+
+    for (const linha of linhasPedido) {
+      const trimmed = linha.trim();
+      if (!trimmed || isItemServico(trimmed)) continue;
+
+      const norm = normalizarTexto(trimmed);
+      if (descricoesExistentes.has(norm)) continue;
+
+      const parsed = parseLinhaInventario(trimmed);
+      if (parsed) {
+        const def = encontrarDefInventario(parsed.texto);
+        if (def) {
+          const cobertoPorReserva = osAtual.itensRomaneio.some((item) => {
+            if (!item.unidade) return false;
+            const pn = normalizarTexto(item.unidade.produto.nome);
+            const aliases = [
+              normalizarTexto(def.nome),
+              ...def.aliases.map(normalizarTexto),
+            ];
+            return aliases.some(
+              (alias) => pn === alias || pn.includes(alias) || alias.includes(pn)
+            );
+          });
+          if (cobertoPorReserva) continue;
+        }
+      }
+
+      if (!linhasParaCriar.some((l) => normalizarTexto(l) === norm)) {
+        linhasParaCriar.push(trimmed);
+        descricoesExistentes.add(norm);
+      }
+    }
+
+    if (linhasParaCriar.length > 0) {
+      await prisma.$transaction(
+        linhasParaCriar.map((descricao) =>
+          prisma.itemRomaneio.create({
+            data: {
+              osId: os.id,
+              descricao,
+              unidadeId: null,
+            },
+          })
+        )
+      );
+    }
+
+    if (osAtual.status === StatusOS.ABERTA) {
+      await prisma.ordemServico.update({
+        where: { id: os.id },
+        data: { status: StatusOS.ROMANEIO },
+      });
+    }
+
+    return this.getById(os.id);
+  }
+
   async checkin(osId: string, rawInput: unknown) {
     const data = this.parseCheckin(rawInput);
     await this.getById(osId);
@@ -621,13 +734,15 @@ export class OsService {
       throw new OsValidationError("Mídia não pertence à festa desta OS");
     }
 
+    const jaFinalizada = os.status === StatusOS.FINALIZADA;
+
     const festaStatus = os.festa.status;
     const podeConcluirFesta =
       festaStatus === StatusFesta.EM_MONTAGEM ||
       festaStatus === StatusFesta.FECHADO;
 
     const osFinalizada = await prisma.$transaction(async (tx) => {
-      if (podeConcluirFesta) {
+      if (podeConcluirFesta && !jaFinalizada) {
         await tx.festa.update({
           where: { id: os.festaId },
           data: { status: StatusFesta.CONCLUIDO },
@@ -641,32 +756,133 @@ export class OsService {
         });
       }
 
+      if (jaFinalizada) {
+        return tx.ordemServico.findUniqueOrThrow({
+          where: { id: osId },
+          include: osInclude,
+        });
+      }
+
       return tx.ordemServico.update({
         where: { id: osId },
-        data: { status: StatusOS.FINALIZADA },
+        data: {
+          status: StatusOS.FINALIZADA,
+          montagemLocalConcluida: true,
+        },
         include: osInclude,
       });
     });
 
-    dispatchWhatsAppSafe({
-      template: "montagem_finalizada",
-      telefone: osFinalizada.festa.cliente.telefone,
-      festaId: osFinalizada.festaId,
-      payload: {
-        tema: osFinalizada.festa.tema,
-        data: osFinalizada.festa.dataEvento.toISOString(),
-      },
+    if (!jaFinalizada) {
+      dispatchWhatsAppSafe({
+        template: "montagem_finalizada",
+        telefone: osFinalizada.festa.cliente.telefone,
+        festaId: osFinalizada.festaId,
+        payload: {
+          tema: osFinalizada.festa.tema,
+          data: osFinalizada.festa.dataEvento.toISOString(),
+        },
+      });
+
+      dispatchWhatsAppSafe({
+        template: "pos_venda_avaliacao",
+        telefone: osFinalizada.festa.cliente.telefone,
+        festaId: osFinalizada.festaId,
+        payload: {
+          tema: osFinalizada.festa.tema,
+          data: osFinalizada.festa.dataEvento.toISOString(),
+        },
+      });
+    }
+
+    return osFinalizada;
+  }
+
+  async concluirMontagemLocal(osId: string) {
+    const os = await this.getById(osId);
+
+    if (!os.checkinAt) {
+      throw new OsValidationError(
+        "Check-in no local é obrigatório antes de concluir a montagem"
+      );
+    }
+
+    if (!os.romaneioConcluido) {
+      throw new OsValidationError(
+        "Romaneio do galpão deve estar concluído antes da montagem local"
+      );
+    }
+
+    if (os.itensRomaneio.length === 0) {
+      throw new OsValidationError("Romaneio vazio");
+    }
+
+    const naoMontados = os.itensRomaneio.filter((item) => !item.montado);
+    if (naoMontados.length > 0) {
+      throw new OsValidationError(
+        "Todos os itens devem estar montados no local"
+      );
+    }
+
+    const criticoSemFoto = os.itensRomaneio.filter(
+      (item) => item.unidade?.produto.requerQr === true && !item.fotoMidiaId
+    );
+    if (criticoSemFoto.length > 0) {
+      throw new OsValidationError(
+        "Itens críticos (QR) exigem foto antes de concluir a montagem"
+      );
+    }
+
+    if (os.montagemLocalConcluida && os.status === StatusOS.FINALIZADA) {
+      return os;
+    }
+
+    const festaStatus = os.festa.status;
+    const podeConcluirFesta =
+      festaStatus === StatusFesta.EM_MONTAGEM ||
+      festaStatus === StatusFesta.FECHADO;
+
+    const jaFinalizada = os.status === StatusOS.FINALIZADA;
+
+    const osFinalizada = await prisma.$transaction(async (tx) => {
+      if (podeConcluirFesta) {
+        await tx.festa.update({
+          where: { id: os.festaId },
+          data: { status: StatusFesta.CONCLUIDO },
+        });
+      }
+
+      return tx.ordemServico.update({
+        where: { id: osId },
+        data: {
+          montagemLocalConcluida: true,
+          status: StatusOS.FINALIZADA,
+        },
+        include: osInclude,
+      });
     });
 
-    dispatchWhatsAppSafe({
-      template: "pos_venda_avaliacao",
-      telefone: osFinalizada.festa.cliente.telefone,
-      festaId: osFinalizada.festaId,
-      payload: {
-        tema: osFinalizada.festa.tema,
-        data: osFinalizada.festa.dataEvento.toISOString(),
-      },
-    });
+    if (!jaFinalizada) {
+      dispatchWhatsAppSafe({
+        template: "montagem_finalizada",
+        telefone: osFinalizada.festa.cliente.telefone,
+        festaId: osFinalizada.festaId,
+        payload: {
+          tema: osFinalizada.festa.tema,
+          data: osFinalizada.festa.dataEvento.toISOString(),
+        },
+      });
+
+      dispatchWhatsAppSafe({
+        template: "pos_venda_avaliacao",
+        telefone: osFinalizada.festa.cliente.telefone,
+        festaId: osFinalizada.festaId,
+        payload: {
+          tema: osFinalizada.festa.tema,
+          data: osFinalizada.festa.dataEvento.toISOString(),
+        },
+      });
+    }
 
     return osFinalizada;
   }
