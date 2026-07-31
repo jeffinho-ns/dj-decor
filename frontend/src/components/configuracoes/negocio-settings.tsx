@@ -170,7 +170,7 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
           {kits.map((kit) => (
             <div
               key={kit.id}
-              className="grid gap-2 rounded-xl neo-inset p-3 sm:grid-cols-[1fr_100px_100px_auto]"
+              className="grid grid-cols-1 gap-2 rounded-xl neo-inset p-3 sm:grid-cols-[minmax(0,1fr)_minmax(5.5rem,7rem)_auto]"
             >
               <div>
                 <p className="text-sm font-medium">{kit.nome}</p>
@@ -200,6 +200,7 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
                 type="button"
                 size="xs"
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   startTransition(async () => {
                     await setCatalogoKitAtivo(kit.id, !kit.ativo, token);
@@ -220,7 +221,7 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
           {addons.map((addon) => (
             <div
               key={addon.id}
-              className="grid gap-2 rounded-xl neo-inset p-3 sm:grid-cols-[1fr_100px_auto]"
+              className="grid grid-cols-1 gap-2 rounded-xl neo-inset p-3 sm:grid-cols-[minmax(0,1fr)_minmax(5.5rem,7rem)_auto]"
             >
               <div>
                 <p className="text-sm font-medium">{addon.nome}</p>
@@ -243,6 +244,7 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
                 type="button"
                 size="xs"
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   startTransition(async () => {
                     await setCatalogoAddonAtivo(addon.id, !addon.ativo, token);

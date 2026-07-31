@@ -126,7 +126,7 @@ export function PagamentoForm({
             {pagamentos.map((pagamento) => (
               <li
                 key={pagamento.id}
-                className="flex flex-col gap-2 rounded-2xl neo-sm px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-2xl neo-sm px-3 py-2.5 text-sm"
               >
                 <div className="min-w-0">
                   <p className="font-medium text-foreground">
@@ -160,12 +160,13 @@ export function PagamentoForm({
                     Estornado
                   </span>
                 ) : (
-                  <div className="flex w-full flex-col gap-2 sm:w-auto">
+                  <div className="flex w-full flex-col gap-2">
                     {!pagamento.pixCopiaCola && pagamento.tipo === "PIX" ? (
                       <Button
                         type="button"
                         variant="secondary"
                         size="sm"
+                        className="w-full"
                         disabled={confirmandoId === pagamento.id}
                         onClick={() => {
                           setConfirmandoId(pagamento.id);
@@ -193,7 +194,7 @@ export function PagamentoForm({
                     <Button
                       type="button"
                       variant="outline"
-                      className="min-h-10 w-full sm:w-auto"
+                      className="min-h-10 w-full"
                       disabled={confirmandoId === pagamento.id}
                       onClick={() => confirmarSemComprovante(pagamento.id)}
                     >
@@ -215,7 +216,7 @@ export function PagamentoForm({
         <p className="text-xs font-medium uppercase tracking-wider text-balloon-mint">
           Registrar pagamento PIX
         </p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor={`valor-${festaId}`} className="text-xs">
               Valor (R$)

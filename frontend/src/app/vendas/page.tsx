@@ -52,10 +52,14 @@ export default async function VendasPage() {
       actions={
         <Link
           href="/vendas/nova"
-          className={cn(buttonVariants({ variant: "default" }), "gap-1.5")}
+          className={cn(
+            buttonVariants({ variant: "default", size: "sm" }),
+            "gap-1.5"
+          )}
         >
           <PlusCircle className="size-4" />
-          Nova Venda
+          <span className="hidden sm:inline">Nova Venda</span>
+          <span className="sm:hidden">Nova</span>
         </Link>
       }
     >

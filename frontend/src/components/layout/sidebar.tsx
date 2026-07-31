@@ -137,7 +137,7 @@ export function Sidebar({ user }: SidebarProps) {
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1.5 px-3 pb-3">
+      <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto px-3 pb-3">
         <p className="mb-1 px-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           {isAdmin ? "Gestão" : "Menu"}
         </p>

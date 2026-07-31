@@ -98,9 +98,9 @@ export function UsuariosPainel({ token, canEdit }: UsuariosPainelProps) {
         {users.map((u) => (
           <article
             key={u.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl neo-sm p-3"
+            className="flex flex-col gap-3 rounded-2xl neo-sm p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
           >
-            <div>
+            <div className="min-w-0">
               <p className="font-medium">
                 {u.nome}{" "}
                 {!u.ativo ? (
@@ -113,9 +113,9 @@ export function UsuariosPainel({ token, canEdit }: UsuariosPainelProps) {
               </p>
             </div>
             {canEdit ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
                 <select
-                  className="h-9 rounded-xl neo-inset px-2 text-xs"
+                  className="h-10 w-full rounded-xl neo-inset px-2 text-xs sm:h-9 sm:w-auto"
                   value={u.role}
                   disabled={pending}
                   onChange={(e) => {
@@ -139,6 +139,7 @@ export function UsuariosPainel({ token, canEdit }: UsuariosPainelProps) {
                   type="button"
                   size="xs"
                   variant="outline"
+                  className="w-full sm:w-auto"
                   disabled={pending}
                   onClick={() => {
                     startTransition(async () => {
@@ -153,6 +154,7 @@ export function UsuariosPainel({ token, canEdit }: UsuariosPainelProps) {
                   type="button"
                   size="xs"
                   variant="secondary"
+                  className="w-full sm:w-auto"
                   disabled={pending}
                   onClick={() => {
                     startTransition(async () => {

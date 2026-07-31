@@ -105,7 +105,7 @@ export function FestaGaleriaEditor({ festaId, token }: FestaGaleriaEditorProps) 
           Nenhuma imagem ainda. Adicione referências para o contrato e o portal.
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {items.map((item) => (
             <div
               key={item.id}

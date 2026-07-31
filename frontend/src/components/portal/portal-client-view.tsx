@@ -329,7 +329,8 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
           <p className="mt-1 text-lg font-medium text-foreground">{data.tema}</p>
           {data.itensExtras?.length ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              Itens: {data.itensExtras.join(", ")}
+              Itens:{" "}
+              <span className="break-words">{data.itensExtras.join(", ")}</span>
             </p>
           ) : null}
         </div>
@@ -494,18 +495,19 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
             <Star className="size-4 text-balloon-sun" />
             Avalie sua festa
           </h2>
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {[1, 2, 3, 4, 5].map((n) => (
               <button
                 key={n}
                 type="button"
                 onClick={() => setNota(n)}
+                aria-label={`${n} estrela${n > 1 ? "s" : ""}`}
                 className={cn(
-                  "rounded-lg p-1.5",
+                  "flex size-11 items-center justify-center rounded-xl",
                   n <= nota ? "text-balloon-sun" : "text-muted-foreground/40"
                 )}
               >
-                <Star className="size-5 fill-current" />
+                <Star className="size-6 fill-current" />
               </button>
             ))}
           </div>
@@ -521,6 +523,7 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
           <Button
             type="button"
             size="sm"
+            className="w-full"
             disabled={pending}
             onClick={onAvaliar}
           >

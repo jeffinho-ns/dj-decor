@@ -344,7 +344,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
         Dados da festa
       </h2>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6 pb-24 md:pb-0">
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6 pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom,0px)+6.5rem)] md:pb-0">
         <div className="space-y-4">
           <p className="text-xs font-medium uppercase tracking-wider text-balloon-pink">
             Cliente
@@ -450,7 +450,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
           </div>
 
           {kitSelecionado?.valorPegueEMonte != null ? (
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <div className="flex flex-col gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -458,7 +458,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                   setValorManual(false);
                 }}
                 className={cn(
-                  "min-h-11 rounded-2xl px-4 py-2.5 text-sm transition-all md:min-h-0 md:px-3 md:py-1.5",
+                  "min-h-11 w-full rounded-2xl px-4 py-2.5 text-left text-sm whitespace-normal transition-all md:min-h-0 md:w-auto md:px-3 md:py-1.5",
                   !pegueEMonte
                     ? "neo-sky"
                     : "neo-sm text-muted-foreground hover:brightness-[1.02]"
@@ -474,7 +474,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                   setValorManual(false);
                 }}
                 className={cn(
-                  "min-h-11 rounded-2xl px-4 py-2.5 text-sm transition-all md:min-h-0 md:px-3 md:py-1.5",
+                  "min-h-11 w-full rounded-2xl px-4 py-2.5 text-left text-sm whitespace-normal transition-all md:min-h-0 md:w-auto md:px-3 md:py-1.5",
                   pegueEMonte
                     ? "neo-pink"
                     : "neo-sm text-muted-foreground hover:brightness-[1.02]"
@@ -707,7 +707,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
                 }}
                 placeholder="Ex.: toalha especial, placa personalizada"
               />
-              <Button type="button" variant="outline" className="min-h-11 sm:shrink-0" onClick={addExtra}>
+              <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto sm:shrink-0" onClick={addExtra}>
                 Adicionar
               </Button>
             </div>
@@ -871,18 +871,18 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
           </div>
         ) : null}
 
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:static md:z-auto md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
-          <div className="mx-auto flex max-w-3xl flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <div className="fixed inset-x-0 z-40 border-t border-border/60 bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom,0px)+1.25rem)] md:static md:bottom-auto md:z-auto md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+          <div className="mx-auto flex max-w-3xl flex-col-reverse gap-2 md:flex-row md:justify-end">
             <Button
               type="button"
               variant="outline"
-              className="min-h-11 w-full sm:w-auto"
+              className="min-h-11 w-full md:w-auto"
               onClick={() => router.push("/vendas")}
               disabled={isSubmitting}
             >
               Cancelar
             </Button>
-            <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={isSubmitting}>
+            <Button type="submit" className="min-h-11 w-full md:w-auto" disabled={isSubmitting}>
               {isSubmitting ? "Salvando..." : "Salvar venda"}
             </Button>
           </div>

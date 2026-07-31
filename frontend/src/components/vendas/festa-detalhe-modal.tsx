@@ -89,7 +89,10 @@ export function FestaDetalheModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-6">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
       <button
         type="button"
         className="absolute inset-0 bg-[#2a3142]/45 backdrop-blur-[2px]"
@@ -100,7 +103,7 @@ export function FestaDetalheModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={`festa-modal-${current.id}`}
-        className="relative z-10 flex max-h-[min(92dvh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-3xl neo"
+        className="relative z-10 flex max-h-[min(92dvh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl neo sm:rounded-3xl"
       >
         <div className="flex items-start justify-between gap-3 border-b border-border/40 px-4 py-4 sm:px-5">
           <div className="min-w-0">
@@ -144,20 +147,22 @@ export function FestaDetalheModal({
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex items-center gap-2">
-              <Clock3 className="size-4 shrink-0 text-balloon-sky" />
-              Montagem{" "}
-              <span className="font-medium text-foreground">
-                {format(parseISO(current.horarioMontagem), "dd/MM HH:mm", {
-                  locale: ptBR,
-                })}
-              </span>
-              <span>·</span>
-              Festa{" "}
-              <span className="font-medium text-foreground">
-                {format(parseISO(current.dataEvento), "dd/MM HH:mm", {
-                  locale: ptBR,
-                })}
+            <li className="flex items-start gap-2">
+              <Clock3 className="mt-0.5 size-4 shrink-0 text-balloon-sky" />
+              <span className="min-w-0">
+                Montagem{" "}
+                <span className="font-medium text-foreground">
+                  {format(parseISO(current.horarioMontagem), "dd/MM HH:mm", {
+                    locale: ptBR,
+                  })}
+                </span>
+                <span className="text-muted-foreground/60"> · </span>
+                Festa{" "}
+                <span className="font-medium text-foreground">
+                  {format(parseISO(current.dataEvento), "dd/MM HH:mm", {
+                    locale: ptBR,
+                  })}
+                </span>
               </span>
             </li>
             <li className="flex items-center gap-2">
@@ -179,18 +184,21 @@ export function FestaDetalheModal({
                 {formatCurrency(current.valor)}
               </span>
             </li>
-            <li className="flex items-center gap-2">
-              <Package className="size-4 shrink-0 text-balloon-pink" />
-              Tamanho{" "}
-              <span className="font-medium text-foreground">
-                {current.tamanhoDecoracao}
-              </span>
-              {current.kitCatalogo || current.pegueEMonte ? (
-                <span className="truncate text-xs">
-                  · {nomeDoKit(current.kitCatalogo) ?? "Personalizado"}
-                  {current.pegueEMonte ? " · Pegue e monte" : ""}
+            <li className="flex items-start gap-2">
+              <Package className="mt-0.5 size-4 shrink-0 text-balloon-pink" />
+              <span className="min-w-0 break-words">
+                Tamanho{" "}
+                <span className="font-medium text-foreground">
+                  {current.tamanhoDecoracao}
                 </span>
-              ) : null}
+                {current.kitCatalogo || current.pegueEMonte ? (
+                  <span className="text-xs text-muted-foreground">
+                    {" "}
+                    · {nomeDoKit(current.kitCatalogo) ?? "Personalizado"}
+                    {current.pegueEMonte ? " · Pegue e monte" : ""}
+                  </span>
+                ) : null}
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <MapPin className="mt-0.5 size-4 shrink-0 text-balloon-sky" />

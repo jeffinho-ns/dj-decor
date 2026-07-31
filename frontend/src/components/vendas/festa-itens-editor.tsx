@@ -179,7 +179,7 @@ export function FestaItensEditor({
         )}
       </ul>
 
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+      <div className="grid grid-cols-1 gap-2">
         <select
           className="flex h-10 w-full rounded-xl neo-inset px-3 text-sm outline-none"
           value={addonId}
@@ -199,14 +199,14 @@ export function FestaItensEditor({
           variant="outline"
           disabled={pending || !addonId}
           onClick={addAddon}
-          className="gap-1"
+          className="w-full gap-1"
         >
           <Plus className="size-3.5" />
           Add-on
         </Button>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+      <div className="grid grid-cols-1 gap-2">
         <Input
           value={manualExtra}
           disabled={pending}
@@ -225,6 +225,7 @@ export function FestaItensEditor({
           variant="outline"
           disabled={pending || !manualExtra.trim()}
           onClick={addManual}
+          className="w-full"
         >
           Manual
         </Button>

@@ -666,12 +666,12 @@ export function EstoquePainel({
                         total {item.total}
                       </span>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-col gap-2">
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="gap-1.5"
+                        className="w-full gap-1.5"
                         disabled={addingUnitId === item.id}
                         onClick={() => adicionarUnidade(item)}
                       >
@@ -682,7 +682,7 @@ export function EstoquePainel({
                         type="button"
                         size="sm"
                         variant="destructive"
-                        className="gap-1.5"
+                        className="w-full gap-1.5"
                         onClick={() => excluirGrupo(item)}
                       >
                         <Trash2 className="size-3.5" />

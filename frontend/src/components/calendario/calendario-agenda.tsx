@@ -190,15 +190,16 @@ export function CalendarioAgenda({
           </p>
         </div>
 
-        <div className="mt-5 grid grid-cols-7 gap-1 text-center text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+        <div className="mt-5 grid grid-cols-7 gap-0.5 text-center text-[10px] font-medium tracking-wider text-muted-foreground uppercase sm:gap-1 sm:text-[11px]">
           {WEEKDAYS.map((day) => (
-            <div key={day} className="py-2">
-              {day}
+            <div key={day} className="py-1.5 sm:py-2">
+              <span className="sm:hidden">{day.charAt(0)}</span>
+              <span className="hidden sm:inline">{day}</span>
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
           {days.map((day) => {
             const meta = dayMeta(day, currentMonth, selectedDay);
             const dayFestas = byDay.get(meta.key) ?? [];
@@ -215,7 +216,7 @@ export function CalendarioAgenda({
                   }
                 }}
                 className={cn(
-                  "relative flex min-h-[4.5rem] flex-col items-start rounded-xl p-2 text-left transition-all",
+                  "relative flex min-h-11 flex-col items-start rounded-lg p-1 text-left transition-all sm:min-h-[4.5rem] sm:rounded-xl sm:p-2",
                   meta.inMonth
                     ? "neo-inset hover:ring-2 hover:ring-balloon-sky/25"
                     : "bg-transparent text-muted-foreground/40",
@@ -234,19 +235,19 @@ export function CalendarioAgenda({
                   {format(day, "d")}
                 </span>
                 {count > 0 ? (
-                  <div className="mt-auto flex w-full items-center justify-between gap-1">
+                  <div className="mt-auto flex w-full items-center justify-between gap-0.5">
                     <div className="flex gap-0.5">
                       {dayFestas.slice(0, 3).map((festa) => (
                         <span
                           key={festa.id}
                           className={cn(
-                            "size-1.5 rounded-full",
+                            "size-1 rounded-full sm:size-1.5",
                             statusDot[festa.status]
                           )}
                         />
                       ))}
                     </div>
-                    <span className="rounded-lg bg-balloon-pink/12 px-1.5 py-0.5 text-[10px] font-medium text-balloon-pink">
+                    <span className="hidden rounded-lg bg-balloon-pink/12 px-1.5 py-0.5 text-[10px] font-medium text-balloon-pink sm:inline">
                       {count}
                     </span>
                   </div>
@@ -313,16 +314,18 @@ export function CalendarioAgenda({
                 </div>
 
                 <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2">
-                    <Clock3 className={cn("size-3.5 shrink-0", iconAccent)} />
-                    Montagem{" "}
-                    <span className="font-medium text-foreground">
-                      {format(parseISO(festa.horarioMontagem), "HH:mm")}
-                    </span>
-                    <span className="text-muted-foreground/50">·</span>
-                    Festa{" "}
-                    <span className="font-medium text-foreground">
-                      {format(parseISO(festa.dataEvento), "HH:mm")}
+                  <li className="flex items-start gap-2">
+                    <Clock3 className={cn("mt-0.5 size-3.5 shrink-0", iconAccent)} />
+                    <span className="min-w-0">
+                      Montagem{" "}
+                      <span className="font-medium text-foreground">
+                        {format(parseISO(festa.horarioMontagem), "HH:mm")}
+                      </span>
+                      <span className="text-muted-foreground/50"> · </span>
+                      Festa{" "}
+                      <span className="font-medium text-foreground">
+                        {format(parseISO(festa.dataEvento), "HH:mm")}
+                      </span>
                     </span>
                   </li>
                   <li className="flex items-center gap-2">

@@ -70,12 +70,12 @@ export function FollowUpFila({ token }: FollowUpFilaProps) {
                 ))}
               </ul>
             ) : null}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
                 type="button"
                 size="xs"
                 variant="outline"
-                className="gap-1"
+                className="min-h-10 w-full gap-1 sm:w-auto"
                 disabled={pending}
                 onClick={() => {
                   const phone = item.cliente.telefone.replace(/\D/g, "");
@@ -97,6 +97,7 @@ export function FollowUpFila({ token }: FollowUpFilaProps) {
                 type="button"
                 size="xs"
                 variant="secondary"
+                className="min-h-10 w-full sm:w-auto"
                 disabled={pending}
                 onClick={() => {
                   startTransition(async () => {
