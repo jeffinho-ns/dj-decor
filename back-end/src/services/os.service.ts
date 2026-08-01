@@ -624,6 +624,16 @@ export class OsService {
     return this.getById(osId);
   }
 
+  /**
+   * Gera a lista completa do pedido (reservas + linhas do kit/extras).
+   * Usado pelo botão "Gerar lista do pedido" — inclusive se a festa ainda
+   * estiver PAGO e `prepararMontagemParaFesta` não tiver rodado no fechamento.
+   */
+  async seedRomaneioCompleto(osId: string) {
+    const os = await this.getById(osId);
+    return this.prepararMontagemParaFesta(os.festaId);
+  }
+
   async prepararMontagemParaFesta(festaId: string) {
     const os = await this.ensureForFesta(festaId);
 

@@ -205,9 +205,10 @@ export class OsController {
     next: NextFunction
   ) {
     try {
-      const os = await osService.seedRomaneioFromReservas(
-        req.params.id as string
-      );
+      // Mesmo fluxo do fechamento: reserva estoque + kit/extras do pedido.
+      // Antes só lia reservas (vazias se a festa ainda está PAGO) e a UI
+      // parecia "não fazer nada".
+      const os = await osService.seedRomaneioCompleto(req.params.id as string);
       res.status(200).json(os);
     } catch (error) {
       if (error instanceof OsNotFoundError) {

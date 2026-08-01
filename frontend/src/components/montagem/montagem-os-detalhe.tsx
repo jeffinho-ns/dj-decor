@@ -236,6 +236,11 @@ export function MontagemOsDetalhe({
       try {
         const atualizada = await seedRomaneio(os.id, token);
         setOs(atualizada);
+        if ((atualizada.itensRomaneio ?? []).length === 0) {
+          setErro(
+            "O pedido não tem itens de material para separar. Peça ao gerente para revisar o kit ou os extras."
+          );
+        }
       } catch (err) {
         setErro(
           err instanceof Error
