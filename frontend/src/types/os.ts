@@ -42,6 +42,8 @@ export interface OrdemServico {
   checkinAt: string | null;
   romaneioConcluido: boolean;
   montagemLocalConcluida: boolean;
+  /** Presente quando a foto da montagem já foi enviada. */
+  fotoFinalMidiaId?: string | null;
   criadoEm: string;
   festaId: string;
   montadorId: string | null;

@@ -886,6 +886,18 @@ export async function concluirMontagemLocal(
   return handleResponse<OrdemServico>(response);
 }
 
+/** Registra saída e finaliza a montagem (POST /api/os/:id/finalizar). */
+export async function finalizarOs(
+  osId: string,
+  token: string
+): Promise<OrdemServico> {
+  const response = await fetch(`${getBaseUrl()}/api/os/${osId}/finalizar`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+  return handleResponse<OrdemServico>(response);
+}
+
 export async function checkinOs(
   osId: string,
   payload: CheckinPayload,

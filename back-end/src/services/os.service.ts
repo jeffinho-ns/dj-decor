@@ -278,6 +278,15 @@ export class OsService {
     });
   }
 
+  private async withFotoFinal<T extends { festaId: string }>(os: T) {
+    const foto = await prisma.midia.findFirst({
+      where: { festaId: os.festaId, tipo: TipoMidia.MONTAGEM_FINAL },
+      orderBy: { criadoEm: "desc" },
+      select: { id: true },
+    });
+    return { ...os, fotoFinalMidiaId: foto?.id ?? null };
+  }
+
   async getById(id: string) {
     const os = await prisma.ordemServico.findUnique({
       where: { id },
@@ -288,7 +297,7 @@ export class OsService {
       throw new OsNotFoundError(id);
     }
 
-    return os;
+    return this.withFotoFinal(os);
   }
 
   async listToday() {
@@ -571,7 +580,7 @@ export class OsService {
       },
     });
 
-    return osAtualizada;
+    return this.withFotoFinal(osAtualizada);
   }
 
   async seedRomaneioFromReservas(osId: string) {
@@ -726,7 +735,7 @@ export class OsService {
     const data = this.parseCheckin(rawInput);
     await this.getById(osId);
 
-    return prisma.ordemServico.update({
+    const atualizada = await prisma.ordemServico.update({
       where: { id: osId },
       data: {
         checkinLat: data.lat,
@@ -736,10 +745,22 @@ export class OsService {
       },
       include: osInclude,
     });
+
+    return this.withFotoFinal(atualizada);
   }
 
+  /**
+   * Só registra a foto da montagem — não finaliza a OS.
+   * A saída/finalização é um passo separado (`finalizar`).
+   */
   async fotoFinal(osId: string, midiaId: string) {
     const os = await this.getById(osId);
+
+    if (!os.montagemLocalConcluida) {
+      throw new OsValidationError(
+        "Conclua a montagem no local antes de enviar a foto"
+      );
+    }
 
     const midia = await prisma.midia.findUnique({
       where: { id: midiaId },
@@ -759,70 +780,17 @@ export class OsService {
       throw new OsValidationError("Mídia não pertence à festa desta OS");
     }
 
-    const jaFinalizada = os.status === StatusOS.FINALIZADA;
-
-    const festaStatus = os.festa.status;
-    const podeConcluirFesta =
-      festaStatus === StatusFesta.EM_MONTAGEM ||
-      festaStatus === StatusFesta.FECHADO;
-
-    const osFinalizada = await prisma.$transaction(async (tx) => {
-      if (podeConcluirFesta && !jaFinalizada) {
-        await tx.festa.update({
-          where: { id: os.festaId },
-          data: { status: StatusFesta.CONCLUIDO },
-        });
-      }
-
-      if (!midia.festaId) {
-        await tx.midia.update({
-          where: { id: midiaId },
-          data: { festaId: os.festaId },
-        });
-      }
-
-      if (jaFinalizada) {
-        return tx.ordemServico.findUniqueOrThrow({
-          where: { id: osId },
-          include: osInclude,
-        });
-      }
-
-      return tx.ordemServico.update({
-        where: { id: osId },
-        data: {
-          status: StatusOS.FINALIZADA,
-          montagemLocalConcluida: true,
-        },
-        include: osInclude,
-      });
-    });
-
-    if (!jaFinalizada) {
-      dispatchWhatsAppSafe({
-        template: "montagem_finalizada",
-        telefone: osFinalizada.festa.cliente.telefone,
-        festaId: osFinalizada.festaId,
-        payload: {
-          tema: osFinalizada.festa.tema,
-          data: osFinalizada.festa.dataEvento.toISOString(),
-        },
-      });
-
-      dispatchWhatsAppSafe({
-        template: "pos_venda_avaliacao",
-        telefone: osFinalizada.festa.cliente.telefone,
-        festaId: osFinalizada.festaId,
-        payload: {
-          tema: osFinalizada.festa.tema,
-          data: osFinalizada.festa.dataEvento.toISOString(),
-        },
+    if (!midia.festaId) {
+      await prisma.midia.update({
+        where: { id: midiaId },
+        data: { festaId: os.festaId },
       });
     }
 
-    return osFinalizada;
+    return this.getById(osId);
   }
 
+  /** Marca checklist de montagem no local — sem finalizar a festa. */
   async concluirMontagemLocal(osId: string) {
     const os = await this.getById(osId);
 
@@ -858,16 +826,49 @@ export class OsService {
       );
     }
 
-    if (os.montagemLocalConcluida && os.status === StatusOS.FINALIZADA) {
+    if (os.montagemLocalConcluida) {
+      return os;
+    }
+
+    const atualizada = await prisma.ordemServico.update({
+      where: { id: osId },
+      data: { montagemLocalConcluida: true },
+      include: osInclude,
+    });
+
+    return this.withFotoFinal(atualizada);
+  }
+
+  /**
+   * Registrar saída: finaliza a OS e a festa após checklist + foto.
+   */
+  async finalizar(osId: string) {
+    const os = await this.getById(osId);
+
+    if (!os.romaneioConcluido) {
+      throw new OsValidationError("Conclua a separação no estoque antes");
+    }
+    if (!os.checkinAt) {
+      throw new OsValidationError("Faça o check-in no local antes");
+    }
+    if (!os.montagemLocalConcluida) {
+      throw new OsValidationError("Conclua a montagem no local antes");
+    }
+    if (!os.fotoFinalMidiaId) {
+      throw new OsValidationError(
+        "Envie a foto da montagem antes de registrar a saída"
+      );
+    }
+
+    if (os.status === StatusOS.FINALIZADA) {
       return os;
     }
 
     const festaStatus = os.festa.status;
     const podeConcluirFesta =
       festaStatus === StatusFesta.EM_MONTAGEM ||
-      festaStatus === StatusFesta.FECHADO;
-
-    const jaFinalizada = os.status === StatusOS.FINALIZADA;
+      festaStatus === StatusFesta.FECHADO ||
+      festaStatus === StatusFesta.PAGO;
 
     const osFinalizada = await prisma.$transaction(async (tx) => {
       if (podeConcluirFesta) {
@@ -879,37 +880,32 @@ export class OsService {
 
       return tx.ordemServico.update({
         where: { id: osId },
-        data: {
-          montagemLocalConcluida: true,
-          status: StatusOS.FINALIZADA,
-        },
+        data: { status: StatusOS.FINALIZADA },
         include: osInclude,
       });
     });
 
-    if (!jaFinalizada) {
-      dispatchWhatsAppSafe({
-        template: "montagem_finalizada",
-        telefone: osFinalizada.festa.cliente.telefone,
-        festaId: osFinalizada.festaId,
-        payload: {
-          tema: osFinalizada.festa.tema,
-          data: osFinalizada.festa.dataEvento.toISOString(),
-        },
-      });
+    dispatchWhatsAppSafe({
+      template: "montagem_finalizada",
+      telefone: osFinalizada.festa.cliente.telefone,
+      festaId: osFinalizada.festaId,
+      payload: {
+        tema: osFinalizada.festa.tema,
+        data: osFinalizada.festa.dataEvento.toISOString(),
+      },
+    });
 
-      dispatchWhatsAppSafe({
-        template: "pos_venda_avaliacao",
-        telefone: osFinalizada.festa.cliente.telefone,
-        festaId: osFinalizada.festaId,
-        payload: {
-          tema: osFinalizada.festa.tema,
-          data: osFinalizada.festa.dataEvento.toISOString(),
-        },
-      });
-    }
+    dispatchWhatsAppSafe({
+      template: "pos_venda_avaliacao",
+      telefone: osFinalizada.festa.cliente.telefone,
+      festaId: osFinalizada.festaId,
+      payload: {
+        tema: osFinalizada.festa.tema,
+        data: osFinalizada.festa.dataEvento.toISOString(),
+      },
+    });
 
-    return osFinalizada;
+    return this.withFotoFinal(osFinalizada);
   }
 }
 

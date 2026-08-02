@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import {
@@ -11,18 +11,18 @@ import {
   Circle,
   Hammer,
   Loader2,
+  LogOut,
   MapPin,
   Navigation,
   PackageCheck,
 } from "lucide-react";
 
-import { MontagemQrScanner } from "@/components/montagem/montagem-qr-scanner";
 import { Button } from "@/components/ui/button";
 import {
   checkinOs,
   concluirMontagemLocal,
   concluirRomaneio,
-  scanQr,
+  finalizarOs,
   seedRomaneio,
   updateRomaneioItem,
   uploadFotoFinalOs,
@@ -41,9 +41,9 @@ const STATUS_OS_LABEL: Record<StatusOS, string> = {
   FINALIZADA: "Finalizada",
 };
 
-type Etapa = "romaneio" | "checkin" | "montagem" | "foto" | "qr";
+type Etapa = "romaneio" | "checkin" | "montagem" | "foto" | "saida";
 
-const ETAPAS: Etapa[] = ["romaneio", "checkin", "montagem", "foto", "qr"];
+const ETAPAS: Etapa[] = ["romaneio", "checkin", "montagem", "foto", "saida"];
 
 const ETAPA_ACCENT: Record<
   Etapa,
@@ -73,7 +73,7 @@ const ETAPA_ACCENT: Record<
     badge: "bg-balloon-mint/12 text-balloon-mint",
     progress: "bg-balloon-mint",
   },
-  qr: {
+  saida: {
     ring: "ring-balloon-lilac/35",
     icon: "text-balloon-lilac",
     badge: "bg-balloon-lilac/12 text-balloon-lilac",
@@ -122,15 +122,17 @@ export function MontagemOsDetalhe({
   const romaneioOk = os.romaneioConcluido;
   const checkinOk = Boolean(os.checkinAt);
   const montagemOk = os.montagemLocalConcluida;
-  const fotoOk = os.status === "FINALIZADA";
+  const fotoOk = Boolean(os.fotoFinalMidiaId);
+  const saidaOk = os.status === "FINALIZADA";
 
   const etapaAtiva: Etapa = useMemo(() => {
     if (!romaneioOk) return "romaneio";
     if (!checkinOk) return "checkin";
     if (!montagemOk) return "montagem";
     if (!fotoOk) return "foto";
-    return "qr";
-  }, [romaneioOk, checkinOk, montagemOk, fotoOk]);
+    if (!saidaOk) return "saida";
+    return "saida";
+  }, [romaneioOk, checkinOk, montagemOk, fotoOk, saidaOk]);
 
   const todosItensSeparados =
     itens.length > 0 &&
@@ -323,39 +325,21 @@ export function MontagemOsDetalhe({
     });
   }
 
-  const qrScanHandler = useCallback(
-    async (codigoQr: string, tipo: "SAIDA_GALPAO" | "ENTRADA_RETORNO") => {
-      setErro(null);
-      const coords = await new Promise<{ lat?: number; lng?: number }>(
-        (resolve) => {
-          if (!navigator.geolocation) {
-            resolve({});
-            return;
-          }
-          navigator.geolocation.getCurrentPosition(
-            (pos) =>
-              resolve({
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-              }),
-            () => resolve({}),
-            { enableHighAccuracy: true, timeout: 8000 }
-          );
-        }
-      );
-
-      await scanQr(
-        {
-          codigoQr,
-          tipo,
-          osId: os.id,
-          ...coords,
-        },
-        token
-      );
-    },
-    [os.id, token]
-  );
+  function finalizarHandler() {
+    setErro(null);
+    startTransition(async () => {
+      try {
+        const atualizada = await finalizarOs(os.id, token);
+        setOs(atualizada);
+      } catch (err) {
+        setErro(
+          err instanceof Error
+            ? err.message
+            : "Não foi possível registrar a saída"
+        );
+      }
+    });
+  }
 
   return (
     <div className="relative mx-auto max-w-lg space-y-5 pb-28 sm:space-y-6 md:pb-8">
@@ -424,7 +408,7 @@ export function MontagemOsDetalhe({
             (etapa === "checkin" && checkinOk) ||
             (etapa === "montagem" && montagemOk) ||
             (etapa === "foto" && fotoOk) ||
-            (etapa === "qr" && fotoOk);
+            (etapa === "saida" && saidaOk);
           const active = etapa === etapaAtiva;
           return (
             <li
@@ -735,9 +719,17 @@ export function MontagemOsDetalhe({
         </div>
 
         {fotoOk ? (
-          <p className="mt-3 text-sm text-balloon-mint">
-            Montagem finalizada e foto enviada.
-          </p>
+          <div className="mt-3 space-y-3">
+            <p className="text-sm text-balloon-mint">Foto registrada.</p>
+            {fotoPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={fotoPreview}
+                alt="Preview montagem"
+                className="max-h-48 w-full rounded-xl object-cover"
+              />
+            ) : null}
+          </div>
         ) : (
           <>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -799,35 +791,44 @@ export function MontagemOsDetalhe({
         )}
       </section>
 
-      <section className={sectionClass("qr", etapaAtiva, !romaneioOk)}>
+      <section className={sectionClass("saida", etapaAtiva, !fotoOk)}>
         <div className="flex items-center gap-2">
-          <Circle className={cn("size-5", ETAPA_ACCENT.qr.icon)} />
+          {saidaOk ? (
+            <CheckCircle2 className="size-5 text-balloon-mint" />
+          ) : (
+            <LogOut className={cn("size-5", ETAPA_ACCENT.saida.icon)} />
+          )}
           <h3 className="font-display text-lg text-foreground">
-            5. Scan QR
+            5. Registrar saída
           </h3>
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Registre saída do galpão e retorno das peças. Scanner via{" "}
-          <span className="text-balloon-lilac">html5-qrcode</span>.
-        </p>
 
-        <div className="mt-4 space-y-5 sm:space-y-6">
-          <MontagemQrScanner
-            osId={os.id}
-            tipo="SAIDA_GALPAO"
-            disabled={!romaneioOk}
-            onScan={(codigo) => qrScanHandler(codigo, "SAIDA_GALPAO")}
-          />
-          <div className="border-t border-[var(--neo-dark)]/25 pt-4">
-            <MontagemQrScanner
-              osId={os.id}
-              tipo="ENTRADA_RETORNO"
-              initialModo="manual"
-              disabled={!romaneioOk}
-              onScan={(codigo) => qrScanHandler(codigo, "ENTRADA_RETORNO")}
-            />
-          </div>
-        </div>
+        {saidaOk ? (
+          <p className="mt-3 text-sm text-balloon-mint">
+            Montagem finalizada. Bom trabalho!
+          </p>
+        ) : (
+          <>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Confirme a saída do local para encerrar esta montagem.
+            </p>
+            <Button
+              type="button"
+              className="mt-4 hidden w-full md:inline-flex"
+              disabled={!fotoOk || pending}
+              onClick={finalizarHandler}
+            >
+              {pending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <>
+                  <LogOut data-icon="inline-start" />
+                  Finalizar montagem
+                </>
+              )}
+            </Button>
+          </>
+        )}
       </section>
 
       {erro ? (
@@ -842,6 +843,7 @@ export function MontagemOsDetalhe({
         checkinOk={checkinOk}
         montagemOk={montagemOk}
         fotoOk={fotoOk}
+        saidaOk={saidaOk}
         itensLength={itens.length}
         todosItensSeparados={todosItensSeparados}
         todosItensMontados={todosItensMontados}
@@ -851,6 +853,7 @@ export function MontagemOsDetalhe({
         onCheckin={checkinHandler}
         onConcluirMontagem={concluirMontagemHandler}
         onFotoClick={() => fotoInputRef.current?.click()}
+        onFinalizar={finalizarHandler}
       />
     </div>
   );
@@ -862,6 +865,7 @@ function MontagemStickyAction({
   checkinOk,
   montagemOk,
   fotoOk,
+  saidaOk,
   itensLength,
   todosItensSeparados,
   todosItensMontados,
@@ -871,12 +875,14 @@ function MontagemStickyAction({
   onCheckin,
   onConcluirMontagem,
   onFotoClick,
+  onFinalizar,
 }: {
   etapaAtiva: Etapa;
   romaneioOk: boolean;
   checkinOk: boolean;
   montagemOk: boolean;
   fotoOk: boolean;
+  saidaOk: boolean;
   itensLength: number;
   todosItensSeparados: boolean;
   todosItensMontados: boolean;
@@ -886,6 +892,7 @@ function MontagemStickyAction({
   onCheckin: () => void;
   onConcluirMontagem: () => void;
   onFotoClick: () => void;
+  onFinalizar: () => void;
 }) {
   let action: React.ReactNode = null;
 
@@ -951,6 +958,24 @@ function MontagemStickyAction({
           <>
             <Camera data-icon="inline-start" />
             Tirar / escolher foto
+          </>
+        )}
+      </Button>
+    );
+  } else if (etapaAtiva === "saida" && !saidaOk) {
+    action = (
+      <Button
+        type="button"
+        className="w-full min-h-11"
+        disabled={!fotoOk || pending}
+        onClick={onFinalizar}
+      >
+        {pending ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <>
+            <LogOut data-icon="inline-start" />
+            Finalizar montagem
           </>
         )}
       </Button>

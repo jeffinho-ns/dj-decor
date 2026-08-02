@@ -109,6 +109,12 @@ osRoutes.post(
 );
 
 osRoutes.post(
+  "/:id/finalizar",
+  requireRoles(...montagemRoles),
+  (req, res, next) => osController.finalizar(req, res, next)
+);
+
+osRoutes.post(
   "/:id/foto-final",
   requireRoles(Role.MONTADOR, Role.GERENTE, Role.ADMIN),
   handleMulter,
