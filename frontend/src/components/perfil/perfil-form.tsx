@@ -21,19 +21,21 @@ const perfilSchema = z
       .union([z.string().trim().email("Informe um e-mail válido"), z.literal("")])
       .optional(),
     telefone: z.union([z.string().trim().max(30), z.literal("")]).optional(),
-    senhaAtual: z.string().optional(),
     novaSenha: z
       .union([z.string().min(6, "Nova senha deve ter no mínimo 6 caracteres"), z.literal("")])
       .optional(),
     confirmarSenha: z.string().optional(),
   })
-  .refine((data) => !(data.novaSenha && !data.senhaAtual), {
-    message: "Informe a senha atual para definir uma nova senha",
-    path: ["senhaAtual"],
-  })
-  .refine((data) => !(data.novaSenha && data.novaSenha !== data.confirmarSenha), {
-    message: "As senhas não coincidem",
-    path: ["confirmarSenha"],
+  .refine(
+    (data) => !(data.novaSenha && data.novaSenha !== data.confirmarSenha),
+    {
+      message: "As senhas não coincidem",
+      path: ["confirmarSenha"],
+    }
+  )
+  .refine((data) => !(data.confirmarSenha && !data.novaSenha), {
+    message: "Informe a nova senha",
+    path: ["novaSenha"],
   });
 
 type PerfilFormValues = z.infer<typeof perfilSchema>;
@@ -68,7 +70,6 @@ export function PerfilForm({ token, user }: PerfilFormProps) {
     defaultValues: {
       email: user.email ?? "",
       telefone: user.telefone ?? "",
-      senhaAtual: "",
       novaSenha: "",
       confirmarSenha: "",
     },
@@ -103,9 +104,7 @@ export function PerfilForm({ token, user }: PerfilFormProps) {
                     : null,
               }
             : {}),
-          ...(trocandoSenha
-            ? { senhaAtual: data.senhaAtual, novaSenha: data.novaSenha }
-            : {}),
+          ...(trocandoSenha ? { novaSenha: data.novaSenha } : {}),
         },
         token
       );
@@ -118,7 +117,6 @@ export function PerfilForm({ token, user }: PerfilFormProps) {
       reset({
         email: data.email ?? "",
         telefone: data.telefone ?? "",
-        senhaAtual: "",
         novaSenha: "",
         confirmarSenha: "",
       });
@@ -247,22 +245,6 @@ export function PerfilForm({ token, user }: PerfilFormProps) {
               Trocar senha
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="senhaAtual">Senha atual</Label>
-                <Input
-                  id="senhaAtual"
-                  type="password"
-                  autoComplete="current-password"
-                  aria-invalid={Boolean(errors.senhaAtual)}
-                  {...register("senhaAtual")}
-                />
-                {errors.senhaAtual ? (
-                  <p className="text-xs text-destructive">
-                    {errors.senhaAtual.message}
-                  </p>
-                ) : null}
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="novaSenha">Nova senha</Label>
                 <Input
@@ -280,7 +262,7 @@ export function PerfilForm({ token, user }: PerfilFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmarSenha">Confirmar nova senha</Label>
+                <Label htmlFor="confirmarSenha">Repetir nova senha</Label>
                 <Input
                   id="confirmarSenha"
                   type="password"
@@ -296,7 +278,7 @@ export function PerfilForm({ token, user }: PerfilFormProps) {
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Deixe em branco para manter a senha atual.
+              Deixe em branco para manter a senha atual. Mínimo 6 caracteres.
             </p>
           </div>
 

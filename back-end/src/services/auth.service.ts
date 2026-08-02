@@ -50,7 +50,6 @@ export class EmailInUseError extends Error {
 export interface UpdateProfileInput {
   email?: string | null;
   telefone?: string | null;
-  senhaAtual?: string;
   novaSenha?: string;
 }
 
@@ -111,7 +110,7 @@ export class AuthService {
 
   async updateProfile(
     userId: string,
-    { email, telefone, senhaAtual, novaSenha }: UpdateProfileInput
+    { email, telefone, novaSenha }: UpdateProfileInput
   ): Promise<AuthUser> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
@@ -137,15 +136,6 @@ export class AuthService {
     }
 
     if (novaSenha !== undefined) {
-      if (!senhaAtual) {
-        throw new InvalidCurrentPasswordError();
-      }
-
-      const senhaValida = await bcrypt.compare(senhaAtual, user.senha);
-      if (!senhaValida) {
-        throw new InvalidCurrentPasswordError();
-      }
-
       data.senha = await bcrypt.hash(novaSenha, 10);
     }
 

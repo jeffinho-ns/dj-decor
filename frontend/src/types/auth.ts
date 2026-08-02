@@ -20,7 +20,6 @@ export interface MeResponse {
 export interface UpdatePerfilPayload {
   email?: string | null;
   telefone?: string | null;
-  senhaAtual?: string;
   novaSenha?: string;
 }
 

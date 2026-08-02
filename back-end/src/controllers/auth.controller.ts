@@ -5,7 +5,6 @@ import {
   authService,
   EmailInUseError,
   InvalidCredentialsError,
-  InvalidCurrentPasswordError,
   UserNotFoundError,
 } from "../services/auth.service";
 
@@ -14,28 +13,18 @@ const loginSchema = z.object({
   senha: z.string().min(1, "Senha é obrigatória"),
 });
 
-const updateProfileSchema = z
-  .object({
-    email: z
-      .union([z.string().trim().email("E-mail inválido"), z.literal(""), z.null()])
-      .optional(),
-    telefone: z
-      .union([z.string().trim().max(30), z.literal(""), z.null()])
-      .optional(),
-    senhaAtual: z.string().min(1, "Senha atual é obrigatória").optional(),
-    novaSenha: z
-      .string()
-      .min(6, "Nova senha deve ter no mínimo 6 caracteres")
-      .optional(),
-  })
-  .refine((data) => !(data.novaSenha && !data.senhaAtual), {
-    message: "Informe a senha atual para definir uma nova senha",
-    path: ["senhaAtual"],
-  })
-  .refine((data) => !(data.senhaAtual && !data.novaSenha), {
-    message: "Informe a nova senha",
-    path: ["novaSenha"],
-  });
+const updateProfileSchema = z.object({
+  email: z
+    .union([z.string().trim().email("E-mail inválido"), z.literal(""), z.null()])
+    .optional(),
+  telefone: z
+    .union([z.string().trim().max(30), z.literal(""), z.null()])
+    .optional(),
+  novaSenha: z
+    .string()
+    .min(6, "Nova senha deve ter no mínimo 6 caracteres")
+    .optional(),
+});
 
 export class AuthController {
   async login(req: Request, res: Response, next: NextFunction) {
@@ -85,10 +74,6 @@ export class AuthController {
           message: "Dados inválidos",
           details: error.flatten().fieldErrors,
         });
-        return;
-      }
-      if (error instanceof InvalidCurrentPasswordError) {
-        res.status(400).json({ message: error.message });
         return;
       }
       if (error instanceof EmailInUseError) {
