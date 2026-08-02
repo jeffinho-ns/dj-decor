@@ -5,13 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, Copy, MessageCircle, X } from "lucide-react";
+import { Check, Copy, Loader2, MessageCircle, UserCheck, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { createFesta, sugestoesProdutos } from "@/lib/api";
+import { createFesta, buscarClientePorTelefone, getClienteById, sugestoesProdutos } from "@/lib/api";
 import {
   CATALOGO_ADDONS,
   CATALOGO_EXTRAS_METROS,
@@ -73,9 +73,10 @@ function kitIdFromSugestao(reason: string): CatalogoKitId | null {
 
 interface NovaVendaFormProps {
   token: string;
+  initialClienteId?: string | null;
 }
 
-export function NovaVendaForm({ token }: NovaVendaFormProps) {
+export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [extraInput, setExtraInput] = useState("");
@@ -88,6 +89,11 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
   const [sugestoes, setSugestoes] = useState<ProdutoSugestao[]>([]);
   const [loadingSugestoes, setLoadingSugestoes] = useState(false);
   const [sugestoesError, setSugestoesError] = useState<string | null>(null);
+  const [clienteId, setClienteId] = useState<string | null>(
+    initialClienteId ?? null
+  );
+  const [clienteEncontrado, setClienteEncontrado] = useState<string | null>(null);
+  const [buscandoCliente, setBuscandoCliente] = useState(false);
 
   const {
     register,
@@ -132,6 +138,61 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
       }),
     [kitSelecionado, pegueEMonte, addonIds, extrasManuais]
   );
+
+  useEffect(() => {
+    if (!initialClienteId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const cliente = await getClienteById(initialClienteId, token);
+        if (cancelled) return;
+        setClienteId(cliente.id);
+        setClienteEncontrado(cliente.nome);
+        setValue("nomeCliente", cliente.nome);
+        setValue("telefone", cliente.telefone);
+      } catch {
+        // ignora falha de pré-preenchimento
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialClienteId, token, setValue]);
+
+  useEffect(() => {
+    const digits = digitsOnly(telefone ?? "");
+    if (digits.length < 8) {
+      if (!initialClienteId) {
+        setClienteId(null);
+        setClienteEncontrado(null);
+      }
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setBuscandoCliente(true);
+      try {
+        const cliente = await buscarClientePorTelefone(telefone ?? "", token);
+        if (cliente) {
+          setClienteId(cliente.id);
+          setClienteEncontrado(cliente.nome);
+          setValue("nomeCliente", cliente.nome, { shouldValidate: true });
+        } else if (!initialClienteId) {
+          setClienteId(null);
+          setClienteEncontrado(null);
+        }
+      } catch {
+        if (!initialClienteId) {
+          setClienteId(null);
+          setClienteEncontrado(null);
+        }
+      } finally {
+        setBuscandoCliente(false);
+      }
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [telefone, token, setValue, initialClienteId]);
 
   useEffect(() => {
     if (!dataEvento || !horaEvento) return;
@@ -306,6 +367,7 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
     try {
       await createFesta(
         {
+          ...(clienteId ? { clienteId } : {}),
           nomeCliente: data.nomeCliente,
           telefone: data.telefone,
           tema: data.tema,
@@ -368,17 +430,31 @@ export function NovaVendaForm({ token }: NovaVendaFormProps) {
 
             <div className="space-y-2">
               <Label htmlFor="telefone">Telefone</Label>
-              <Input
-                id="telefone"
-                className="h-11 text-base md:h-9 md:text-sm"
-                placeholder="(11) 99999-9999"
-                aria-invalid={Boolean(errors.telefone)}
-                {...register("telefone")}
-              />
+              <div className="relative">
+                <Input
+                  id="telefone"
+                  className="h-11 text-base md:h-9 md:text-sm"
+                  placeholder="(11) 99999-9999"
+                  aria-invalid={Boolean(errors.telefone)}
+                  {...register("telefone")}
+                />
+                {buscandoCliente ? (
+                  <Loader2 className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                ) : null}
+              </div>
               {errors.telefone ? (
                 <p className="text-xs text-destructive">
                   {errors.telefone.message}
                 </p>
+              ) : null}
+              {clienteEncontrado ? (
+                <div className="flex items-center gap-2 rounded-xl bg-balloon-mint/10 px-3 py-2 text-xs text-balloon-mint">
+                  <UserCheck className="size-4 shrink-0" />
+                  <span>
+                    Cliente encontrado: <strong>{clienteEncontrado}</strong>
+                    {clienteId ? " — festa será vinculada ao cadastro." : ""}
+                  </span>
+                </div>
               ) : null}
             </div>
           </div>

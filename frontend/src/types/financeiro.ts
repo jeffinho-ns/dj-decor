@@ -9,6 +9,24 @@ export interface RentabilidadeTema {
   quantidade?: number;
 }
 
+/** Status de uma comissão individual. */
+export type ComissaoStatus = "PENDENTE" | "PAGA";
+
+/** Linha do extrato de comissões do vendedor (GET /api/comissoes/minhas). */
+export interface ComissaoExtrato {
+  id: string;
+  percentual: number;
+  valor: number;
+  status: ComissaoStatus;
+  pagoEm: string | null;
+  criadoEm: string;
+  festa: {
+    id: string;
+    tema: string;
+    cliente: { nome: string };
+  };
+}
+
 /** Posição no ranking de comissões por vendedor. */
 export interface RankingVendedor {
   vendedorId: string;
@@ -17,6 +35,7 @@ export interface RankingVendedor {
   comissoesPagas?: number;
   comissoesPendentes?: number;
   posicao?: number;
+  meta?: number;
   atingiuMeta?: boolean;
   progressoMeta?: number;
 }

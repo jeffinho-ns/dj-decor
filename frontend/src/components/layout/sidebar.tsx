@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   CheckCircle2,
+  ContactRound,
   Hammer,
   Package,
   PartyPopper,
@@ -16,6 +17,7 @@ import {
   Users,
   UserCog,
   Wallet,
+  Coins,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -26,6 +28,9 @@ const DEFAULT_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
+  { href: "/clientes", label: "Clientes", icon: ContactRound },
+  { href: "/comissoes", label: "Comissões", icon: Coins },
+  { href: "/follow-ups", label: "Follow-up", icon: Sparkles },
   { href: "/lixeira", label: "Lixeira", icon: Trash2 },
   { href: "/perfil", label: "Perfil", icon: UserRound },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
@@ -35,6 +40,8 @@ const GESTAO_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
+  { href: "/clientes", label: "Clientes", icon: ContactRound },
+  { href: "/comissoes", label: "Comissões", icon: Coins },
   { href: "/follow-ups", label: "Follow-up", icon: Sparkles },
   { href: "/lixeira", label: "Lixeira", icon: Trash2 },
   { href: "/estoque", label: "Estoque", icon: Package },
@@ -48,6 +55,8 @@ const ADMIN_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
+  { href: "/clientes", label: "Clientes", icon: ContactRound },
+  { href: "/comissoes", label: "Comissões", icon: Coins },
   { href: "/follow-ups", label: "Follow-up", icon: Sparkles },
   { href: "/lixeira", label: "Lixeira", icon: Trash2 },
   { href: "/estoque", label: "Estoque", icon: Package },
@@ -90,6 +99,9 @@ export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/estoque") {
     return pathname === "/estoque" || pathname.startsWith("/estoque/");
   }
+  if (href === "/comissoes") {
+    return pathname === "/comissoes" || pathname.startsWith("/comissoes/");
+  }
   if (href === "/financeiro") {
     return pathname === "/financeiro" || pathname.startsWith("/financeiro/");
   }
@@ -101,6 +113,12 @@ export function isNavActive(pathname: string, href: string): boolean {
   }
   if (href === "/lixeira") {
     return pathname === "/lixeira" || pathname.startsWith("/lixeira/");
+  }
+  if (href === "/clientes") {
+    return pathname === "/clientes" || pathname.startsWith("/clientes/");
+  }
+  if (href === "/follow-ups") {
+    return pathname === "/follow-ups" || pathname.startsWith("/follow-ups/");
   }
   if (href === "/configuracoes") {
     return (

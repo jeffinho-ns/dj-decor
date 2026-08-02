@@ -71,6 +71,15 @@ export class ComissoesService {
   async listByVendedor(vendedorId: string) {
     return prisma.comissao.findMany({
       where: { vendedorId },
+      include: {
+        festa: {
+          select: {
+            id: true,
+            tema: true,
+            cliente: { select: { nome: true } },
+          },
+        },
+      },
       orderBy: { criadoEm: "desc" },
     });
   }
@@ -115,7 +124,9 @@ export class ComissoesService {
         criadoEm: { gte: inicio },
       },
       include: {
-        vendedor: { select: { id: true, nome: true } },
+        vendedor: {
+          select: { id: true, nome: true, comissaoMetaSemanal: true },
+        },
       },
     });
 
@@ -134,25 +145,43 @@ export class ComissoesService {
       porVendedor.set(comissao.vendedorId, atual);
     }
 
-    let metaSemanal = env.COMISSAO_META_SEMANAL;
+    let metaSemanalGlobal = env.COMISSAO_META_SEMANAL;
     try {
-      metaSemanal = await configuracoesService.getComissaoMetaSemanal();
+      metaSemanalGlobal = await configuracoesService.getComissaoMetaSemanal();
     } catch {
       // fallback
     }
-    const meta = periodo === "mes" ? metaSemanal * 4 : metaSemanal;
+    const metaGlobal =
+      periodo === "mes" ? metaSemanalGlobal * 4 : metaSemanalGlobal;
+
+    const metaSemanalPorVendedor = new Map<string, number>();
+    for (const comissao of comissoes) {
+      if (metaSemanalPorVendedor.has(comissao.vendedorId)) continue;
+      const individual = comissao.vendedor.comissaoMetaSemanal;
+      metaSemanalPorVendedor.set(
+        comissao.vendedorId,
+        individual != null ? Number(individual) : metaSemanalGlobal
+      );
+    }
 
     const ranking = [...porVendedor.values()]
       .sort((a, b) => b.totalComissao - a.totalComissao)
-      .map((item, index) => ({
-        ...item,
-        posicao: index + 1,
-        atingiuMeta: item.totalComissao >= meta,
-        progressoMeta:
-          meta > 0 ? Math.min(100, (item.totalComissao / meta) * 100) : 0,
-      }));
+      .map((item, index) => {
+        const metaSemanal =
+          metaSemanalPorVendedor.get(item.vendedorId) ?? metaSemanalGlobal;
+        const meta =
+          periodo === "mes" ? metaSemanal * 4 : metaSemanal;
+        return {
+          ...item,
+          posicao: index + 1,
+          meta,
+          atingiuMeta: item.totalComissao >= meta,
+          progressoMeta:
+            meta > 0 ? Math.min(100, (item.totalComissao / meta) * 100) : 0,
+        };
+      });
 
-    return { periodo, inicio: inicio.toISOString(), meta, ranking };
+    return { periodo, inicio: inicio.toISOString(), meta: metaGlobal, ranking };
   }
 }
 

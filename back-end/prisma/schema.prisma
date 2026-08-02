@@ -101,13 +101,15 @@ enum StatusDesconto {
 }
 
 model User {
-  id       String  @id @default(cuid())
-  nome     String  @unique
-  email    String? @unique
-  telefone String?
-  senha    String
-  role     Role    @default(VENDEDOR)
-  ativo    Boolean @default(true)
+  id                  String   @id @default(cuid())
+  nome                String   @unique
+  email               String?  @unique
+  telefone            String?
+  senha               String
+  role                Role     @default(VENDEDOR)
+  ativo               Boolean  @default(true)
+  /** Meta individual de comissão semanal (R$). Null = usa meta global da empresa. */
+  comissaoMetaSemanal Decimal? @map("comissao_meta_semanal") @db.Decimal(10, 2)
 
   festas                    Festa[]            @relation("FestaVendedor")
   midiasUploaded            Midia[]            @relation("MidiaUploadedBy")
@@ -122,11 +124,18 @@ model User {
 }
 
 model Cliente {
-  id       String  @id @default(cuid())
-  nome     String
-  telefone String
-  festas   Festa[]
+  id           String   @id @default(cuid())
+  nome         String
+  telefone     String
+  observacoes  String?  @db.Text
+  /** Instagram, Indicacao, WhatsApp, Salao, Google, Outro */
+  origem       String?
+  tags         String[] @default([])
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+  festas       Festa[]
 
+  @@index([telefone])
   @@map("clientes")
 }
 
@@ -446,10 +455,11 @@ model CatalogoAddon {
 }
 
 model FollowUpContato {
-  id        String   @id @default(cuid())
-  canal     String   @default("WHATSAPP")
-  nota      String?  @db.Text
-  criadoEm  DateTime @default(now()) @map("criado_em")
+  id               String    @id @default(cuid())
+  canal            String    @default("WHATSAPP")
+  nota             String?   @db.Text
+  proximoContatoEm DateTime? @map("proximo_contato_em")
+  criadoEm         DateTime  @default(now()) @map("criado_em")
 
   festaId String @map("festa_id")
   festa   Festa  @relation(fields: [festaId], references: [id], onDelete: Cascade)
@@ -458,5 +468,6 @@ model FollowUpContato {
   user   User   @relation(fields: [userId], references: [id])
 
   @@index([festaId])
+  @@index([proximoContatoEm])
   @@map("follow_up_contatos")
 }

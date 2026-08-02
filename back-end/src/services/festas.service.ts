@@ -5,11 +5,15 @@ import { pdfAdapter } from "../integrations/pdf";
 import { generatePortalToken } from "../lib/portal-token";
 import { estoqueService } from "./estoque.service";
 import { osService } from "./os.service";
+import { clientesService } from "./clientes.service";
 import { riscoService } from "./risco.service";
 
-const createFestaSchema = z.object({
-  nomeCliente: z.string().min(2, "Nome do cliente é obrigatório"),
-  telefone: z.string().min(8, "Telefone é obrigatório"),
+const createFestaSchema = z
+  .object({
+    clienteId: z.string().optional(),
+    nomeCliente: z.string().min(2, "Nome do cliente é obrigatório").optional(),
+    telefone: z.string().min(8, "Telefone é obrigatório").optional(),
+    origem: z.string().max(80).nullable().optional(),
   tema: z.string().min(2, "Tema é obrigatório"),
   dataEvento: z.coerce.date({
     required_error: "Data/hora do evento é obrigatória",
@@ -30,7 +34,25 @@ const createFestaSchema = z.object({
   valor: z.coerce.number().positive("Valor deve ser positivo"),
   status: z.nativeEnum(StatusFesta).optional().default(StatusFesta.ORCAMENTO),
   vendedorId: z.string().optional(),
-});
+  })
+  .superRefine((data, ctx) => {
+    if (!data.clienteId) {
+      if (!data.nomeCliente?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Nome do cliente é obrigatório",
+          path: ["nomeCliente"],
+        });
+      }
+      if (!data.telefone?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Telefone é obrigatório",
+          path: ["telefone"],
+        });
+      }
+    }
+  });
 
 const updateFestaSchema = z.object({
   tema: z.string().min(2).optional(),
@@ -83,11 +105,15 @@ const STATUS_TRANSITIONS: Record<StatusFesta, StatusFesta[]> = {
 };
 
 export class FestasService {
-  async list(options?: { lixeira?: boolean }) {
+  async list(options?: { lixeira?: boolean; vendedorId?: string }) {
+    const statusWhere = options?.lixeira
+      ? { status: StatusFesta.CANCELADO }
+      : { status: { not: StatusFesta.CANCELADO } };
     const festas = await prisma.festa.findMany({
-      where: options?.lixeira
-        ? { status: StatusFesta.CANCELADO }
-        : { status: { not: StatusFesta.CANCELADO } },
+      where: {
+        ...statusWhere,
+        ...(options?.vendedorId ? { vendedorId: options.vendedorId } : {}),
+      },
       include: {
         cliente: true,
         vendedor: {
@@ -135,12 +161,32 @@ export class FestasService {
 
     await this.ensureVendedorExists(vendedorId);
 
-    const cliente = await prisma.cliente.create({
-      data: {
-        nome: data.nomeCliente,
-        telefone: data.telefone,
-      },
-    });
+    let cliente;
+    if (data.clienteId) {
+      const existing = await prisma.cliente.findUnique({
+        where: { id: data.clienteId },
+      });
+      if (!existing) {
+        throw new Error(`Cliente com id ${data.clienteId} não encontrado`);
+      }
+      if (
+        data.nomeCliente?.trim() &&
+        data.nomeCliente.trim() !== existing.nome
+      ) {
+        cliente = await prisma.cliente.update({
+          where: { id: existing.id },
+          data: { nome: data.nomeCliente.trim() },
+        });
+      } else {
+        cliente = existing;
+      }
+    } else {
+      cliente = await clientesService.findOrCreate({
+        nome: data.nomeCliente!.trim(),
+        telefone: data.telefone!.trim(),
+        origem: data.origem,
+      });
+    }
 
     const avaliacao = await estoqueService.avaliarItensFesta({
       itensExtras: data.itensExtras,

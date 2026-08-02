@@ -79,8 +79,10 @@ export interface ConfirmarPagamentoPayload {
 }
 
 export interface CreateFestaPayload {
-  nomeCliente: string;
-  telefone: string;
+  clienteId?: string;
+  nomeCliente?: string;
+  telefone?: string;
+  origem?: string | null;
   tema: string;
   dataEvento: string;
   horarioMontagem: string;

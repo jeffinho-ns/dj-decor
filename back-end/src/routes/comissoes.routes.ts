@@ -14,6 +14,12 @@ comissoesRoutes.get(
 );
 
 comissoesRoutes.get(
+  "/minhas",
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  (req, res, next) => comissoesController.minhas(req, res, next)
+);
+
+comissoesRoutes.get(
   "/pendentes",
   requireRoles(Role.ADMIN, Role.GERENTE),
   (req, res, next) => comissoesController.pendentes(req, res, next)

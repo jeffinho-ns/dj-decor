@@ -20,6 +20,20 @@ export class ComissoesController {
     }
   }
 
+  async minhas(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const vendedorId = req.user?.id;
+      if (!vendedorId) {
+        res.status(401).json({ error: "Não autenticado" });
+        return;
+      }
+      const list = await comissoesService.listByVendedor(vendedorId);
+      res.status(200).json(list);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async pendentes(
     _req: AuthenticatedRequest,
     res: Response,

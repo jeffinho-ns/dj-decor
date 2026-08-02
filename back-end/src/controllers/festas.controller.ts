@@ -35,7 +35,16 @@ export class FestasController {
         raw === "1" ||
         raw === "true" ||
         (Array.isArray(raw) && (raw[0] === "1" || raw[0] === "true"));
-      const festas = await festasService.list({ lixeira });
+      const rawMinhas = req.query.minhas;
+      const minhas =
+        rawMinhas === "1" ||
+        rawMinhas === "true" ||
+        (Array.isArray(rawMinhas) &&
+          (rawMinhas[0] === "1" || rawMinhas[0] === "true"));
+      const festas = await festasService.list({
+        lixeira,
+        vendedorId: minhas ? req.user?.id : undefined,
+      });
       res.status(200).json(festas);
     } catch (error) {
       next(error);
@@ -170,12 +179,28 @@ export class FestasController {
   }
 
   async listFollowUps(
-    _req: AuthenticatedRequest,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ) {
     try {
-      const fila = await followUpService.listFila();
+      const rawMinhas = req.query.minhas;
+      const minhas =
+        rawMinhas === "1" ||
+        rawMinhas === "true" ||
+        (Array.isArray(rawMinhas) &&
+          (rawMinhas[0] === "1" || rawMinhas[0] === "true"));
+      const rawHoje = req.query.hoje;
+      const hoje =
+        rawHoje === "1" ||
+        rawHoje === "true" ||
+        (Array.isArray(rawHoje) &&
+          (rawHoje[0] === "1" || rawHoje[0] === "true"));
+
+      const fila = await followUpService.listFila({
+        vendedorId: minhas ? req.user?.id : undefined,
+        hoje,
+      });
       res.status(200).json(fila);
     } catch (error) {
       next(error);

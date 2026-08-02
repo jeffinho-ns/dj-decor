@@ -6,6 +6,7 @@ import { TOKEN_COOKIE } from "@/lib/auth";
 const PROTECTED_PREFIXES = [
   "/dashboard",
   "/vendas",
+  "/clientes",
   "/calendario",
   "/montagem",
   "/perfil",
@@ -14,8 +15,12 @@ const PROTECTED_PREFIXES = [
   "/financeiro",
   "/equipe",
   "/aprovacoes",
+  "/follow-ups",
+  "/lixeira",
+  "/comissoes",
 ];
-const VENDEDOR_ONLY_PREFIXES = ["/vendas"];
+const VENDEDOR_ONLY_PREFIXES = ["/vendas", "/clientes", "/comissoes"];
+const MONTADOR_BLOCKED_PREFIXES = ["/follow-ups"];
 const GESTAO_ONLY_PREFIXES = ["/estoque", "/equipe", "/aprovacoes"];
 const ADMIN_ONLY_PREFIXES = ["/financeiro"];
 
@@ -27,6 +32,12 @@ function isProtected(pathname: string): boolean {
 
 function isVendedorArea(pathname: string): boolean {
   return VENDEDOR_ONLY_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
+function isMontadorBlocked(pathname: string): boolean {
+  return MONTADOR_BLOCKED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 }
@@ -81,6 +92,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/montagem", request.url));
   }
 
+  if (token && role === "MONTADOR" && isMontadorBlocked(pathname)) {
+    return NextResponse.redirect(new URL("/montagem", request.url));
+  }
+
   if (
     token &&
     isGestaoArea(pathname) &&
@@ -103,6 +118,8 @@ export const config = {
     "/dashboard/:path*",
     "/vendas",
     "/vendas/:path*",
+    "/clientes",
+    "/clientes/:path*",
     "/calendario",
     "/calendario/:path*",
     "/montagem",
@@ -119,6 +136,12 @@ export const config = {
     "/equipe/:path*",
     "/aprovacoes",
     "/aprovacoes/:path*",
+    "/follow-ups",
+    "/follow-ups/:path*",
+    "/lixeira",
+    "/lixeira/:path*",
+    "/comissoes",
+    "/comissoes/:path*",
     "/login",
   ],
 };

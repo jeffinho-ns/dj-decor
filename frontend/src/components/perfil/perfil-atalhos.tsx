@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   CalendarDays,
   ClipboardCheck,
+  ContactRound,
   Package,
   Users,
   Wallet,
@@ -62,11 +63,39 @@ function atalhosParaRole(role: Role): Atalho[] {
         icon: ClipboardCheck,
         tone: "text-balloon-sun",
       },
+      {
+        href: "/clientes",
+        label: "Clientes",
+        description: "Carteira e histórico",
+        icon: ContactRound,
+        tone: "text-balloon-sky",
+      },
+      {
+        href: "/comissoes",
+        label: "Comissões",
+        description: "Extrato e meta",
+        icon: Wallet,
+        tone: "text-balloon-mint",
+      },
+      {
+        href: "/follow-ups",
+        label: "Follow-up",
+        description: "Contatos em aberto",
+        icon: PhoneForwarded,
+        tone: "text-balloon-lilac",
+      },
       agenda,
     ];
   }
 
   const baseGerencia: Atalho[] = [
+    {
+      href: "/comissoes",
+      label: "Comissões",
+      description: "Extrato e meta",
+      icon: Wallet,
+      tone: "text-balloon-mint",
+    },
     {
       href: "/equipe",
       label: "Equipe",

@@ -38,6 +38,7 @@ export function ComissaoRankingWidget({
   const me = ranking.ranking.find((r) => r.vendedorId === vendedorId);
   const progresso = me?.progressoMeta ?? 0;
   const total = me?.totalComissao ?? 0;
+  const meta = me?.meta ?? ranking.meta;
   const posicao = me?.posicao;
   const maxTotal = Math.max(...ranking.ranking.map((r) => r.totalComissao), 1);
 
@@ -56,7 +57,7 @@ export function ComissaoRankingWidget({
           <p className="mt-1 font-display text-lg text-foreground">
             {formatCurrency(total)}
             <span className="ml-1.5 text-sm font-normal text-muted-foreground">
-              / {formatCurrency(ranking.meta)}
+              / {formatCurrency(meta)}
             </span>
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">

@@ -27,6 +27,13 @@ import type {
   StatusFesta,
   UpdateFestaPayload,
 } from "@/types/festa";
+import type {
+  Cliente,
+  ClienteDetalhe,
+  ClienteListItem,
+  CreateClientePayload,
+  UpdateClientePayload,
+} from "@/types/cliente";
 import type { Midia, TipoMidia } from "@/types/midia";
 import type { Contrato, MensagemWhatsApp } from "@/types/contrato";
 import type { FestaDescontoPendente, SolicitarDescontoPayload } from "@/types/desconto";
@@ -35,7 +42,13 @@ import type {
   AssignMontadorPayload,
   Montador,
 } from "@/types/equipe";
-import type { FinanceiroResumo, ComissaoRanking, PrevisaoCaixa } from "@/types/financeiro";
+import type {
+  FinanceiroResumo,
+  ComissaoRanking,
+  ComissaoExtrato,
+  ComissaoStatus,
+  PrevisaoCaixa,
+} from "@/types/financeiro";
 import type {
   CheckinPayload,
   FestaMontagemHoje,
@@ -140,13 +153,19 @@ export async function logout(token?: string | null): Promise<void> {
 
 export async function listFestas(
   token: string,
-  options?: { lixeira?: boolean }
+  options?: { lixeira?: boolean; minhas?: boolean }
 ): Promise<Festa[]> {
-  const qs = options?.lixeira ? "?lixeira=1" : "";
-  const response = await fetch(`${getBaseUrl()}/api/festas${qs}`, {
-    headers: authHeaders(token),
-    cache: "no-store",
-  });
+  const params = new URLSearchParams();
+  if (options?.lixeira) params.set("lixeira", "1");
+  if (options?.minhas) params.set("minhas", "1");
+  const qs = params.toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/festas${qs ? `?${qs}` : ""}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
   const raw = await handleResponse<Array<Record<string, unknown>>>(response);
   return raw.map(normalizeFesta);
 }
@@ -196,6 +215,72 @@ export async function createFesta(
     body: JSON.stringify(payload),
   });
   return handleResponse<Festa>(response);
+}
+
+/** Lista clientes (GET /api/clientes?q=). */
+export async function listClientes(
+  token: string,
+  q?: string
+): Promise<ClienteListItem[]> {
+  const qs = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : "";
+  const response = await fetch(`${getBaseUrl()}/api/clientes${qs}`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<ClienteListItem[]>(response);
+}
+
+/** Detalhe do cliente com histórico de festas (GET /api/clientes/:id). */
+export async function getClienteById(
+  id: string,
+  token: string
+): Promise<ClienteDetalhe> {
+  const response = await fetch(`${getBaseUrl()}/api/clientes/${id}`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<ClienteDetalhe>(response);
+}
+
+/** Busca cliente por telefone (GET /api/clientes/buscar?telefone=). */
+export async function buscarClientePorTelefone(
+  telefone: string,
+  token: string
+): Promise<Cliente | null> {
+  const qs = new URLSearchParams({ telefone }).toString();
+  const response = await fetch(`${getBaseUrl()}/api/clientes/buscar?${qs}`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  if (response.status === 404) {
+    return null;
+  }
+  return handleResponse<Cliente>(response);
+}
+
+export async function createCliente(
+  payload: CreateClientePayload,
+  token: string
+): Promise<Cliente> {
+  const response = await fetch(`${getBaseUrl()}/api/clientes`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<Cliente>(response);
+}
+
+export async function updateCliente(
+  id: string,
+  payload: UpdateClientePayload,
+  token: string
+): Promise<Cliente> {
+  const response = await fetch(`${getBaseUrl()}/api/clientes/${id}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<Cliente>(response);
 }
 
 export async function updateFesta(
@@ -750,17 +835,72 @@ export async function listComissoesPendentes(token: string): Promise<unknown[]> 
   return handleResponse(response);
 }
 
-export async function listFollowUps(token: string): Promise<unknown[]> {
-  const response = await fetch(`${getBaseUrl()}/api/festas/follow-ups`, {
+function normalizeComissaoExtrato(raw: Record<string, unknown>): ComissaoExtrato {
+  const festaRaw =
+    raw.festa && typeof raw.festa === "object"
+      ? (raw.festa as Record<string, unknown>)
+      : {};
+  const clienteRaw =
+    festaRaw.cliente && typeof festaRaw.cliente === "object"
+      ? (festaRaw.cliente as Record<string, unknown>)
+      : {};
+
+  const statusRaw = raw.status;
+  const status: ComissaoStatus =
+    statusRaw === "PAGA" ? "PAGA" : "PENDENTE";
+
+  return {
+    id: typeof raw.id === "string" ? raw.id : String(raw.id ?? ""),
+    percentual: toNumber(raw.percentual),
+    valor: toNumber(raw.valor),
+    status,
+    pagoEm: typeof raw.pagoEm === "string" ? raw.pagoEm : null,
+    criadoEm:
+      typeof raw.criadoEm === "string"
+        ? raw.criadoEm
+        : new Date().toISOString(),
+    festa: {
+      id: typeof festaRaw.id === "string" ? festaRaw.id : "",
+      tema: typeof festaRaw.tema === "string" ? festaRaw.tema : "Festa",
+      cliente: {
+        nome:
+          typeof clienteRaw.nome === "string" ? clienteRaw.nome : "Cliente",
+      },
+    },
+  };
+}
+
+/** Extrato de comissões do vendedor logado (GET /api/comissoes/minhas). */
+export async function listMinhasComissoes(token: string): Promise<ComissaoExtrato[]> {
+  const response = await fetch(`${getBaseUrl()}/api/comissoes/minhas`, {
     headers: authHeaders(token),
     cache: "no-store",
   });
+  const raw = await handleResponse<Array<Record<string, unknown>>>(response);
+  return raw.map(normalizeComissaoExtrato);
+}
+
+export async function listFollowUps(
+  token: string,
+  options?: { minhas?: boolean; hoje?: boolean }
+): Promise<unknown[]> {
+  const params = new URLSearchParams();
+  if (options?.minhas) params.set("minhas", "1");
+  if (options?.hoje) params.set("hoje", "1");
+  const qs = params.toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/festas/follow-ups${qs ? `?${qs}` : ""}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
   return handleResponse(response);
 }
 
 export async function registrarFollowUp(
   festaId: string,
-  payload: { canal?: string; nota?: string },
+  payload: { canal?: string; nota?: string; proximoContatoEm?: string | null },
   token: string
 ): Promise<unknown> {
   const response = await fetch(
@@ -1147,6 +1287,7 @@ export async function getComissaoRanking(
               : "Vendedor",
         totalComissao: toNumber(row.totalComissao ?? row.total),
         posicao: row.posicao != null ? toNumber(row.posicao) : undefined,
+        meta: row.meta != null ? toNumber(row.meta) : undefined,
         atingiuMeta:
           typeof row.atingiuMeta === "boolean" ? row.atingiuMeta : undefined,
         progressoMeta:

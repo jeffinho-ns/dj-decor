@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { PlusCircle } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { ComissaoRankingWidget } from "@/components/vendas/comissao-ranking-widget";
 import { KanbanBoard } from "@/components/vendas/kanban-board";
+import { VendasEscopoToggle } from "@/components/vendas/vendas-escopo-toggle";
 import { getComissaoRanking, listFestas } from "@/lib/api";
 import { requireSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
@@ -14,18 +16,34 @@ import type { ComissaoRanking } from "@/types/financeiro";
 
 export const dynamic = "force-dynamic";
 
-export default async function VendasPage() {
+interface VendasPageProps {
+  searchParams: Promise<{ minhas?: string }>;
+}
+
+function resolveMinhas(
+  role: string,
+  minhasParam: string | undefined
+): boolean {
+  if (minhasParam === "1") return true;
+  if (minhasParam === "0") return false;
+  return role === "VENDEDOR";
+}
+
+export default async function VendasPage({ searchParams }: VendasPageProps) {
   const { token, user } = await requireSession();
 
   if (user.role === "MONTADOR") {
     redirect("/montagem");
   }
 
+  const params = await searchParams;
+  const minhas = resolveMinhas(user.role, params.minhas);
+
   let festas: Festa[] = [];
   let comissaoRanking: ComissaoRanking | null = null;
   let error: string | null = null;
   try {
-    festas = await listFestas(token);
+    festas = await listFestas(token, { minhas });
   } catch (err) {
     error =
       err instanceof Error ? err.message : "Falha ao carregar vendas da API";
@@ -48,19 +66,28 @@ export default async function VendasPage() {
     <DashboardShell
       user={user}
       title="Vendas"
-      description="Funil Kanban por status — registre PIX e avance o pedido."
+      description={
+        minhas
+          ? "Suas vendas no funil Kanban — registre PIX e avance o pedido."
+          : "Funil Kanban por status — registre PIX e avance o pedido."
+      }
       actions={
-        <Link
-          href="/vendas/nova"
-          className={cn(
-            buttonVariants({ variant: "default", size: "sm" }),
-            "gap-1.5"
-          )}
-        >
-          <PlusCircle className="size-4" />
-          <span className="hidden sm:inline">Nova Venda</span>
-          <span className="sm:hidden">Nova</span>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Suspense fallback={null}>
+            <VendasEscopoToggle minhas={minhas} />
+          </Suspense>
+          <Link
+            href="/vendas/nova"
+            className={cn(
+              buttonVariants({ variant: "default", size: "sm" }),
+              "gap-1.5"
+            )}
+          >
+            <PlusCircle className="size-4" />
+            <span className="hidden sm:inline">Nova Venda</span>
+            <span className="sm:hidden">Nova</span>
+          </Link>
+        </div>
       }
     >
       {error ? (
