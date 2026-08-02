@@ -26,13 +26,13 @@ export function VendasEscopoToggle({ minhas, className }: VendasEscopoToggleProp
   }
 
   return (
-    <div className={cn("flex gap-1 rounded-2xl neo-inset p-0.5", className)}>
+    <div className={cn("flex w-full gap-1 rounded-2xl neo-inset p-0.5 sm:w-auto", className)}>
       <Button
         type="button"
         size="xs"
         variant={minhas ? "secondary" : "ghost"}
         onClick={() => setEscopo(true)}
-        className="min-h-10 px-3 md:min-h-6 md:px-2"
+        className="min-h-10 flex-1 px-3 sm:flex-none md:min-h-6 md:px-2"
       >
         Minhas
       </Button>
@@ -41,7 +41,7 @@ export function VendasEscopoToggle({ minhas, className }: VendasEscopoToggleProp
         size="xs"
         variant={!minhas ? "secondary" : "ghost"}
         onClick={() => setEscopo(false)}
-        className="min-h-10 px-3 md:min-h-6 md:px-2"
+        className="min-h-10 flex-1 px-3 sm:flex-none md:min-h-6 md:px-2"
       >
         Todas
       </Button>

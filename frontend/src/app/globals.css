@@ -461,6 +461,24 @@
     );
   }
 
+  /**
+   * Ações sticky acima da barra inferior mobile (CTA de montagem / formulários).
+   * Espaço: nav (~4rem) + margem + safe-area.
+   */
+  .sticky-above-nav {
+    position: fixed;
+    inset-inline: 0;
+    bottom: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom, 0px) + 0.75rem);
+    z-index: 30;
+    padding-inline: 0.75rem;
+  }
+
+  .pb-sticky-above-nav {
+    padding-bottom: calc(
+      var(--mobile-nav-h) + env(safe-area-inset-bottom, 0px) + 5.5rem
+    );
+  }
+
   /* Calendário: 7 colunas que realmente encolhem no mobile (button min-width:auto). */
   .cal-month-grid {
     display: grid;
@@ -475,6 +493,14 @@
 
   @media (min-width: 768px) {
     .pb-nav {
+      padding-bottom: 0;
+    }
+
+    .sticky-above-nav {
+      display: none;
+    }
+
+    .pb-sticky-above-nav {
       padding-bottom: 0;
     }
   }

@@ -515,7 +515,7 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
         <>
           {/* Mobile: status pills + filtered card list */}
           <div className="space-y-3 md:hidden">
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {KANBAN_COLUMNS.map((status) => {
                 const count = byStatus[status].length;
                 const active = activeStatus === status;

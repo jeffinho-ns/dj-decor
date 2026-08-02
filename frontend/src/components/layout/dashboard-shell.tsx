@@ -29,7 +29,7 @@ export function DashboardShell({
           className="sticky top-0 z-30 mx-3 mt-3 rounded-2xl neo-sm md:mx-6 md:mt-4"
           style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))" }}
         >
-          <div className="flex items-start justify-between gap-3 px-4 py-3 md:px-5 md:py-4">
+          <div className="flex items-start justify-between gap-2 px-4 py-3 md:gap-3 md:px-5 md:py-4">
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center gap-1.5 md:hidden">
                 <span className="balloon-dot bg-balloon-pink" />
@@ -43,12 +43,12 @@ export function DashboardShell({
                 {title}
               </h1>
               {description ? (
-                <p className="mt-0.5 hidden text-sm text-muted-foreground sm:block">
+                <p className="mt-0.5 line-clamp-2 hidden text-sm text-muted-foreground sm:block">
                   {description}
                 </p>
               ) : null}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex max-w-[55%] shrink-0 flex-wrap items-center justify-end gap-1.5 sm:max-w-none sm:gap-2">
               {actions}
               <LogoutButton />
             </div>

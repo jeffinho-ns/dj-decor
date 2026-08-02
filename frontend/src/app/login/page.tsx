@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <main className="relative z-10 flex min-h-dvh flex-col lg:min-h-screen lg:flex-row">
-      <section className="relative order-1 flex flex-1 items-center justify-center px-4 py-8 safe-top sm:px-8 sm:py-10 lg:order-2 lg:max-w-md lg:px-10 lg:py-14">
+      <section className="relative order-1 flex flex-1 items-center justify-center px-4 py-8 safe-top safe-bottom sm:px-8 sm:py-10 lg:order-2 lg:max-w-md lg:px-10 lg:py-14">
         <div className="w-full max-w-sm rounded-3xl p-6 neo sm:p-8">
           <div className="mb-5 flex justify-center gap-2 lg:hidden">
             <span className="balloon-dot size-3 bg-balloon-pink animate-float" />

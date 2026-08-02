@@ -342,7 +342,7 @@ export function MontagemOsDetalhe({
   }
 
   return (
-    <div className="relative mx-auto max-w-lg space-y-5 pb-28 sm:space-y-6 md:pb-8">
+    <div className="relative mx-auto max-w-lg space-y-5 pb-sticky-above-nav sm:space-y-6 md:pb-8">
       <OfflineQueueSync token={token} />
       <Link
         href="/montagem"
@@ -985,7 +985,7 @@ function MontagemStickyAction({
   if (!action) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden">
+    <div className="sticky-above-nav md:hidden">
       <div className="rounded-2xl p-3 neo-sm">{action}</div>
     </div>
   );

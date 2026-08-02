@@ -38,7 +38,7 @@ const DEFAULT_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", shortLabel: "Nova", icon: PlusCircle },
-  { href: "/clientes", label: "Clientes", icon: ContactRound },
+  { href: "/clientes", label: "Clientes", shortLabel: "Carteira", icon: ContactRound },
   { href: "/comissoes", label: "Comissões", icon: Coins },
   { href: "/follow-ups", label: "Follow-up", icon: Sparkles },
   { href: "/lixeira", label: "Lixeira", icon: Trash2 },
@@ -50,7 +50,7 @@ const GESTAO_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", shortLabel: "Nova", icon: PlusCircle },
-  { href: "/clientes", label: "Clientes", icon: ContactRound },
+  { href: "/clientes", label: "Clientes", shortLabel: "Carteira", icon: ContactRound },
   { href: "/comissoes", label: "Comissões", icon: Coins },
   { href: "/follow-ups", label: "Follow-up", icon: Sparkles },
   { href: "/lixeira", label: "Lixeira", icon: Trash2 },
@@ -65,7 +65,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", shortLabel: "Nova", icon: PlusCircle },
-  { href: "/clientes", label: "Clientes", icon: ContactRound },
+  { href: "/clientes", label: "Clientes", shortLabel: "Carteira", icon: ContactRound },
   { href: "/comissoes", label: "Comissões", icon: Coins },
   { href: "/follow-ups", label: "Follow-up", icon: Sparkles },
   { href: "/lixeira", label: "Lixeira", icon: Trash2 },
@@ -85,7 +85,23 @@ const MONTADOR_ITEMS: NavItem[] = [
   { href: "/configuracoes", label: "Configurações", shortLabel: "Ajustes", icon: Settings },
 ];
 
-const PRIMARY_HREFS = new Set(["/dashboard", "/vendas", "/vendas/nova", "/montagem"]);
+const PRIMARY_HREFS_DEFAULT = new Set([
+  "/vendas",
+  "/vendas/nova",
+  "/clientes",
+]);
+
+const PRIMARY_HREFS_GESTAO = new Set([
+  "/vendas",
+  "/vendas/nova",
+  "/equipe",
+]);
+
+const PRIMARY_HREFS_ADMIN = new Set([
+  "/vendas",
+  "/financeiro",
+  "/equipe",
+]);
 
 function getItemsForRole(user: User): NavItem[] {
   const isAdmin = user.role === "ADMIN";
@@ -97,9 +113,20 @@ function getItemsForRole(user: User): NavItem[] {
   return DEFAULT_ITEMS;
 }
 
-function splitNavItems(items: NavItem[]) {
-  const primary = items.filter((item) => PRIMARY_HREFS.has(item.href));
-  const overflow = items.filter((item) => !PRIMARY_HREFS.has(item.href));
+function primaryHrefsForRole(role: User["role"]): Set<string> | "all" {
+  if (role === "MONTADOR") return "all";
+  if (role === "ADMIN") return PRIMARY_HREFS_ADMIN;
+  if (role === "GERENTE") return PRIMARY_HREFS_GESTAO;
+  return PRIMARY_HREFS_DEFAULT;
+}
+
+function splitNavItems(items: NavItem[], role: User["role"]) {
+  const primarySet = primaryHrefsForRole(role);
+  if (primarySet === "all") {
+    return { primary: items, overflow: [] as NavItem[] };
+  }
+  const primary = items.filter((item) => primarySet.has(item.href));
+  const overflow = items.filter((item) => !primarySet.has(item.href));
   return { primary, overflow };
 }
 
@@ -111,7 +138,7 @@ export function MobileNav({ user }: MobileNavProps) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const items = getItemsForRole(user);
-  const { primary, overflow } = splitNavItems(items);
+  const { primary, overflow } = splitNavItems(items, user.role);
   const hasOverflow = overflow.length > 0;
   const overflowActive = overflow.some((item) => isNavActive(pathname, item.href));
 

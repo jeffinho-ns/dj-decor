@@ -72,7 +72,7 @@ export default async function VendasPage({ searchParams }: VendasPageProps) {
           : "Funil Kanban por status — registre PIX e avance o pedido."
       }
       actions={
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           <Suspense fallback={null}>
             <VendasEscopoToggle minhas={minhas} />
           </Suspense>
@@ -80,12 +80,11 @@ export default async function VendasPage({ searchParams }: VendasPageProps) {
             href="/vendas/nova"
             className={cn(
               buttonVariants({ variant: "default", size: "sm" }),
-              "gap-1.5"
+              "hidden gap-1.5 sm:inline-flex"
             )}
           >
             <PlusCircle className="size-4" />
-            <span className="hidden sm:inline">Nova Venda</span>
-            <span className="sm:hidden">Nova</span>
+            Nova Venda
           </Link>
         </div>
       }
