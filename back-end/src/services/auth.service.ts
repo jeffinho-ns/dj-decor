@@ -33,13 +33,6 @@ export class UserNotFoundError extends Error {
   }
 }
 
-export class InvalidCurrentPasswordError extends Error {
-  constructor() {
-    super("Senha atual incorreta");
-    this.name = "InvalidCurrentPasswordError";
-  }
-}
-
 export class EmailInUseError extends Error {
   constructor() {
     super("E-mail já está em uso");
