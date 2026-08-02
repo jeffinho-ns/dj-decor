@@ -101,12 +101,13 @@ enum StatusDesconto {
 }
 
 model User {
-  id     String  @id @default(cuid())
-  nome   String  @unique
-  email  String? @unique
-  senha  String
-  role   Role    @default(VENDEDOR)
-  ativo  Boolean @default(true)
+  id       String  @id @default(cuid())
+  nome     String  @unique
+  email    String? @unique
+  telefone String?
+  senha    String
+  role     Role    @default(VENDEDOR)
+  ativo    Boolean @default(true)
 
   festas                    Festa[]            @relation("FestaVendedor")
   midiasUploaded            Midia[]            @relation("MidiaUploadedBy")
@@ -399,6 +400,9 @@ model ConfiguracaoNegocio {
   clausulasContrato    String?  @map("clausulas_contrato") @db.Text
   nomeEmpresa          String   @default("DJ Decor") @map("nome_empresa")
   sloganEmpresa        String   @default("Decoração de Festas · Locação de Materiais") @map("slogan_empresa")
+  telefoneEmpresa      String?  @map("telefone_empresa")
+  whatsappEmpresa      String?  @map("whatsapp_empresa")
+  enderecoEmpresa      String?  @map("endereco_empresa")
   atualizadoEm         DateTime @updatedAt @map("atualizado_em")
 
   logoMidiaId String? @unique @map("logo_midia_id")

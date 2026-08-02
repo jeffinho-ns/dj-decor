@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login } from "@/lib/api";
 import { setClientToken } from "@/lib/auth";
+import { HOME_COOKIE, resolveHomePath } from "@/lib/prefs";
 
 const loginSchema = z.object({
   nome: z.string().trim().min(1, "Informe o nome"),
@@ -29,6 +30,14 @@ const ACESSO_RAPIDO = [
 ] as const;
 
 const SENHA_TEMPORARIA = "@123Mudar";
+
+function readHomeCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(
+    new RegExp(`(?:^|;\\s*)${HOME_COOKIE}=([^;]*)`)
+  );
+  return match ? decodeURIComponent(match[1]) : null;
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -51,7 +60,7 @@ export function LoginForm() {
     try {
       const { token, user } = await login(values.nome, values.senha);
       setClientToken(token);
-      const defaultRoute = user.role === "MONTADOR" ? "/montagem" : "/dashboard";
+      const defaultRoute = resolveHomePath(user.role, readHomeCookie());
       const from = searchParams.get("from");
       const blockedForMontador =
         user.role === "MONTADOR" &&

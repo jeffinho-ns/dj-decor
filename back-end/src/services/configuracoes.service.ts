@@ -8,6 +8,9 @@ const updateConfigSchema = z.object({
   clausulasContrato: z.string().max(20000).nullable().optional(),
   nomeEmpresa: z.string().min(2).max(120).optional(),
   sloganEmpresa: z.string().min(2).max(200).optional(),
+  telefoneEmpresa: z.string().max(30).nullable().optional(),
+  whatsappEmpresa: z.string().max(30).nullable().optional(),
+  enderecoEmpresa: z.string().max(300).nullable().optional(),
   logoMidiaId: z.string().min(1).nullable().optional(),
 });
 
@@ -63,6 +66,15 @@ export class ConfiguracoesService {
           : {}),
         ...(data.sloganEmpresa !== undefined
           ? { sloganEmpresa: data.sloganEmpresa }
+          : {}),
+        ...(data.telefoneEmpresa !== undefined
+          ? { telefoneEmpresa: data.telefoneEmpresa }
+          : {}),
+        ...(data.whatsappEmpresa !== undefined
+          ? { whatsappEmpresa: data.whatsappEmpresa }
+          : {}),
+        ...(data.enderecoEmpresa !== undefined
+          ? { enderecoEmpresa: data.enderecoEmpresa }
           : {}),
         ...(data.logoMidiaId !== undefined
           ? { logoMidiaId: data.logoMidiaId }

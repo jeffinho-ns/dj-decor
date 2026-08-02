@@ -9,7 +9,7 @@ configuracoesRoutes.use(auth);
 
 configuracoesRoutes.get(
   "/",
-  requireRoles(Role.ADMIN, Role.GERENTE),
+  requireRoles(Role.ADMIN, Role.GERENTE, Role.VENDEDOR, Role.MONTADOR),
   (req, res, next) => configuracoesController.get(req, res, next)
 );
 

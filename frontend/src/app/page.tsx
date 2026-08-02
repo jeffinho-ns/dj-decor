@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { me } from "@/lib/api";
 import { TOKEN_COOKIE } from "@/lib/auth";
+import { HOME_COOKIE, resolveHomePath } from "@/lib/prefs";
 
 export default async function HomePage() {
   const cookieStore = await cookies();
@@ -13,14 +14,12 @@ export default async function HomePage() {
   }
 
   const token = decodeURIComponent(raw);
-  let destination = "/dashboard";
+  const homeCookie = cookieStore.get(HOME_COOKIE)?.value ?? null;
 
   try {
     const { user } = await me(token);
-    destination = user.role === "MONTADOR" ? "/montagem" : "/dashboard";
+    redirect(resolveHomePath(user.role, homeCookie));
   } catch {
     redirect("/login");
   }
-
-  redirect(destination);
 }

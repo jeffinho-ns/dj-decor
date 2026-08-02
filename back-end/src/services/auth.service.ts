@@ -8,6 +8,7 @@ export interface AuthUser {
   id: string;
   nome: string;
   email: string | null;
+  telefone: string | null;
   role: Role;
 }
 
@@ -48,8 +49,25 @@ export class EmailInUseError extends Error {
 
 export interface UpdateProfileInput {
   email?: string | null;
+  telefone?: string | null;
   senhaAtual?: string;
   novaSenha?: string;
+}
+
+function toAuthUser(user: {
+  id: string;
+  nome: string;
+  email: string | null;
+  telefone: string | null;
+  role: Role;
+}): AuthUser {
+  return {
+    id: user.id,
+    nome: user.nome,
+    email: user.email,
+    telefone: user.telefone,
+    role: user.role,
+  };
 }
 
 export class AuthService {
@@ -76,12 +94,7 @@ export class AuthService {
       throw new InvalidCredentialsError();
     }
 
-    const authUser: AuthUser = {
-      id: user.id,
-      nome: user.nome,
-      email: user.email,
-      role: user.role,
-    };
+    const authUser = toAuthUser(user);
 
     return { token: this.generateToken(authUser), user: authUser };
   }
@@ -93,12 +106,12 @@ export class AuthService {
       return null;
     }
 
-    return { id: user.id, nome: user.nome, email: user.email, role: user.role };
+    return toAuthUser(user);
   }
 
   async updateProfile(
     userId: string,
-    { email, senhaAtual, novaSenha }: UpdateProfileInput
+    { email, telefone, senhaAtual, novaSenha }: UpdateProfileInput
   ): Promise<AuthUser> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
@@ -106,11 +119,21 @@ export class AuthService {
       throw new UserNotFoundError();
     }
 
-    const data: { email?: string | null; senha?: string } = {};
+    const data: {
+      email?: string | null;
+      telefone?: string | null;
+      senha?: string;
+    } = {};
 
     if (email !== undefined) {
       const emailNormalizado = email && email.trim().length > 0 ? email.trim() : null;
       data.email = emailNormalizado;
+    }
+
+    if (telefone !== undefined) {
+      const tel =
+        telefone && telefone.trim().length > 0 ? telefone.trim() : null;
+      data.telefone = tel;
     }
 
     if (novaSenha !== undefined) {
@@ -132,12 +155,7 @@ export class AuthService {
         data,
       });
 
-      return {
-        id: updated.id,
-        nome: updated.nome,
-        email: updated.email,
-        role: updated.role,
-      };
+      return toAuthUser(updated);
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

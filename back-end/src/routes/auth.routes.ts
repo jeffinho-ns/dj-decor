@@ -5,7 +5,7 @@ import { auth } from "../middlewares/auth";
 const authRoutes = Router();
 
 authRoutes.post("/login", (req, res, next) => authController.login(req, res, next));
-authRoutes.get("/me", auth, (req, res) => authController.me(req, res));
+authRoutes.get("/me", auth, (req, res, next) => authController.me(req, res, next));
 authRoutes.patch("/perfil", auth, (req, res, next) =>
   authController.updateProfile(req, res, next)
 );

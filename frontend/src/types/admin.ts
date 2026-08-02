@@ -16,6 +16,9 @@ export interface ConfiguracaoNegocio {
   clausulasContrato: string | null;
   nomeEmpresa: string;
   sloganEmpresa: string;
+  telefoneEmpresa?: string | null;
+  whatsappEmpresa?: string | null;
+  enderecoEmpresa?: string | null;
   logoMidiaId: string | null;
   logoMidia?: { id: string; mimeType: string; tamanho: number; tipo: string } | null;
   atualizadoEm?: string;

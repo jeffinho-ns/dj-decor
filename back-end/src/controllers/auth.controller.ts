@@ -19,6 +19,9 @@ const updateProfileSchema = z
     email: z
       .union([z.string().trim().email("E-mail inválido"), z.literal(""), z.null()])
       .optional(),
+    telefone: z
+      .union([z.string().trim().max(30), z.literal(""), z.null()])
+      .optional(),
     senhaAtual: z.string().min(1, "Senha atual é obrigatória").optional(),
     novaSenha: z
       .string()
@@ -49,8 +52,21 @@ export class AuthController {
     }
   }
 
-  async me(req: AuthenticatedRequest, res: Response) {
-    res.status(200).json({ user: req.user });
+  async me(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        res.status(401).json({ message: "Não autorizado" });
+        return;
+      }
+      const user = await authService.getUserById(req.user.id);
+      if (!user) {
+        res.status(401).json({ message: "Não autorizado" });
+        return;
+      }
+      res.status(200).json({ user });
+    } catch (error) {
+      next(error);
+    }
   }
 
   async updateProfile(req: AuthenticatedRequest, res: Response, next: NextFunction) {

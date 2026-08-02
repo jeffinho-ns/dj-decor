@@ -7,6 +7,7 @@ export interface AuthUser {
   id: string;
   nome: string;
   email: string | null;
+  telefone?: string | null;
   role: Role;
 }
 
@@ -18,6 +19,7 @@ const MOCK_VENDEDOR_USER: AuthUser = {
   id: "mock-vendedor-id",
   nome: "Vendedor Mock",
   email: "vendedor@djdecor.com",
+  telefone: null,
   role: Role.VENDEDOR,
 };
 

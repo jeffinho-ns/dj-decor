@@ -53,15 +53,18 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
   if (!config) {
     return (
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Carregando…
+        <Loader2 className="size-4 animate-spin" /> Carregando negócio…
       </p>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-3 rounded-2xl neo-sm p-4">
-        <h2 className="font-display text-lg">Negócio</h2>
+    <div className="space-y-6">
+      <section className="space-y-3 rounded-2xl neo-sm p-5 sm:p-6">
+        <h2 className="font-display text-lg">Marca</h2>
+        <p className="text-sm text-muted-foreground">
+          Nome, slogan e logo usados no portal e materiais.
+        </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <Label>Nome da empresa</Label>
@@ -81,6 +84,36 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
               }
             />
           </div>
+        </div>
+        <label className="inline-flex cursor-pointer items-center rounded-xl neo-inset px-3 py-2 text-xs font-medium">
+          Upload logo
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              startTransition(async () => {
+                const midia = await uploadMidia(
+                  { file, tipo: "LOGO_EMPRESA" },
+                  token
+                );
+                const updated = await updateConfiguracoes(
+                  { logoMidiaId: midia.id },
+                  token
+                );
+                setConfig(updated);
+                setMsg("Logo atualizada.");
+              });
+            }}
+          />
+        </label>
+      </section>
+
+      <section className="space-y-3 rounded-2xl neo-sm p-5 sm:p-6">
+        <h2 className="font-display text-lg">Comissões</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <Label>Comissão %</Label>
             <Input
@@ -102,6 +135,10 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
             />
           </div>
         </div>
+      </section>
+
+      <section className="space-y-3 rounded-2xl neo-sm p-5 sm:p-6">
+        <h2 className="font-display text-lg">Contrato</h2>
         <div className="space-y-1">
           <Label>Cláusulas do contrato</Label>
           <textarea
@@ -113,58 +150,32 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
             placeholder="Deixe em branco para usar o texto padrão do sistema"
           />
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            disabled={pending}
-            onClick={() => {
-              startTransition(async () => {
-                const updated = await updateConfiguracoes(
-                  {
-                    nomeEmpresa: config.nomeEmpresa,
-                    sloganEmpresa: config.sloganEmpresa,
-                    comissaoPercentual: Number(config.comissaoPercentual),
-                    comissaoMetaSemanal: Number(config.comissaoMetaSemanal),
-                    clausulasContrato: config.clausulasContrato,
-                  },
-                  token
-                );
-                setConfig(updated);
-                setMsg("Configurações salvas.");
-              });
-            }}
-          >
-            Salvar negócio
-          </Button>
-          <label className="inline-flex cursor-pointer items-center rounded-xl neo-inset px-3 py-2 text-xs font-medium">
-            Upload logo
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="sr-only"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                startTransition(async () => {
-                  const midia = await uploadMidia(
-                    { file, tipo: "LOGO_EMPRESA" },
-                    token
-                  );
-                  const updated = await updateConfiguracoes(
-                    { logoMidiaId: midia.id },
-                    token
-                  );
-                  setConfig(updated);
-                  setMsg("Logo atualizada.");
-                });
-              }}
-            />
-          </label>
-        </div>
+        <Button
+          type="button"
+          size="sm"
+          disabled={pending}
+          onClick={() => {
+            startTransition(async () => {
+              const updated = await updateConfiguracoes(
+                {
+                  nomeEmpresa: config.nomeEmpresa,
+                  sloganEmpresa: config.sloganEmpresa,
+                  comissaoPercentual: Number(config.comissaoPercentual),
+                  comissaoMetaSemanal: Number(config.comissaoMetaSemanal),
+                  clausulasContrato: config.clausulasContrato,
+                },
+                token
+              );
+              setConfig(updated);
+              setMsg("Configurações de negócio salvas.");
+            });
+          }}
+        >
+          Salvar marca, comissões e contrato
+        </Button>
       </section>
 
-      <section className="space-y-3 rounded-2xl neo-sm p-4">
+      <section className="space-y-3 rounded-2xl neo-sm p-5 sm:p-6">
         <h2 className="font-display text-lg">Catálogo — kits</h2>
         <div className="space-y-2">
           {kits.map((kit) => (
@@ -215,7 +226,7 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
         </div>
       </section>
 
-      <section className="space-y-3 rounded-2xl neo-sm p-4">
+      <section className="space-y-3 rounded-2xl neo-sm p-5 sm:p-6">
         <h2 className="font-display text-lg">Catálogo — add-ons</h2>
         <div className="space-y-2">
           {addons.map((addon) => (

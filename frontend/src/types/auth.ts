@@ -4,6 +4,7 @@ export interface User {
   id: string;
   nome: string;
   email: string | null;
+  telefone?: string | null;
   role: Role;
 }
 
@@ -18,6 +19,7 @@ export interface MeResponse {
 
 export interface UpdatePerfilPayload {
   email?: string | null;
+  telefone?: string | null;
   senhaAtual?: string;
   novaSenha?: string;
 }

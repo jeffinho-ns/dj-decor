@@ -143,6 +143,10 @@ export function getOfflineQueue(): OfflineQueueEntry[] {
   return readQueue();
 }
 
+export function clearOfflineQueue(): void {
+  writeQueue([]);
+}
+
 async function executeEntry(
   entry: OfflineQueueEntry,
   executor: OfflineQueueExecutor
