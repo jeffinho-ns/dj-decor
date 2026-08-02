@@ -21,16 +21,6 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>;
 
-const ACESSO_RAPIDO = [
-  { label: "SuperAdmin", nome: "Jefferson" },
-  { label: "Sócia", nome: "Lorena" },
-  { label: "Gerente", nome: "Debora" },
-  { label: "Vendedor", nome: "Vitória" },
-  { label: "Montador", nome: "Carlos" },
-] as const;
-
-const SENHA_TEMPORARIA = "@123Mudar";
-
 function readHomeCookie(): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(
@@ -48,7 +38,6 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -75,12 +64,6 @@ export function LoginForm() {
         error instanceof Error ? error.message : "Não foi possível entrar"
       );
     }
-  }
-
-  function fillAcesso(nome: string) {
-    setValue("nome", nome);
-    setValue("senha", SENHA_TEMPORARIA);
-    setFormError(null);
   }
 
   return (
@@ -164,31 +147,6 @@ export function LoginForm() {
           {isSubmitting ? "Entrando..." : "Entrar"}
         </Button>
       </form>
-
-      <div className="mt-8 rounded-2xl neo-inset px-4 py-3">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          Acesso rápido · senha {SENHA_TEMPORARIA}
-        </p>
-        <ul className="mt-2 grid grid-cols-2 gap-2">
-          {ACESSO_RAPIDO.map((account, index) => {
-            const tones = ["neo-pink", "neo-sky", "neo-sun", "neo-mint"] as const;
-            return (
-              <li key={account.nome}>
-                <button
-                  type="button"
-                  onClick={() => fillAcesso(account.nome)}
-                  className={`flex min-h-11 w-full flex-col items-start justify-center rounded-2xl px-3 py-2 text-left text-xs font-semibold ${tones[index % tones.length]}`}
-                >
-                  <span className="opacity-90">{account.label}</span>
-                  <span className="text-[11px] font-medium opacity-80">
-                    {account.nome}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
     </div>
   );
 }
