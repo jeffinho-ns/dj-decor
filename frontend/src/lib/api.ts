@@ -376,6 +376,22 @@ export async function confirmarPagamento(
   return handleResponse<Pagamento>(response);
 }
 
+export async function anexarComprovantePagamento(
+  pagamentoId: string,
+  comprovanteMidiaId: string,
+  token: string
+): Promise<Pagamento> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/pagamentos/${pagamentoId}/comprovante`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify({ comprovanteMidiaId }),
+    }
+  );
+  return handleResponse<Pagamento>(response);
+}
+
 export async function uploadMidia(
   params: { file: File; tipo: TipoMidia; festaId?: string },
   token: string

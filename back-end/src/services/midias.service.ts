@@ -7,6 +7,9 @@ export const ALLOWED_MIME_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/pdf",
 ] as const;
 
 const uploadMetaSchema = z.object({
@@ -50,7 +53,7 @@ export class MidiasService {
       )
     ) {
       throw new MidiaValidationError(
-        "MIME inválido. Use image/jpeg, image/png ou image/webp"
+        "MIME inválido. Use JPEG, PNG, WebP, HEIC ou PDF"
       );
     }
 

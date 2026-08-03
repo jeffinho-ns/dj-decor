@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  anexarComprovantePagamento,
   confirmarPagamento,
   createPagamento,
   gerarPixQr,
@@ -76,11 +77,15 @@ export function PagamentoForm({
   const [file, setFile] = useState<File | null>(null);
   const [pending, setPending] = useState(false);
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
+  const [anexandoId, setAnexandoId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewIsPdf, setPreviewIsPdf] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const attachInputRef = useRef<HTMLInputElement | null>(null);
+  const attachTargetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -98,6 +103,14 @@ export function PagamentoForm({
     };
   }, [previewUrl]);
 
+  function fecharPreview() {
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPreviewIsPdf(false);
+  }
+
   async function abrirComprovante(midiaId: string) {
     setPreviewLoading(true);
     setError(null);
@@ -108,6 +121,10 @@ export function PagamentoForm({
       if (!res.ok) throw new Error("Não foi possível abrir o comprovante");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
+      const isPdf =
+        blob.type === "application/pdf" ||
+        blob.type === "application/octet-stream";
+      setPreviewIsPdf(isPdf);
       setPreviewUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         return url;
@@ -139,15 +156,24 @@ export function PagamentoForm({
       let atualizado = pagamento;
 
       if (file) {
-        const midia = await uploadMidia(
-          { file, tipo: "COMPROVANTE_PIX", festaId },
-          token
-        );
-        atualizado = await confirmarPagamento(
-          pagamento.id,
-          { comprovanteMidiaId: midia.id },
-          token
-        );
+        try {
+          const midia = await uploadMidia(
+            { file, tipo: "COMPROVANTE_PIX", festaId },
+            token
+          );
+          atualizado = await confirmarPagamento(
+            pagamento.id,
+            { comprovanteMidiaId: midia.id },
+            token
+          );
+        } catch (uploadErr) {
+          onPagamentosChange([pagamento, ...pagamentos]);
+          throw new Error(
+            uploadErr instanceof Error
+              ? `Pagamento criado, mas o comprovante falhou: ${uploadErr.message}. Use “Anexar comprovante” no lançamento.`
+              : "Pagamento criado, mas o comprovante falhou. Use “Anexar comprovante” no lançamento."
+          );
+        }
       }
 
       onPagamentosChange([atualizado, ...pagamentos]);
@@ -183,38 +209,82 @@ export function PagamentoForm({
     }
   }
 
+  function iniciarAnexo(pagamentoId: string) {
+    attachTargetIdRef.current = pagamentoId;
+    attachInputRef.current?.click();
+  }
+
+  async function anexarNoPagamento(selected: File | null) {
+    const pagamentoId = attachTargetIdRef.current;
+    attachTargetIdRef.current = null;
+    if (!pagamentoId || !selected) return;
+
+    setError(null);
+    setAnexandoId(pagamentoId);
+    try {
+      const midia = await uploadMidia(
+        { file: selected, tipo: "COMPROVANTE_PIX", festaId },
+        token
+      );
+      const atualizado = await anexarComprovantePagamento(
+        pagamentoId,
+        midia.id,
+        token
+      );
+      onPagamentosChange(
+        pagamentos.map((p) => (p.id === atualizado.id ? atualizado : p))
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível anexar o comprovante"
+      );
+    } finally {
+      setAnexandoId(null);
+      if (attachInputRef.current) attachInputRef.current.value = "";
+    }
+  }
+
+  const saldoRows = [
+    {
+      label: "Total",
+      value: formatCurrency(valorFesta),
+      className: "text-foreground",
+    },
+    {
+      label: "Pago",
+      value: formatCurrency(totalConfirmado),
+      className: "text-balloon-mint",
+    },
+    {
+      label: "Falta",
+      value: quitado ? "Quitado" : formatCurrency(falta),
+      className: quitado ? "text-balloon-mint" : "text-balloon-sun",
+    },
+  ] as const;
+
   return (
     <div className="space-y-4" onClick={(event) => event.stopPropagation()}>
-      <div className="grid grid-cols-3 gap-2 rounded-2xl neo-sm p-3 text-center">
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Total
-          </p>
-          <p className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
-            {formatCurrency(valorFesta)}
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Pago
-          </p>
-          <p className="mt-0.5 text-sm font-semibold tabular-nums text-balloon-mint">
-            {formatCurrency(totalConfirmado)}
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Falta
-          </p>
-          <p
-            className={cn(
-              "mt-0.5 text-sm font-semibold tabular-nums",
-              quitado ? "text-balloon-mint" : "text-balloon-sun"
-            )}
+      <div className="space-y-2 rounded-2xl neo-sm p-3">
+        {saldoRows.map((row) => (
+          <div
+            key={row.label}
+            className="flex items-baseline justify-between gap-3"
           >
-            {quitado ? "Quitado" : formatCurrency(falta)}
-          </p>
-        </div>
+            <p className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              {row.label}
+            </p>
+            <p
+              className={cn(
+                "min-w-0 text-right text-sm font-semibold tabular-nums",
+                row.className
+              )}
+            >
+              {row.value}
+            </p>
+          </div>
+        ))}
       </div>
       {totalPendente > 0 ? (
         <p className="text-xs text-muted-foreground">
@@ -222,6 +292,16 @@ export function PagamentoForm({
           confirmação.
         </p>
       ) : null}
+
+      <input
+        ref={attachInputRef}
+        type="file"
+        accept="image/*,application/pdf,.heic,.heif"
+        className="hidden"
+        onChange={(event) =>
+          void anexarNoPagamento(event.target.files?.[0] ?? null)
+        }
+      />
 
       {pagamentos.length > 0 ? (
         <div className="space-y-2">
@@ -313,7 +393,8 @@ export function PagamentoForm({
                       </Button>
                     </div>
                   )}
-                  {canViewComprovante && pagamento.comprovanteMidiaId ? (
+
+                  {pagamento.comprovanteMidiaId && canViewComprovante ? (
                     <Button
                       type="button"
                       variant="secondary"
@@ -330,10 +411,24 @@ export function PagamentoForm({
                       )}
                       Ver comprovante
                     </Button>
-                  ) : canViewComprovante ? (
-                    <p className="text-xs text-muted-foreground">
-                      Sem comprovante anexado neste lançamento.
-                    </p>
+                  ) : null}
+
+                  {!pagamento.comprovanteMidiaId &&
+                  pagamento.status !== "ESTORNADO" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-10 w-full"
+                      disabled={anexandoId === pagamento.id}
+                      onClick={() => iniciarAnexo(pagamento.id)}
+                    >
+                      {anexandoId === pagamento.id ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Upload className="size-4" />
+                      )}
+                      Anexar comprovante
+                    </Button>
                   ) : null}
                 </div>
               </li>
@@ -390,7 +485,7 @@ export function PagamentoForm({
 
           <div className="space-y-1.5">
             <Label htmlFor={`comprovante-${festaId}`} className="text-xs">
-              Comprovante (opcional)
+              Comprovante (foto ou PDF)
             </Label>
             <label
               htmlFor={`comprovante-${festaId}`}
@@ -408,7 +503,7 @@ export function PagamentoForm({
               ref={fileInputRef}
               id={`comprovante-${festaId}`}
               type="file"
-              accept="image/*,application/pdf"
+              accept="image/*,application/pdf,.heic,.heif"
               className="hidden"
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
             />
@@ -425,7 +520,7 @@ export function PagamentoForm({
             type="button"
             className="min-h-11 w-full"
             disabled={pending}
-            onClick={registrarPagamento}
+            onClick={() => void registrarPagamento()}
           >
             {pending ? (
               <Loader2 className="size-4 animate-spin" />
@@ -451,12 +546,7 @@ export function PagamentoForm({
                 type="button"
                 aria-label="Fechar comprovante"
                 className="absolute inset-0 bg-[#2a3142]/50 backdrop-blur-[2px]"
-                onClick={() => {
-                  setPreviewUrl((prev) => {
-                    if (prev) URL.revokeObjectURL(prev);
-                    return null;
-                  });
-                }}
+                onClick={fecharPreview}
               />
               <div className="relative z-10 max-h-[90dvh] w-full max-w-lg overflow-hidden rounded-2xl neo-sm">
                 <div className="flex items-center justify-between px-3 py-2">
@@ -466,22 +556,25 @@ export function PagamentoForm({
                   <button
                     type="button"
                     className="flex size-10 items-center justify-center rounded-xl neo-inset"
-                    onClick={() => {
-                      setPreviewUrl((prev) => {
-                        if (prev) URL.revokeObjectURL(prev);
-                        return null;
-                      });
-                    }}
+                    onClick={fecharPreview}
                   >
                     <X className="size-4" />
                   </button>
                 </div>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={previewUrl}
-                  alt="Comprovante de pagamento"
-                  className="max-h-[80dvh] w-full object-contain bg-background"
-                />
+                {previewIsPdf ? (
+                  <iframe
+                    title="Comprovante de pagamento"
+                    src={previewUrl}
+                    className="h-[80dvh] w-full bg-background"
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={previewUrl}
+                    alt="Comprovante de pagamento"
+                    className="max-h-[80dvh] w-full object-contain bg-background"
+                  />
+                )}
               </div>
             </div>,
             document.body

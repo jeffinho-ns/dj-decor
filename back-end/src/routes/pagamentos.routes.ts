@@ -30,6 +30,12 @@ pagamentosRoutes.patch(
   (req, res, next) => pagamentosController.confirmar(req, res, next)
 );
 
+pagamentosRoutes.patch(
+  "/pagamentos/:id/comprovante",
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  (req, res, next) => pagamentosController.anexarComprovante(req, res, next)
+);
+
 pagamentosRoutes.post(
   "/pagamentos/:id/pix",
   requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),

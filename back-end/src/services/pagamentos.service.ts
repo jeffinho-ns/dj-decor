@@ -214,6 +214,34 @@ export class PagamentosService {
     return pagamentoAtualizado;
   }
 
+  /** Anexa ou troca o comprovante de um pagamento (pendente ou confirmado). */
+  async anexarComprovante(pagamentoId: string, rawInput: unknown) {
+    const data = z
+      .object({ comprovanteMidiaId: z.string().min(1) })
+      .parse(rawInput ?? {});
+
+    const pagamento = await prisma.pagamento.findUnique({
+      where: { id: pagamentoId },
+      select: { id: true },
+    });
+    if (!pagamento) {
+      throw new PagamentoNotFoundError(pagamentoId);
+    }
+
+    const midia = await prisma.midia.findUnique({
+      where: { id: data.comprovanteMidiaId },
+      select: { id: true },
+    });
+    if (!midia) {
+      throw new MidiaNotFoundForPagamentoError(data.comprovanteMidiaId);
+    }
+
+    return prisma.pagamento.update({
+      where: { id: pagamentoId },
+      data: { comprovanteMidiaId: data.comprovanteMidiaId },
+    });
+  }
+
   /**
    * Gera dados de PIX (stub local até integrar PSP real).
    * Preenche pixTxid / pixCopiaCola / pixQrCode / pixExpiresAt.

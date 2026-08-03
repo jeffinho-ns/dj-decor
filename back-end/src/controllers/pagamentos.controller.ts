@@ -62,6 +62,24 @@ export class PagamentosController {
     }
   }
 
+  async anexarComprovante(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const id = getParamId(req.params.id);
+      if (!id) {
+        res.status(400).json({ error: "ID do pagamento é obrigatório" });
+        return;
+      }
+      const pagamento = await pagamentosService.anexarComprovante(id, req.body);
+      res.status(200).json(pagamento);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
   async gerarPix(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const id = getParamId(req.params.id);
