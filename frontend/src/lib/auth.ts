@@ -38,11 +38,16 @@ const ROLE_LABELS: Record<Role, string> = {
   MONTADOR: "Montador",
 };
 
-/** Sócias com perfil operacional de gerente. */
-const SOCIAS = new Set(["Lorena"]);
+/** Sócias e dona — labels de perfil financeiro. */
+const SOCIAS = new Set(["Lorena", "Suellem"]);
+const DONAS = new Set(["Debora"]);
 
 export function roleLabel(role: Role, nome?: string | null): string {
-  if (nome && SOCIAS.has(nome.trim()) && role === "GERENTE") {
+  const nomeTrim = nome?.trim() ?? "";
+  if (nomeTrim && DONAS.has(nomeTrim) && role === "GERENTE") {
+    return "Dona";
+  }
+  if (nomeTrim && SOCIAS.has(nomeTrim) && role === "GERENTE") {
     return "Sócia";
   }
   return ROLE_LABELS[role] ?? role;

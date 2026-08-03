@@ -715,6 +715,8 @@ export async function updateUser(
     email: string | null;
     ativo: boolean;
     senha: string;
+    ehSocia: boolean;
+    ehDona: boolean;
   }>,
   token: string
 ): Promise<import("@/types/admin").UserAdmin> {
@@ -867,7 +869,10 @@ function normalizeComissaoExtrato(raw: Record<string, unknown>): ComissaoExtrato
 
   return {
     id: typeof raw.id === "string" ? raw.id : String(raw.id ?? ""),
-    percentual: toNumber(raw.percentual),
+    tipo: typeof raw.tipo === "string" ? raw.tipo : undefined,
+    tipoLabel: typeof raw.tipoLabel === "string" ? raw.tipoLabel : undefined,
+    percentual:
+      raw.percentual == null ? null : toNumber(raw.percentual),
     valor: toNumber(raw.valor),
     status,
     pagoEm: typeof raw.pagoEm === "string" ? raw.pagoEm : null,
@@ -875,9 +880,19 @@ function normalizeComissaoExtrato(raw: Record<string, unknown>): ComissaoExtrato
       typeof raw.criadoEm === "string"
         ? raw.criadoEm
         : new Date().toISOString(),
+    elegivelEm:
+      typeof raw.elegivelEm === "string" ? raw.elegivelEm : undefined,
+    liberadoParaPagamento:
+      typeof raw.liberadoParaPagamento === "boolean"
+        ? raw.liberadoParaPagamento
+        : undefined,
     festa: {
       id: typeof festaRaw.id === "string" ? festaRaw.id : "",
       tema: typeof festaRaw.tema === "string" ? festaRaw.tema : "Festa",
+      dataEvento:
+        typeof festaRaw.dataEvento === "string"
+          ? festaRaw.dataEvento
+          : undefined,
       cliente: {
         nome:
           typeof clienteRaw.nome === "string" ? clienteRaw.nome : "Cliente",

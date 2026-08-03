@@ -22,7 +22,8 @@ const PROTECTED_PREFIXES = [
 const VENDEDOR_ONLY_PREFIXES = ["/vendas", "/clientes", "/comissoes"];
 const MONTADOR_BLOCKED_PREFIXES = ["/follow-ups"];
 const GESTAO_ONLY_PREFIXES = ["/estoque", "/equipe", "/aprovacoes"];
-const ADMIN_ONLY_PREFIXES = ["/financeiro"];
+const GESTAO_FINANCEIRO_PREFIXES = ["/financeiro"];
+const ADMIN_ONLY_PREFIXES: string[] = [];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
@@ -44,6 +45,12 @@ function isMontadorBlocked(pathname: string): boolean {
 
 function isGestaoArea(pathname: string): boolean {
   return GESTAO_ONLY_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
+function isGestaoFinanceiro(pathname: string): boolean {
+  return GESTAO_FINANCEIRO_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 }
@@ -99,6 +106,15 @@ export function middleware(request: NextRequest) {
   if (
     token &&
     isGestaoArea(pathname) &&
+    role !== "ADMIN" &&
+    role !== "GERENTE"
+  ) {
+    return NextResponse.redirect(new URL(homeForRole(role), request.url));
+  }
+
+  if (
+    token &&
+    isGestaoFinanceiro(pathname) &&
     role !== "ADMIN" &&
     role !== "GERENTE"
   ) {

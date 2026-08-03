@@ -91,13 +91,15 @@ function AgendaCard({
   item,
   montadorOptions,
   assigning,
-  onAssign,
+  onAssignMontador,
+  onAssignDesmontador,
   accentIndex,
 }: {
   item: AgendaOs;
   montadorOptions: { id: string; nome: string }[];
   assigning: boolean;
-  onAssign: (montadorId: string) => void;
+  onAssignMontador: (montadorId: string) => void;
+  onAssignDesmontador: (desmontadorId: string) => void;
   accentIndex: number;
 }) {
   const accent = CARD_ACCENTS[accentIndex % CARD_ACCENTS.length];
@@ -138,17 +140,33 @@ function AgendaCard({
         </div>
       </dl>
 
-      <div className="mt-4 space-y-2">
-        <Label htmlFor={`montador-${item.id}`} className="text-sm">
-          Montador
-        </Label>
-        <MontadorSelect
-          id={`montador-${item.id}`}
-          value={item.montadorId ?? ""}
-          options={montadorOptions}
-          disabled={assigning}
-          onChange={onAssign}
-        />
+      <div className="mt-4 space-y-3">
+        <div className="space-y-2">
+          <Label htmlFor={`montador-${item.id}`} className="text-sm">
+            Montador (R$ 100/diária)
+          </Label>
+          <MontadorSelect
+            id={`montador-${item.id}`}
+            value={item.montadorId ?? ""}
+            options={montadorOptions}
+            disabled={assigning}
+            onChange={onAssignMontador}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`desmontador-${item.id}`} className="text-sm">
+            Desmontador (R$ 70/diária)
+          </Label>
+          <MontadorSelect
+            id={`desmontador-${item.id}`}
+            value={item.desmontadorId ?? ""}
+            options={montadorOptions.map((o) =>
+              o.id === "" ? { id: "", nome: "— Sem desmontador —" } : o
+            )}
+            disabled={assigning}
+            onChange={onAssignDesmontador}
+          />
+        </div>
       </div>
     </article>
   );
@@ -196,7 +214,10 @@ export function EquipePainel({
     });
   }
 
-  function atribuirMontador(osId: string, montadorId: string) {
+  function atribuirEquipe(
+    osId: string,
+    payload: { montadorId?: string | null; desmontadorId?: string | null }
+  ) {
     setError(null);
     setAssigningId(osId);
     startTransition(async () => {
@@ -205,18 +226,22 @@ export function EquipePainel({
         if (!token) {
           throw new Error("Sessão expirada. Faça login novamente.");
         }
-        if (!montadorId) {
-          throw new Error("Selecione um montador");
-        }
-        const updated = await assignMontadorOs(osId, { montadorId }, token);
+        const updated = await assignMontadorOs(osId, payload, token);
         setAgenda((prev) =>
           prev.map((item) =>
             item.id === osId
               ? {
                   ...item,
                   montadorId: updated.montadorId,
+                  desmontadorId: updated.desmontadorId ?? null,
                   montador: updated.montador
                     ? { id: updated.montador.id, nome: updated.montador.nome }
+                    : null,
+                  desmontador: updated.desmontador
+                    ? {
+                        id: updated.desmontador.id,
+                        nome: updated.desmontador.nome,
+                      }
                     : null,
                 }
               : item
@@ -224,7 +249,7 @@ export function EquipePainel({
         );
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Falha ao atribuir montador"
+          err instanceof Error ? err.message : "Falha ao atribuir equipe"
         );
       } finally {
         setAssigningId(null);
@@ -294,7 +319,16 @@ export function EquipePainel({
                 item={item}
                 montadorOptions={montadorOptions}
                 assigning={pending && assigningId === item.id}
-                onAssign={(montadorId) => atribuirMontador(item.id, montadorId)}
+                onAssignMontador={(montadorId) =>
+                  atribuirEquipe(item.id, {
+                    montadorId: montadorId || null,
+                  })
+                }
+                onAssignDesmontador={(desmontadorId) =>
+                  atribuirEquipe(item.id, {
+                    desmontadorId: desmontadorId || null,
+                  })
+                }
                 accentIndex={index}
               />
             ))}
@@ -312,14 +346,15 @@ export function EquipePainel({
               <TableHead>Status</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Endereço</TableHead>
-              <TableHead className="min-w-[12rem]">Montador</TableHead>
+              <TableHead className="min-w-[10rem]">Montador</TableHead>
+              <TableHead className="min-w-[10rem]">Desmontador</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {agenda.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="py-10 text-center text-muted-foreground"
                 >
                   Nenhuma montagem neste período. Festas Pagas/Fechadas aparecem
@@ -360,7 +395,25 @@ export function EquipePainel({
                       options={montadorOptions}
                       disabled={pending && assigningId === item.id}
                       onChange={(montadorId) =>
-                        atribuirMontador(item.id, montadorId)
+                        atribuirEquipe(item.id, {
+                          montadorId: montadorId || null,
+                        })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <MontadorSelect
+                      value={item.desmontadorId ?? ""}
+                      options={montadorOptions.map((o) =>
+                        o.id === ""
+                          ? { id: "", nome: "— Sem desmontador —" }
+                          : o
+                      )}
+                      disabled={pending && assigningId === item.id}
+                      onChange={(desmontadorId) =>
+                        atribuirEquipe(item.id, {
+                          desmontadorId: desmontadorId || null,
+                        })
                       }
                     />
                   </TableCell>

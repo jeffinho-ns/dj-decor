@@ -34,6 +34,9 @@ const agendaOsInclude = {
   montador: {
     select: { id: true, nome: true },
   },
+  desmontador: {
+    select: { id: true, nome: true },
+  },
 } satisfies Prisma.OrdemServicoInclude;
 
 export class EquipeService {

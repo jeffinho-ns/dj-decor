@@ -4,7 +4,10 @@ import { prisma } from "../prisma/client";
 
 const updateConfigSchema = z.object({
   comissaoPercentual: z.coerce.number().min(0).max(100).optional(),
+  comissaoSociaPercentual: z.coerce.number().min(0).max(100).optional(),
   comissaoMetaSemanal: z.coerce.number().min(0).optional(),
+  diariaMontador: z.coerce.number().min(0).optional(),
+  diariaDesmontador: z.coerce.number().min(0).optional(),
   clausulasContrato: z.string().max(20000).nullable().optional(),
   nomeEmpresa: z.string().min(2).max(120).optional(),
   sloganEmpresa: z.string().min(2).max(200).optional(),
@@ -33,7 +36,10 @@ export class ConfiguracoesService {
       data: {
         id: "default",
         comissaoPercentual: env.COMISSAO_PERCENTUAL_DEFAULT,
+        comissaoSociaPercentual: 30,
         comissaoMetaSemanal: env.COMISSAO_META_SEMANAL,
+        diariaMontador: 100,
+        diariaDesmontador: 70,
         nomeEmpresa: "DJ Decor",
         sloganEmpresa: "Decoração de Festas · Locação de Materiais",
       },
@@ -55,8 +61,17 @@ export class ConfiguracoesService {
         ...(data.comissaoPercentual !== undefined
           ? { comissaoPercentual: data.comissaoPercentual }
           : {}),
+        ...(data.comissaoSociaPercentual !== undefined
+          ? { comissaoSociaPercentual: data.comissaoSociaPercentual }
+          : {}),
         ...(data.comissaoMetaSemanal !== undefined
           ? { comissaoMetaSemanal: data.comissaoMetaSemanal }
+          : {}),
+        ...(data.diariaMontador !== undefined
+          ? { diariaMontador: data.diariaMontador }
+          : {}),
+        ...(data.diariaDesmontador !== undefined
+          ? { diariaDesmontador: data.diariaDesmontador }
           : {}),
         ...(data.clausulasContrato !== undefined
           ? { clausulasContrato: data.clausulasContrato }
@@ -88,7 +103,7 @@ export class ConfiguracoesService {
     });
   }
 
-  /** Percentual efetivo de comissão (DB, fallback env). */
+  /** Percentual efetivo de comissão do vendedor (DB, fallback env). */
   async getComissaoPercentual(): Promise<number> {
     const cfg = await this.get();
     return Number(cfg.comissaoPercentual);
@@ -97,6 +112,17 @@ export class ConfiguracoesService {
   async getComissaoMetaSemanal(): Promise<number> {
     const cfg = await this.get();
     return Number(cfg.comissaoMetaSemanal);
+  }
+
+  async getRegrasFinanceiras() {
+    const cfg = await this.get();
+    return {
+      comissaoVendedorPercentual: Number(cfg.comissaoPercentual),
+      comissaoSociaPercentual: Number(cfg.comissaoSociaPercentual),
+      diariaMontador: Number(cfg.diariaMontador),
+      diariaDesmontador: Number(cfg.diariaDesmontador),
+      comissaoMetaSemanal: Number(cfg.comissaoMetaSemanal),
+    };
   }
 }
 

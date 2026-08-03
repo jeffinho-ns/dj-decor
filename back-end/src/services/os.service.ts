@@ -14,6 +14,7 @@ import {
 } from "../catalog/inventario";
 import { dispatchWhatsAppSafe } from "../integrations/whatsapp";
 import { prisma } from "../prisma/client";
+import { comissoesService } from "./comissoes.service";
 import { estoqueService } from "./estoque.service";
 
 const addRomaneioItemSchema = z
@@ -42,7 +43,8 @@ const fotoFinalSchema = z.object({
 });
 
 const assignMontadorSchema = z.object({
-  montadorId: z.string().min(1),
+  montadorId: z.string().min(1).nullable().optional(),
+  desmontadorId: z.string().min(1).nullable().optional(),
 });
 
 export type AddRomaneioItemInput = z.infer<typeof addRomaneioItemSchema>;
@@ -61,6 +63,9 @@ const osInclude = {
     },
   },
   montador: {
+    select: { id: true, nome: true, email: true, role: true },
+  },
+  desmontador: {
     select: { id: true, nome: true, email: true, role: true },
   },
   itensRomaneio: {
@@ -235,17 +240,37 @@ export class OsService {
   }
 
   async assignMontador(osId: string, rawInput: unknown) {
-    const { montadorId } = this.parseAssignMontador(rawInput);
+    const data = this.parseAssignMontador(rawInput);
     await this.getById(osId);
 
-    const montador = await prisma.user.findUnique({ where: { id: montadorId } });
-    if (!montador || montador.role !== Role.MONTADOR) {
-      throw new OsValidationError("Montador inválido");
+    if (data.montadorId) {
+      const montador = await prisma.user.findUnique({
+        where: { id: data.montadorId },
+      });
+      if (!montador || montador.role !== Role.MONTADOR) {
+        throw new OsValidationError("Montador inválido");
+      }
+    }
+
+    if (data.desmontadorId) {
+      const desmontador = await prisma.user.findUnique({
+        where: { id: data.desmontadorId },
+      });
+      if (!desmontador || desmontador.role !== Role.MONTADOR) {
+        throw new OsValidationError("Desmontador inválido");
+      }
     }
 
     return prisma.ordemServico.update({
       where: { id: osId },
-      data: { montadorId },
+      data: {
+        ...(data.montadorId !== undefined
+          ? { montadorId: data.montadorId }
+          : {}),
+        ...(data.desmontadorId !== undefined
+          ? { desmontadorId: data.desmontadorId }
+          : {}),
+      },
       include: osInclude,
     });
   }
@@ -878,11 +903,20 @@ export class OsService {
         });
       }
 
-      return tx.ordemServico.update({
+      const updated = await tx.ordemServico.update({
         where: { id: osId },
         data: { status: StatusOS.FINALIZADA },
         include: osInclude,
       });
+
+      await comissoesService.gerarDiariasOs(tx, {
+        festaId: updated.festaId,
+        dataEvento: updated.festa.dataEvento,
+        montadorId: updated.montadorId,
+        desmontadorId: updated.desmontadorId,
+      });
+
+      return updated;
     });
 
     dispatchWhatsAppSafe({

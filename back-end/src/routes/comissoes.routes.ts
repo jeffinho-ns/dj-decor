@@ -27,7 +27,7 @@ comissoesRoutes.get(
 
 comissoesRoutes.post(
   "/marcar-pagas",
-  requireRoles(Role.ADMIN),
+  requireRoles(Role.ADMIN, Role.GERENTE),
   (req, res, next) => comissoesController.marcarPagas(req, res, next)
 );
 

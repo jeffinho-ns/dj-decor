@@ -108,7 +108,9 @@ export function UsuariosPainel({ token, canEdit }: UsuariosPainelProps) {
                 ) : null}
               </p>
               <p className="text-xs text-muted-foreground">
-                {roleLabel(u.role)}
+                {roleLabel(u.role, u.nome)}
+                {u.ehSocia ? " · Sócia" : ""}
+                {u.ehDona ? " · Dona" : ""}
                 {u.email ? ` · ${u.email}` : ""}
               </p>
             </div>
@@ -135,6 +137,42 @@ export function UsuariosPainel({ token, canEdit }: UsuariosPainelProps) {
                     </option>
                   ))}
                 </select>
+                <label className="flex h-10 items-center gap-2 rounded-xl neo-inset px-2 text-xs sm:h-9">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(u.ehSocia)}
+                    disabled={pending}
+                    onChange={(e) => {
+                      startTransition(async () => {
+                        await updateUser(
+                          u.id,
+                          { ehSocia: e.target.checked },
+                          token
+                        );
+                        await reload();
+                      });
+                    }}
+                  />
+                  Sócia
+                </label>
+                <label className="flex h-10 items-center gap-2 rounded-xl neo-inset px-2 text-xs sm:h-9">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(u.ehDona)}
+                    disabled={pending}
+                    onChange={(e) => {
+                      startTransition(async () => {
+                        await updateUser(
+                          u.id,
+                          { ehDona: e.target.checked },
+                          token
+                        );
+                        await reload();
+                      });
+                    }}
+                  />
+                  Dona
+                </label>
                 <Button
                   type="button"
                   size="xs"

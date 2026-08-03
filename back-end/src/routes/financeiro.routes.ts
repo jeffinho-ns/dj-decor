@@ -9,13 +9,13 @@ financeiroRoutes.use(auth);
 
 financeiroRoutes.get(
   "/resumo",
-  requireRoles(Role.ADMIN),
+  requireRoles(Role.ADMIN, Role.GERENTE),
   (req, res, next) => financeiroController.resumo(req, res, next)
 );
 
 financeiroRoutes.get(
   "/previsao",
-  requireRoles(Role.ADMIN),
+  requireRoles(Role.ADMIN, Role.GERENTE),
   (req, res, next) => financeiroController.previsao(req, res, next)
 );
 

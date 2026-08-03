@@ -15,7 +15,7 @@ const envSchema = z.object({
     .min(16, "JWT_SECRET deve ter no mínimo 16 caracteres"),
   JWT_EXPIRES_IN: z.string().default("7d"),
   /** Percentual padrão de comissão ao confirmar pagamento (0–100). */
-  COMISSAO_PERCENTUAL_DEFAULT: z.coerce.number().min(0).max(100).default(5),
+  COMISSAO_PERCENTUAL_DEFAULT: z.coerce.number().min(0).max(100).default(10),
   /** Meta semanal de comissão confirmada para gamificação (R$). */
   COMISSAO_META_SEMANAL: z.coerce.number().min(0).default(500),
   /** URL do projeto paralelo de IA / WhatsApp (opcional). */

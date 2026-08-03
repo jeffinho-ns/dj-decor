@@ -41,6 +41,9 @@ async function seedUsuarios() {
   const senhaHash = await bcrypt.hash(SENHA_TEMPORARIA, SALT_ROUNDS);
 
   for (const seedUser of seedUsers) {
+    const ehSocia =
+      seedUser.nome === "Lorena" || seedUser.nome === "Suellem";
+    const ehDona = seedUser.nome === "Debora";
     const user = await prisma.user.upsert({
       where: { nome: seedUser.nome },
       update: {
@@ -48,6 +51,8 @@ async function seedUsuarios() {
         senha: senhaHash,
         email: null,
         ativo: true,
+        ehSocia,
+        ehDona,
       },
       create: {
         nome: seedUser.nome,
@@ -55,6 +60,8 @@ async function seedUsuarios() {
         senha: senhaHash,
         email: null,
         ativo: true,
+        ehSocia,
+        ehDona,
       },
     });
 
@@ -255,11 +262,19 @@ async function seedConfigECatalogoVendas() {
 
   await prisma.configuracaoNegocio.upsert({
     where: { id: "default" },
-    update: {},
+    update: {
+      comissaoPercentual: 10,
+      comissaoSociaPercentual: 30,
+      diariaMontador: 100,
+      diariaDesmontador: 70,
+    },
     create: {
       id: "default",
-      comissaoPercentual: 5,
+      comissaoPercentual: 10,
+      comissaoSociaPercentual: 30,
       comissaoMetaSemanal: 500,
+      diariaMontador: 100,
+      diariaDesmontador: 70,
       nomeEmpresa: "DJ Decor",
       sloganEmpresa: "Decoração de Festas · Locação de Materiais",
     },

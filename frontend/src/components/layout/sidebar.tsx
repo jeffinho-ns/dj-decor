@@ -47,6 +47,7 @@ const GESTAO_NAV = [
   { href: "/estoque", label: "Estoque", icon: Package },
   { href: "/equipe", label: "Equipe", icon: Users },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
+  { href: "/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/perfil", label: "Perfil", icon: UserRound },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;

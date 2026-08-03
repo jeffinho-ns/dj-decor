@@ -148,12 +148,6 @@ export class PagamentosService {
           },
         });
 
-        await comissoesService.criarParaPagamento(tx, {
-          festaId: pagamento.festa.id,
-          vendedorId: pagamento.festa.vendedorId,
-          valorPagamento: pagamento.valor,
-        });
-
         const confirmados = await tx.pagamento.aggregate({
           where: {
             festaId: pagamento.festa.id,
@@ -183,6 +177,10 @@ export class PagamentosService {
             where: { id: pagamento.festa.id },
             data: { status: StatusFesta.AGUARDANDO_PAGAMENTO },
           });
+        }
+
+        if (quitado) {
+          await comissoesService.gerarSplitFesta(tx, pagamento.festa.id);
         }
 
         return { pagamento: pagamentoAtualizado, festa: pagamento.festa };

@@ -12,17 +12,22 @@ export interface RentabilidadeTema {
 /** Status de uma comissão individual. */
 export type ComissaoStatus = "PENDENTE" | "PAGA";
 
-/** Linha do extrato de comissões do vendedor (GET /api/comissoes/minhas). */
+/** Linha do extrato de comissões / repasses (GET /api/comissoes/minhas). */
 export interface ComissaoExtrato {
   id: string;
-  percentual: number;
+  tipo?: string;
+  tipoLabel?: string;
+  percentual: number | null;
   valor: number;
   status: ComissaoStatus;
   pagoEm: string | null;
   criadoEm: string;
+  elegivelEm?: string;
+  liberadoParaPagamento?: boolean;
   festa: {
     id: string;
     tema: string;
+    dataEvento?: string;
     cliente: { nome: string };
   };
 }

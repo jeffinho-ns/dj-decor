@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default async function FinanceiroPage() {
   const { token, user } = await requireSession();
 
-  if (user.role !== "ADMIN") {
+  if (user.role !== "ADMIN" && user.role !== "GERENTE") {
     redirect(user.role === "MONTADOR" ? "/montagem" : "/dashboard");
   }
 

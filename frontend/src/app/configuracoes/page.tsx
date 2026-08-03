@@ -11,7 +11,8 @@ import { requireSession } from "@/lib/session";
 
 export default async function ConfiguracoesPage() {
   const { user, token } = await requireSession();
-  const canEditNegocio = user.role === "ADMIN" || user.role === "GERENTE";
+  const canEditNegocio = user.role === "ADMIN";
+  const canEditContatos = user.role === "ADMIN" || user.role === "GERENTE";
   const mostraOffline =
     user.role === "MONTADOR" ||
     user.role === "GERENTE" ||
@@ -34,7 +35,7 @@ export default async function ConfiguracoesPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         <ThemeSettings />
         <DevicePrefsSettings role={user.role} />
-        <ContatosOperacao token={token} canEdit={canEditNegocio} />
+        <ContatosOperacao token={token} canEdit={canEditContatos} />
         <GuiaRapido role={user.role} />
         {mostraOffline ? <OfflineStatusPanel token={token} /> : null}
         {canEditNegocio ? <NegocioSettings token={token} /> : null}

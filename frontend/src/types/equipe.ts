@@ -19,10 +19,13 @@ export interface AgendaOs {
   id: string;
   status: string;
   montadorId: string | null;
+  desmontadorId?: string | null;
   festa: AgendaOsFesta;
   montador: Montador | null;
+  desmontador?: Montador | null;
 }
 
 export interface AssignMontadorPayload {
-  montadorId: string;
+  montadorId?: string | null;
+  desmontadorId?: string | null;
 }

@@ -148,11 +148,17 @@ export function CarteiraComissoes({
                     {item.festa.tema}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
+                    {item.tipoLabel ?? "Comissão"}
+                    {" · "}
                     {item.festa.cliente.nome}
                     {" · "}
                     {formatData(item.criadoEm)}
                     {item.status === "PAGA" && item.pagoEm
                       ? ` · pago em ${formatData(item.pagoEm)}`
+                      : ""}
+                    {item.status === "PENDENTE" &&
+                    item.liberadoParaPagamento === false
+                      ? " · aguarda mês do evento"
                       : ""}
                   </p>
                 </div>
@@ -162,10 +168,16 @@ export function CarteiraComissoes({
                       "rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
                       item.status === "PAGA"
                         ? "bg-balloon-mint/20 text-balloon-mint"
-                        : "bg-balloon-sun/20 text-balloon-sun"
+                        : item.liberadoParaPagamento === false
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-balloon-sun/20 text-balloon-sun"
                     )}
                   >
-                    {item.status === "PAGA" ? "Paga" : "Pendente"}
+                    {item.status === "PAGA"
+                      ? "Paga"
+                      : item.liberadoParaPagamento === false
+                        ? "Aguardando"
+                        : "Pendente"}
                   </span>
                   <span className="font-display tabular-nums text-foreground">
                     {formatCurrency(item.valor)}

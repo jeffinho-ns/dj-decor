@@ -7,12 +7,17 @@ export interface UserAdmin {
   email: string | null;
   role: Role;
   ativo: boolean;
+  ehSocia?: boolean;
+  ehDona?: boolean;
 }
 
 export interface ConfiguracaoNegocio {
   id: string;
   comissaoPercentual: number | string;
+  comissaoSociaPercentual?: number | string;
   comissaoMetaSemanal: number | string;
+  diariaMontador?: number | string;
+  diariaDesmontador?: number | string;
   clausulasContrato: string | null;
   nomeEmpresa: string;
   sloganEmpresa: string;

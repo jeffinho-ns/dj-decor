@@ -57,6 +57,7 @@ const GESTAO_ITEMS: NavItem[] = [
   { href: "/estoque", label: "Estoque", icon: Package },
   { href: "/equipe", label: "Equipe", icon: Users },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
+  { href: "/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/perfil", label: "Perfil", icon: UserRound },
   { href: "/configuracoes", label: "Configurações", shortLabel: "Ajustes", icon: Settings },
 ];
@@ -93,7 +94,7 @@ const PRIMARY_HREFS_DEFAULT = new Set([
 
 const PRIMARY_HREFS_GESTAO = new Set([
   "/vendas",
-  "/vendas/nova",
+  "/financeiro",
   "/equipe",
 ]);
 

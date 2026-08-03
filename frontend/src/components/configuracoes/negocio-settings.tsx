@@ -112,10 +112,15 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
       </section>
 
       <section className="space-y-3 rounded-2xl neo-sm p-5 sm:p-6">
-        <h2 className="font-display text-lg">Comissões</h2>
+        <h2 className="font-display text-lg">Comissões e diárias</h2>
+        <p className="text-sm text-muted-foreground">
+          Vendedor e cada sócia recebem % do valor da festa quitada. A dona
+          recebe o restante. Diárias são geradas ao finalizar a montagem.
+          Repasse só no mês do evento.
+        </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label>Comissão %</Label>
+            <Label>Comissão vendedor %</Label>
             <Input
               type="number"
               value={String(config.comissaoPercentual)}
@@ -125,7 +130,40 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
             />
           </div>
           <div className="space-y-1">
-            <Label>Meta semanal (R$)</Label>
+            <Label>Comissão cada sócia %</Label>
+            <Input
+              type="number"
+              value={String(config.comissaoSociaPercentual ?? 30)}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  comissaoSociaPercentual: e.target.value,
+                })
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Diária montador (R$)</Label>
+            <Input
+              type="number"
+              value={String(config.diariaMontador ?? 100)}
+              onChange={(e) =>
+                setConfig({ ...config, diariaMontador: e.target.value })
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Diária desmontador (R$)</Label>
+            <Input
+              type="number"
+              value={String(config.diariaDesmontador ?? 70)}
+              onChange={(e) =>
+                setConfig({ ...config, diariaDesmontador: e.target.value })
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Meta semanal vendedor (R$)</Label>
             <Input
               type="number"
               value={String(config.comissaoMetaSemanal)}
@@ -161,7 +199,12 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
                   nomeEmpresa: config.nomeEmpresa,
                   sloganEmpresa: config.sloganEmpresa,
                   comissaoPercentual: Number(config.comissaoPercentual),
+                  comissaoSociaPercentual: Number(
+                    config.comissaoSociaPercentual ?? 30
+                  ),
                   comissaoMetaSemanal: Number(config.comissaoMetaSemanal),
+                  diariaMontador: Number(config.diariaMontador ?? 100),
+                  diariaDesmontador: Number(config.diariaDesmontador ?? 70),
                   clausulasContrato: config.clausulasContrato,
                 },
                 token

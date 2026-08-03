@@ -47,8 +47,10 @@ export interface OrdemServico {
   criadoEm: string;
   festaId: string;
   montadorId: string | null;
+  desmontadorId?: string | null;
   festa: Festa;
   montador?: User | null;
+  desmontador?: User | null;
   itensRomaneio: ItemRomaneio[];
 }
 

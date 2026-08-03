@@ -10,6 +10,8 @@ const createUserSchema = z.object({
   email: z.string().email().nullable().optional(),
   role: z.nativeEnum(Role),
   senha: z.string().min(6).max(100).optional(),
+  ehSocia: z.boolean().optional(),
+  ehDona: z.boolean().optional(),
 });
 
 const updateUserSchema = z.object({
@@ -18,6 +20,8 @@ const updateUserSchema = z.object({
   role: z.nativeEnum(Role).optional(),
   ativo: z.boolean().optional(),
   senha: z.string().min(6).max(100).optional(),
+  ehSocia: z.boolean().optional(),
+  ehDona: z.boolean().optional(),
 });
 
 export class UsersConflictError extends Error {
@@ -34,16 +38,20 @@ export class UsersNotFoundError extends Error {
   }
 }
 
+const userSelect = {
+  id: true,
+  nome: true,
+  email: true,
+  role: true,
+  ativo: true,
+  ehSocia: true,
+  ehDona: true,
+} as const;
+
 export class UsersService {
   async list() {
     return prisma.user.findMany({
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        role: true,
-        ativo: true,
-      },
+      select: userSelect,
       orderBy: [{ ativo: "desc" }, { nome: "asc" }],
     });
   }
@@ -61,14 +69,10 @@ export class UsersService {
           role: data.role,
           senha: senhaHash,
           ativo: true,
+          ehSocia: data.ehSocia ?? false,
+          ehDona: data.ehDona ?? false,
         },
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          role: true,
-          ativo: true,
-        },
+        select: userSelect,
       });
     } catch (error) {
       if (
@@ -98,15 +102,11 @@ export class UsersService {
           ...(data.email !== undefined ? { email: data.email } : {}),
           ...(data.role !== undefined ? { role: data.role } : {}),
           ...(data.ativo !== undefined ? { ativo: data.ativo } : {}),
+          ...(data.ehSocia !== undefined ? { ehSocia: data.ehSocia } : {}),
+          ...(data.ehDona !== undefined ? { ehDona: data.ehDona } : {}),
           ...(senhaHash ? { senha: senhaHash } : {}),
         },
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          role: true,
-          ativo: true,
-        },
+        select: userSelect,
       });
     } catch (error) {
       if (
