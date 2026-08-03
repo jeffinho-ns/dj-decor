@@ -92,9 +92,9 @@ export class PagamentosService {
   }
 
   /**
-   * Confirma um pagamento pendente. Ao confirmar, gera a comissão do
-   * vendedor sobre o valor pago e, se a festa ainda estiver aguardando
-   * pagamento, avança seu status para PAGO.
+   * Confirma um pagamento pendente. Gera comissão sobre o valor pago.
+   * Só marca a festa como PAGO quando a soma dos confirmados cobre o valor;
+   * entrada parcial mantém/avança para AGUARDANDO_PAGAMENTO.
    */
   async confirmar(pagamentoId: string, rawInput: unknown) {
     const data = this.parseConfirmar(rawInput);
@@ -108,6 +108,7 @@ export class PagamentosService {
               select: {
                 id: true,
                 status: true,
+                valor: true,
                 vendedorId: true,
                 tema: true,
                 dataEvento: true,
@@ -153,10 +154,34 @@ export class PagamentosService {
           valorPagamento: pagamento.valor,
         });
 
-        if (pagamento.festa.status === StatusFesta.AGUARDANDO_PAGAMENTO) {
+        const confirmados = await tx.pagamento.aggregate({
+          where: {
+            festaId: pagamento.festa.id,
+            status: StatusPagamento.CONFIRMADO,
+          },
+          _sum: { valor: true },
+        });
+        const totalPago = Number(confirmados._sum.valor ?? 0);
+        const valorFesta = Number(pagamento.festa.valor);
+        const quitado = totalPago + 0.009 >= valorFesta;
+
+        const statusAtual = pagamento.festa.status;
+        if (
+          quitado &&
+          (statusAtual === StatusFesta.ORCAMENTO ||
+            statusAtual === StatusFesta.AGUARDANDO_PAGAMENTO)
+        ) {
           await tx.festa.update({
             where: { id: pagamento.festa.id },
             data: { status: StatusFesta.PAGO },
+          });
+        } else if (
+          !quitado &&
+          statusAtual === StatusFesta.ORCAMENTO
+        ) {
+          await tx.festa.update({
+            where: { id: pagamento.festa.id },
+            data: { status: StatusFesta.AGUARDANDO_PAGAMENTO },
           });
         }
 

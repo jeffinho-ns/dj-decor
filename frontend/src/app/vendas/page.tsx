@@ -112,7 +112,7 @@ export default async function VendasPage({ searchParams }: VendasPageProps) {
         </div>
       ) : null}
 
-      <KanbanBoard festas={festas} token={token} />
+      <KanbanBoard festas={festas} token={token} viewerRole={user.role} />
     </DashboardShell>
   );
 }

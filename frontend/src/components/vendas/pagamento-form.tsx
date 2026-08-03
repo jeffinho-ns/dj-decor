@@ -1,9 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, Loader2, Paperclip, Upload } from "lucide-react";
+import {
+  CheckCircle2,
+  Eye,
+  Loader2,
+  Paperclip,
+  Upload,
+  X,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,10 +20,12 @@ import {
   confirmarPagamento,
   createPagamento,
   gerarPixQr,
+  getMidiaAuthUrl,
   uploadMidia,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { Role } from "@/types/auth";
 import type { Pagamento, TipoPagamento } from "@/types/festa";
 
 const tipoLabel: Record<TipoPagamento, string> = {
@@ -34,7 +44,10 @@ interface PagamentoFormProps {
   festaId: string;
   token: string;
   pagamentos: Pagamento[];
-  valorSugerido?: number;
+  /** Valor total da festa (contrato). */
+  valorFesta: number;
+  /** ADMIN / GERENTE (sócia) podem abrir o comprovante. */
+  viewerRole?: Role;
   onPagamentosChange: (pagamentos: Pagamento[]) => void;
 }
 
@@ -42,18 +55,71 @@ export function PagamentoForm({
   festaId,
   token,
   pagamentos,
-  valorSugerido,
+  valorFesta,
+  viewerRole,
   onPagamentosChange,
 }: PagamentoFormProps) {
-  const [valor, setValor] = useState(
-    valorSugerido != null ? String(valorSugerido) : ""
-  );
+  const canViewComprovante =
+    viewerRole === "ADMIN" || viewerRole === "GERENTE";
+
+  const totalConfirmado = pagamentos
+    .filter((p) => p.status === "CONFIRMADO")
+    .reduce((acc, p) => acc + Number(p.valor), 0);
+  const totalPendente = pagamentos
+    .filter((p) => p.status === "PENDENTE")
+    .reduce((acc, p) => acc + Number(p.valor), 0);
+  const falta = Math.max(0, Number(valorFesta) - totalConfirmado);
+  const quitado = falta <= 0.009;
+
+  const [valor, setValor] = useState(falta > 0 ? String(falta.toFixed(2)) : "");
   const [tipo, setTipo] = useState<TipoPagamento>("PIX");
   const [file, setFile] = useState<File | null>(null);
   const [pending, setPending] = useState(false);
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (falta > 0) {
+      setValor(String(Number(falta.toFixed(2))));
+    }
+  }, [falta]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  async function abrirComprovante(midiaId: string) {
+    setPreviewLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(getMidiaAuthUrl(midiaId), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Não foi possível abrir o comprovante");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Falha ao abrir comprovante"
+      );
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
 
   async function registrarPagamento() {
     setError(null);
@@ -65,7 +131,11 @@ export function PagamentoForm({
 
     setPending(true);
     try {
-      const pagamento = await createPagamento(festaId, { valor: amount, tipo }, token);
+      const pagamento = await createPagamento(
+        festaId,
+        { valor: amount, tipo },
+        token
+      );
       let atualizado = pagamento;
 
       if (file) {
@@ -81,12 +151,13 @@ export function PagamentoForm({
       }
 
       onPagamentosChange([atualizado, ...pagamentos]);
-      setValor("");
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Não foi possível registrar o pagamento"
+        err instanceof Error
+          ? err.message
+          : "Não foi possível registrar o pagamento"
       );
     } finally {
       setPending(false);
@@ -103,24 +174,59 @@ export function PagamentoForm({
       );
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Não foi possível confirmar o pagamento"
+        err instanceof Error
+          ? err.message
+          : "Não foi possível confirmar o pagamento"
       );
     } finally {
       setConfirmandoId(null);
     }
   }
 
-  const totalConfirmado = pagamentos
-    .filter((p) => p.status === "CONFIRMADO")
-    .reduce((acc, p) => acc + Number(p.valor), 0);
-
   return (
     <div className="space-y-4" onClick={(event) => event.stopPropagation()}>
+      <div className="grid grid-cols-3 gap-2 rounded-2xl neo-sm p-3 text-center">
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Total
+          </p>
+          <p className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
+            {formatCurrency(valorFesta)}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Pago
+          </p>
+          <p className="mt-0.5 text-sm font-semibold tabular-nums text-balloon-mint">
+            {formatCurrency(totalConfirmado)}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Falta
+          </p>
+          <p
+            className={cn(
+              "mt-0.5 text-sm font-semibold tabular-nums",
+              quitado ? "text-balloon-mint" : "text-balloon-sun"
+            )}
+          >
+            {quitado ? "Quitado" : formatCurrency(falta)}
+          </p>
+        </div>
+      </div>
+      {totalPendente > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          + {formatCurrency(totalPendente)} em pagamento(s) pendente(s) de
+          confirmação.
+        </p>
+      ) : null}
+
       {pagamentos.length > 0 ? (
         <div className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Pagamentos registrados · {formatCurrency(totalConfirmado)}{" "}
-            confirmado
+            Lançamentos
           </p>
           <ul className="space-y-2">
             {pagamentos.map((pagamento) => (
@@ -151,154 +257,236 @@ export function PagamentoForm({
                     </p>
                   ) : null}
                 </div>
-                {pagamento.status === "CONFIRMADO" ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 self-start rounded-full bg-balloon-mint/12 px-2.5 py-1 text-xs font-semibold text-balloon-mint shadow-[var(--shadow-neo-sm)] sm:self-auto">
-                    <CheckCircle2 className="size-3.5" /> Confirmado
-                  </span>
-                ) : pagamento.status === "ESTORNADO" ? (
-                  <span className="inline-flex shrink-0 self-start rounded-full bg-destructive/12 px-2.5 py-1 text-xs font-semibold text-destructive shadow-[var(--shadow-neo-sm)] sm:self-auto">
-                    Estornado
-                  </span>
-                ) : (
-                  <div className="flex w-full flex-col gap-2">
-                    {!pagamento.pixCopiaCola && pagamento.tipo === "PIX" ? (
+                <div className="flex w-full flex-col gap-2">
+                  {pagamento.status === "CONFIRMADO" ? (
+                    <span className="inline-flex w-fit items-center gap-1 rounded-full bg-balloon-mint/12 px-2.5 py-1 text-xs font-semibold text-balloon-mint shadow-[var(--shadow-neo-sm)]">
+                      <CheckCircle2 className="size-3.5" /> Confirmado
+                    </span>
+                  ) : pagamento.status === "ESTORNADO" ? (
+                    <span className="inline-flex w-fit rounded-full bg-destructive/12 px-2.5 py-1 text-xs font-semibold text-destructive shadow-[var(--shadow-neo-sm)]">
+                      Estornado
+                    </span>
+                  ) : (
+                    <div className="flex w-full flex-col gap-2">
+                      {!pagamento.pixCopiaCola && pagamento.tipo === "PIX" ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="w-full"
+                          disabled={confirmandoId === pagamento.id}
+                          onClick={() => {
+                            setConfirmandoId(pagamento.id);
+                            void gerarPixQr(pagamento.id, token)
+                              .then((atualizado) => {
+                                onPagamentosChange(
+                                  pagamentos.map((p) =>
+                                    p.id === atualizado.id ? atualizado : p
+                                  )
+                                );
+                              })
+                              .catch((err) =>
+                                setError(
+                                  err instanceof Error
+                                    ? err.message
+                                    : "Falha ao gerar PIX"
+                                )
+                              )
+                              .finally(() => setConfirmandoId(null));
+                          }}
+                        >
+                          Gerar QR PIX
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="w-full"
+                        variant="outline"
+                        className="min-h-10 w-full"
                         disabled={confirmandoId === pagamento.id}
-                        onClick={() => {
-                          setConfirmandoId(pagamento.id);
-                          void gerarPixQr(pagamento.id, token)
-                            .then((atualizado) => {
-                              onPagamentosChange(
-                                pagamentos.map((p) =>
-                                  p.id === atualizado.id ? atualizado : p
-                                )
-                              );
-                            })
-                            .catch((err) =>
-                              setError(
-                                err instanceof Error
-                                  ? err.message
-                                  : "Falha ao gerar PIX"
-                              )
-                            )
-                            .finally(() => setConfirmandoId(null));
-                        }}
+                        onClick={() => confirmarSemComprovante(pagamento.id)}
                       >
-                        Gerar QR PIX
+                        {confirmandoId === pagamento.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          "Confirmar"
+                        )}
                       </Button>
-                    ) : null}
+                    </div>
+                  )}
+                  {canViewComprovante && pagamento.comprovanteMidiaId ? (
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                       className="min-h-10 w-full"
-                      disabled={confirmandoId === pagamento.id}
-                      onClick={() => confirmarSemComprovante(pagamento.id)}
+                      disabled={previewLoading}
+                      onClick={() =>
+                        void abrirComprovante(pagamento.comprovanteMidiaId!)
+                      }
                     >
-                      {confirmandoId === pagamento.id ? (
+                      {previewLoading ? (
                         <Loader2 className="size-4 animate-spin" />
                       ) : (
-                        "Confirmar"
+                        <Eye className="size-4" />
                       )}
+                      Ver comprovante
                     </Button>
-                  </div>
-                )}
+                  ) : canViewComprovante ? (
+                    <p className="text-xs text-muted-foreground">
+                      Sem comprovante anexado neste lançamento.
+                    </p>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>
         </div>
       ) : null}
 
-      <div className="space-y-3 rounded-2xl neo-inset p-4">
-        <p className="text-xs font-medium uppercase tracking-wider text-balloon-mint">
-          Registrar pagamento PIX
-        </p>
-        <div className="grid grid-cols-1 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor={`valor-${festaId}`} className="text-xs">
-              Valor (R$)
-            </Label>
-            <Input
-              id={`valor-${festaId}`}
-              type="number"
-              step="0.01"
-              min="0"
-              className="h-11 text-base md:h-9 md:text-sm"
-              placeholder="500.00"
-              value={valor}
-              onChange={(event) => setValor(event.target.value)}
-            />
+      {!quitado ? (
+        <div className="space-y-3 rounded-2xl neo-inset p-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-balloon-mint">
+            Registrar pagamento / entrada
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Pode lançar só a entrada agora e o restante depois — o saldo
+            atualiza sozinho.
+          </p>
+          <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor={`valor-${festaId}`} className="text-xs">
+                Valor deste lançamento (R$)
+              </Label>
+              <Input
+                id={`valor-${festaId}`}
+                type="number"
+                step="0.01"
+                min="0"
+                className="h-11 text-base md:h-9 md:text-sm"
+                placeholder="500.00"
+                value={valor}
+                onChange={(event) => setValor(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`tipo-${festaId}`} className="text-xs">
+                Tipo
+              </Label>
+              <select
+                id={`tipo-${festaId}`}
+                className={selectClassName}
+                value={tipo}
+                onChange={(event) =>
+                  setTipo(event.target.value as TipoPagamento)
+                }
+              >
+                {TIPOS.map((item) => (
+                  <option key={item} value={item} className="bg-background">
+                    {tipoLabel[item]}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
           <div className="space-y-1.5">
-            <Label htmlFor={`tipo-${festaId}`} className="text-xs">
-              Tipo
+            <Label htmlFor={`comprovante-${festaId}`} className="text-xs">
+              Comprovante (opcional)
             </Label>
-            <select
-              id={`tipo-${festaId}`}
-              className={selectClassName}
-              value={tipo}
-              onChange={(event) => setTipo(event.target.value as TipoPagamento)}
+            <label
+              htmlFor={`comprovante-${festaId}`}
+              className={cn(
+                "flex min-h-11 cursor-pointer items-center gap-2 rounded-xl neo-inset px-3 text-sm text-muted-foreground transition-all hover:brightness-[1.02] md:h-9 md:px-2.5 md:text-xs",
+                file && "text-balloon-sun ring-1 ring-balloon-sun/30"
+              )}
             >
-              {TIPOS.map((item) => (
-                <option key={item} value={item} className="bg-background">
-                  {tipoLabel[item]}
-                </option>
-              ))}
-            </select>
+              <Upload className="size-4 shrink-0" />
+              <span className="truncate">
+                {file ? file.name : "Anexar comprovante de PIX"}
+              </span>
+            </label>
+            <input
+              ref={fileInputRef}
+              id={`comprovante-${festaId}`}
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            />
+            {file ? (
+              <p className="text-xs text-muted-foreground">
+                Ao registrar com comprovante, o lançamento já fica confirmado.
+              </p>
+            ) : null}
           </div>
-        </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor={`comprovante-${festaId}`} className="text-xs">
-            Comprovante (opcional)
-          </Label>
-          <label
-            htmlFor={`comprovante-${festaId}`}
-            className={cn(
-              "flex min-h-11 cursor-pointer items-center gap-2 rounded-xl neo-inset px-3 text-sm text-muted-foreground transition-all hover:brightness-[1.02] md:h-9 md:px-2.5 md:text-xs",
-              file && "text-balloon-sun ring-1 ring-balloon-sun/30"
-            )}
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+          <Button
+            type="button"
+            className="min-h-11 w-full"
+            disabled={pending}
+            onClick={registrarPagamento}
           >
-            <Upload className="size-4 shrink-0" />
-            <span className="truncate">
-              {file ? file.name : "Anexar comprovante de PIX"}
-            </span>
-          </label>
-          <input
-            ref={fileInputRef}
-            id={`comprovante-${festaId}`}
-            type="file"
-            accept="image/*,application/pdf"
-            className="hidden"
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          />
-          {file ? (
-            <p className="text-xs text-muted-foreground">
-              Ao registrar, o pagamento já será confirmado com este comprovante.
-            </p>
-          ) : null}
+            {pending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              "Registrar pagamento"
+            )}
+          </Button>
         </div>
+      ) : (
+        <p className="rounded-2xl bg-balloon-mint/10 px-3 py-2 text-sm text-balloon-mint">
+          Festa quitada — valor total coberto pelos pagamentos confirmados.
+        </p>
+      )}
 
-        {error ? (
-          <p className="text-sm text-destructive">{error}</p>
-        ) : null}
+      {error && quitado ? (
+        <p className="text-sm text-destructive">{error}</p>
+      ) : null}
 
-        <Button
-          type="button"
-          className="min-h-11 w-full"
-          disabled={pending}
-          onClick={registrarPagamento}
-        >
-          {pending ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            "Registrar pagamento"
-          )}
-        </Button>
-      </div>
+      {mounted && previewUrl
+        ? createPortal(
+            <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+              <button
+                type="button"
+                aria-label="Fechar comprovante"
+                className="absolute inset-0 bg-[#2a3142]/50 backdrop-blur-[2px]"
+                onClick={() => {
+                  setPreviewUrl((prev) => {
+                    if (prev) URL.revokeObjectURL(prev);
+                    return null;
+                  });
+                }}
+              />
+              <div className="relative z-10 max-h-[90dvh] w-full max-w-lg overflow-hidden rounded-2xl neo-sm">
+                <div className="flex items-center justify-between px-3 py-2">
+                  <p className="text-sm font-medium text-foreground">
+                    Comprovante
+                  </p>
+                  <button
+                    type="button"
+                    className="flex size-10 items-center justify-center rounded-xl neo-inset"
+                    onClick={() => {
+                      setPreviewUrl((prev) => {
+                        if (prev) URL.revokeObjectURL(prev);
+                        return null;
+                      });
+                    }}
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={previewUrl}
+                  alt="Comprovante de pagamento"
+                  className="max-h-[80dvh] w-full object-contain bg-background"
+                />
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

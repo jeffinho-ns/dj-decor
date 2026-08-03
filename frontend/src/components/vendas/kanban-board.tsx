@@ -23,6 +23,7 @@ import {
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { Role } from "@/types/auth";
 import type { Festa, Pagamento, StatusFesta } from "@/types/festa";
 import type { StatusDesconto } from "@/types/desconto";
 
@@ -79,6 +80,7 @@ const pillAccent: Record<StatusFesta, string> = {
 interface KanbanBoardProps {
   festas: Festa[];
   token: string;
+  viewerRole: Role;
 }
 
 interface FestaCardProps {
@@ -88,6 +90,7 @@ interface FestaCardProps {
   loadingPagamentos: boolean;
   pagamentos: Pagamento[];
   token: string;
+  viewerRole: Role;
   onToggle: () => void;
   onMove: (status: StatusFesta) => void;
   onPagamentosChange: (list: Pagamento[]) => void;
@@ -101,6 +104,7 @@ function FestaCard({
   loadingPagamentos,
   pagamentos,
   token,
+  viewerRole,
   onToggle,
   onMove,
   onPagamentosChange,
@@ -214,7 +218,8 @@ function FestaCard({
                 festaId={festa.id}
                 token={token}
                 pagamentos={pagamentos}
-                valorSugerido={Number(festa.valor)}
+                valorFesta={Number(festa.valor)}
+                viewerRole={viewerRole}
                 onPagamentosChange={onPagamentosChange}
               />
               <div className="mt-4 border-t border-border/50 pt-3">
@@ -336,7 +341,11 @@ function FestaCard({
   );
 }
 
-export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) {
+export function KanbanBoard({
+  festas: initialFestas,
+  token,
+  viewerRole,
+}: KanbanBoardProps) {
   const [festas, setFestas] = useState(initialFestas);
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [activeStatus, setActiveStatus] = useState<StatusFesta>("ORCAMENTO");
@@ -441,6 +450,7 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
         loadingPagamentos={loadingPagamentos === festa.id}
         pagamentos={pagamentosByFesta[festa.id] ?? []}
         token={token}
+        viewerRole={viewerRole}
         onToggle={() => {
           startTransition(() => {
             void toggleExpand(festa);
@@ -452,15 +462,22 @@ export function KanbanBoard({ festas: initialFestas, token }: KanbanBoardProps) 
             ...prev,
             [festa.id]: list,
           }));
-          void listPagamentos(festa.id, token).then(() => {
-            setFestas((prev) =>
-              prev.map((f) =>
-                f.id === festa.id && f.status === "AGUARDANDO_PAGAMENTO"
-                  ? { ...f, status: "PAGO" }
-                  : f
-              )
-            );
-          });
+          const totalPago = list
+            .filter((p) => p.status === "CONFIRMADO")
+            .reduce((acc, p) => acc + Number(p.valor), 0);
+          const valorFesta = Number(festa.valor);
+          if (
+            totalPago + 0.009 >= valorFesta &&
+            (festa.status === "ORCAMENTO" ||
+              festa.status === "AGUARDANDO_PAGAMENTO")
+          ) {
+            handleFestaUpdate({ ...festa, status: "PAGO" });
+          } else if (totalPago > 0 && festa.status === "ORCAMENTO") {
+            handleFestaUpdate({
+              ...festa,
+              status: "AGUARDANDO_PAGAMENTO",
+            });
+          }
         }}
         onFestaUpdate={handleFestaUpdate}
       />
