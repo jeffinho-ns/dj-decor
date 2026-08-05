@@ -24,16 +24,21 @@ function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
 }
 
-/** Início do mês civil da festa no fuso America/Sao_Paulo (evita virar mês anterior em UTC). */
-function startOfMonthBrasil(dataEvento: Date): Date {
-  const parts = new Intl.DateTimeFormat("en-CA", {
+/** YYYY-MM-DD no fuso America/Sao_Paulo. */
+function ymdBrasil(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(dataEvento);
-  const year = Number(parts.find((p) => p.type === "year")?.value);
-  const month = Number(parts.find((p) => p.type === "month")?.value);
+  }).format(date);
+}
+
+/** Início do mês civil da festa no fuso America/Sao_Paulo (evita virar mês anterior em UTC). */
+function startOfMonthBrasil(dataEvento: Date): Date {
+  const parts = ymdBrasil(dataEvento).split("-");
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
   if (!year || !month) {
     return startOfMonth(dataEvento);
   }
@@ -91,10 +96,15 @@ export class ComissoesService {
     const cfg = await configuracoesService.getRegrasFinanceiras();
     const elegivelEm = startOfMonthBrasil(festa.dataEvento);
 
-    const socias = await tx.user.findMany({
+    const sociasRaw = await tx.user.findMany({
       where: { ehSocia: true, ativo: true },
-      select: { id: true },
+      select: { id: true, sociaDesde: true },
       orderBy: { nome: "asc" },
+    });
+    const festaYmd = ymdBrasil(festa.dataEvento);
+    const socias = sociasRaw.filter((socia) => {
+      if (!socia.sociaDesde) return true;
+      return festaYmd >= ymdBrasil(socia.sociaDesde);
     });
     const donas = await tx.user.findMany({
       where: { ehDona: true, ativo: true },

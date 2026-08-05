@@ -12,6 +12,7 @@ const createUserSchema = z.object({
   senha: z.string().min(6).max(100).optional(),
   ehSocia: z.boolean().optional(),
   ehDona: z.boolean().optional(),
+  sociaDesde: z.coerce.date().nullable().optional(),
 });
 
 const updateUserSchema = z.object({
@@ -22,6 +23,7 @@ const updateUserSchema = z.object({
   senha: z.string().min(6).max(100).optional(),
   ehSocia: z.boolean().optional(),
   ehDona: z.boolean().optional(),
+  sociaDesde: z.coerce.date().nullable().optional(),
 });
 
 export class UsersConflictError extends Error {
@@ -46,7 +48,20 @@ const userSelect = {
   ativo: true,
   ehSocia: true,
   ehDona: true,
+  sociaDesde: true,
 } as const;
+
+/** Meio-dia UTC do dia civil em SP (estável para comparar só a data). */
+function inicioDiaBrasilAgora(): Date {
+  const ymd = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+}
 
 export class UsersService {
   async list() {
@@ -60,6 +75,13 @@ export class UsersService {
     const data = createUserSchema.parse(raw);
     const senhaPlain = data.senha?.trim() || "@123Mudar";
     const senhaHash = await bcrypt.hash(senhaPlain, SALT_ROUNDS);
+    const ehSocia = data.ehSocia ?? false;
+    const sociaDesde =
+      data.sociaDesde !== undefined
+        ? data.sociaDesde
+        : ehSocia
+          ? inicioDiaBrasilAgora()
+          : null;
 
     try {
       return await prisma.user.create({
@@ -69,8 +91,9 @@ export class UsersService {
           role: data.role,
           senha: senhaHash,
           ativo: true,
-          ehSocia: data.ehSocia ?? false,
+          ehSocia,
           ehDona: data.ehDona ?? false,
+          sociaDesde,
         },
         select: userSelect,
       });
@@ -94,6 +117,14 @@ export class UsersService {
       ? await bcrypt.hash(data.senha, SALT_ROUNDS)
       : undefined;
 
+    let sociaDesdeUpdate: Date | null | undefined = data.sociaDesde;
+    if (data.ehSocia === false) {
+      sociaDesdeUpdate = null;
+    } else if (data.ehSocia === true && data.sociaDesde === undefined) {
+      // Ao marcar sócia, começa a valer a partir de hoje (se ainda não tinha data).
+      sociaDesdeUpdate = existing.sociaDesde ?? inicioDiaBrasilAgora();
+    }
+
     try {
       return await prisma.user.update({
         where: { id },
@@ -104,6 +135,9 @@ export class UsersService {
           ...(data.ativo !== undefined ? { ativo: data.ativo } : {}),
           ...(data.ehSocia !== undefined ? { ehSocia: data.ehSocia } : {}),
           ...(data.ehDona !== undefined ? { ehDona: data.ehDona } : {}),
+          ...(sociaDesdeUpdate !== undefined
+            ? { sociaDesde: sociaDesdeUpdate }
+            : {}),
           ...(senhaHash ? { senha: senhaHash } : {}),
         },
         select: userSelect,

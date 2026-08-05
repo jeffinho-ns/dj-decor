@@ -717,6 +717,7 @@ export async function updateUser(
     senha: string;
     ehSocia: boolean;
     ehDona: boolean;
+    sociaDesde: string | null;
   }>,
   token: string
 ): Promise<import("@/types/admin").UserAdmin> {

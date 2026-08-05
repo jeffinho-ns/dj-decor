@@ -110,6 +110,9 @@ export function UsuariosPainel({ token, canEdit }: UsuariosPainelProps) {
               <p className="text-xs text-muted-foreground">
                 {roleLabel(u.role, u.nome)}
                 {u.ehSocia ? " · Sócia" : ""}
+                {u.ehSocia && u.sociaDesde
+                  ? ` desde ${new Date(u.sociaDesde).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`
+                  : ""}
                 {u.ehDona ? " · Dona" : ""}
                 {u.email ? ` · ${u.email}` : ""}
               </p>

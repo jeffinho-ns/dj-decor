@@ -44,6 +44,11 @@ async function seedUsuarios() {
     const ehSocia =
       seedUser.nome === "Lorena" || seedUser.nome === "Suellem";
     const ehDona = seedUser.nome === "Debora";
+    /** Suellem entrou na sociedade em 05/08/2026; Lorena sem data = sempre sócia. */
+    const sociaDesde =
+      seedUser.nome === "Suellem"
+        ? new Date(Date.UTC(2026, 7, 5, 12, 0, 0))
+        : null;
     const user = await prisma.user.upsert({
       where: { nome: seedUser.nome },
       update: {
@@ -53,6 +58,7 @@ async function seedUsuarios() {
         ativo: true,
         ehSocia,
         ehDona,
+        ...(ehSocia ? { sociaDesde } : { sociaDesde: null }),
       },
       create: {
         nome: seedUser.nome,
@@ -62,6 +68,7 @@ async function seedUsuarios() {
         ativo: true,
         ehSocia,
         ehDona,
+        sociaDesde: ehSocia ? sociaDesde : null,
       },
     });
 

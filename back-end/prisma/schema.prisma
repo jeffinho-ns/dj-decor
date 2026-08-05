@@ -118,6 +118,8 @@ model User {
   ativo               Boolean  @default(true)
   /** Sócia — recebe % configurável por festa quitada. */
   ehSocia             Boolean  @default(false) @map("eh_socia")
+  /** Se preenchido, só gera comissão de sócia para festas com dataEvento >= esta data. */
+  sociaDesde          DateTime? @map("socia_desde")
   /** Dona — recebe o restante do valor após vendedor e sócias. */
   ehDona              Boolean  @default(false) @map("eh_dona")
   /** Meta individual de comissão semanal (R$). Null = usa meta global da empresa. */
