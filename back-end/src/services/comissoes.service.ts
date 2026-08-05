@@ -66,6 +66,7 @@ export class ComissoesService {
   /**
    * Gera o split da festa quitada:
    * vendedor % + cada sócia % + dona (resto), todos sobre o valor total.
+   * Sócia com `sociaDesde` só entra se a festa foi quitada (quitadoEm) nessa data ou depois.
    * Só fica liberado para pagar a partir do mês da data do evento.
    */
   async gerarSplitFesta(
@@ -79,6 +80,7 @@ export class ComissoesService {
         valor: true,
         dataEvento: true,
         vendedorId: true,
+        quitadoEm: true,
       },
     });
     if (!festa) return [];
@@ -93,6 +95,16 @@ export class ComissoesService {
       return [];
     }
 
+    // Primeira quitação: grava agora. Já quitadas (ex.: import) mantêm quitadoEm antigo.
+    let quitadoEm = festa.quitadoEm;
+    if (!quitadoEm) {
+      quitadoEm = new Date();
+      await tx.festa.update({
+        where: { id: festaId },
+        data: { quitadoEm },
+      });
+    }
+
     const cfg = await configuracoesService.getRegrasFinanceiras();
     const elegivelEm = startOfMonthBrasil(festa.dataEvento);
 
@@ -101,10 +113,11 @@ export class ComissoesService {
       select: { id: true, sociaDesde: true },
       orderBy: { nome: "asc" },
     });
-    const festaYmd = ymdBrasil(festa.dataEvento);
+    // Sócia com data: só entra se a festa foi marcada como paga a partir dessa data
+    const quitadoYmd = ymdBrasil(quitadoEm);
     const socias = sociasRaw.filter((socia) => {
       if (!socia.sociaDesde) return true;
-      return festaYmd >= ymdBrasil(socia.sociaDesde);
+      return quitadoYmd >= ymdBrasil(socia.sociaDesde);
     });
     const donas = await tx.user.findMany({
       where: { ehDona: true, ativo: true },

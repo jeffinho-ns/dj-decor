@@ -111,7 +111,7 @@ export function UsuariosPainel({ token, canEdit }: UsuariosPainelProps) {
                 {roleLabel(u.role, u.nome)}
                 {u.ehSocia ? " · Sócia" : ""}
                 {u.ehSocia && u.sociaDesde
-                  ? ` desde ${new Date(u.sociaDesde).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`
+                  ? ` (comissões em quitações desde ${new Date(u.sociaDesde).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })})`
                   : ""}
                 {u.ehDona ? " · Dona" : ""}
                 {u.email ? ` · ${u.email}` : ""}

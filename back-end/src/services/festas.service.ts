@@ -446,6 +446,12 @@ export class FestasService {
         });
         const totalPago = Number(confirmados._sum.valor ?? 0);
         if (totalPago + 0.009 >= Number(festaUpdated.valor)) {
+          if (!festaUpdated.quitadoEm) {
+            await tx.festa.update({
+              where: { id },
+              data: { quitadoEm: new Date() },
+            });
+          }
           await comissoesService.gerarSplitFesta(tx, id);
         }
       }

@@ -9,7 +9,7 @@ export interface UserAdmin {
   ativo: boolean;
   ehSocia?: boolean;
   ehDona?: boolean;
-  /** ISO date — sócia só nas festas com dataEvento >= esta data. */
+  /** ISO — sócia só nas festas quitadas (marcadas como pagas) a partir desta data. */
   sociaDesde?: string | null;
 }
 

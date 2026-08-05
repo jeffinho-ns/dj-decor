@@ -112,6 +112,7 @@ export class PagamentosService {
                 vendedorId: true,
                 tema: true,
                 dataEvento: true,
+                quitadoEm: true,
                 itensExtras: true,
                 cliente: { select: { telefone: true } },
               },
@@ -167,7 +168,15 @@ export class PagamentosService {
         ) {
           await tx.festa.update({
             where: { id: pagamento.festa.id },
-            data: { status: StatusFesta.PAGO },
+            data: {
+              status: StatusFesta.PAGO,
+              ...(pagamento.festa.quitadoEm ? {} : { quitadoEm: new Date() }),
+            },
+          });
+        } else if (quitado && !pagamento.festa.quitadoEm) {
+          await tx.festa.update({
+            where: { id: pagamento.festa.id },
+            data: { quitadoEm: new Date() },
           });
         } else if (
           !quitado &&
