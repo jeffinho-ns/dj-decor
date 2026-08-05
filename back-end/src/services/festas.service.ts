@@ -224,6 +224,7 @@ export class FestasService {
         portalToken: generatePortalToken(),
         alertaCompraEstoque: avaliacao.alertaCompraEstoque,
         itensFaltaEstoque: avaliacao.itensFaltaEstoque,
+        vendaEm: new Date(),
       },
       include: {
         cliente: true,

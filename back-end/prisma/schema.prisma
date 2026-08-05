@@ -118,7 +118,7 @@ model User {
   ativo               Boolean  @default(true)
   /** Sócia — recebe % configurável por festa quitada. */
   ehSocia             Boolean  @default(false) @map("eh_socia")
-  /** Se preenchido, só gera comissão de sócia quando a festa for quitada (quitadoEm) nesta data ou depois. */
+  /** Se preenchido, só gera comissão de sócia em festas cuja venda foi fechada (vendaEm) nesta data ou depois. */
   sociaDesde          DateTime? @map("socia_desde")
   /** Dona — recebe o restante do valor após vendedor e sócias. */
   ehDona              Boolean  @default(false) @map("eh_dona")
@@ -177,6 +177,8 @@ model Festa {
   avaliacaoEm           DateTime?         @map("avaliacao_em")
   /** Momento em que a festa ficou quitada (soma de pagamentos confirmados >= valor). */
   quitadoEm             DateTime?         @map("quitado_em")
+  /** Momento em que a venda foi fechada/lançada no sistema (pipeline antigo fica antes da sócia nova). */
+  vendaEm               DateTime          @default(now()) @map("venda_em")
   criadoEm              DateTime          @default(now()) @map("criado_em")
 
   clienteId  String @map("cliente_id")

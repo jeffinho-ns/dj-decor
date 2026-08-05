@@ -44,7 +44,7 @@ async function seedUsuarios() {
     const ehSocia =
       seedUser.nome === "Lorena" || seedUser.nome === "Suellem";
     const ehDona = seedUser.nome === "Debora";
-    /** Suellem entrou na sociedade em 05/08/2026; comissão só em quitações a partir dessa data. */
+    /** Suellem: sócia desde 05/08/2026 — comissão só em vendas fechadas a partir dessa data. */
     const sociaDesde =
       seedUser.nome === "Suellem"
         ? new Date(Date.UTC(2026, 7, 5, 12, 0, 0))

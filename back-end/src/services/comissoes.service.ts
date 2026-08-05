@@ -66,7 +66,8 @@ export class ComissoesService {
   /**
    * Gera o split da festa quitada:
    * vendedor % + cada sócia % + dona (resto), todos sobre o valor total.
-   * Sócia com `sociaDesde` só entra se a festa foi quitada (quitadoEm) nessa data ou depois.
+   * Sócia com `sociaDesde` só entra se a venda da festa (vendaEm) foi fechada nessa data ou depois
+   * — pipeline antigo da planilha não entra; só fechamentos novos.
    * Só fica liberado para pagar a partir do mês da data do evento.
    */
   async gerarSplitFesta(
@@ -81,6 +82,7 @@ export class ComissoesService {
         dataEvento: true,
         vendedorId: true,
         quitadoEm: true,
+        vendaEm: true,
       },
     });
     if (!festa) return [];
@@ -113,11 +115,11 @@ export class ComissoesService {
       select: { id: true, sociaDesde: true },
       orderBy: { nome: "asc" },
     });
-    // Sócia com data: só entra se a festa foi marcada como paga a partir dessa data
-    const quitadoYmd = ymdBrasil(quitadoEm);
+    // Sócia com data: só em vendas fechadas a partir da entrada na sociedade
+    const vendaYmd = ymdBrasil(festa.vendaEm);
     const socias = sociasRaw.filter((socia) => {
       if (!socia.sociaDesde) return true;
-      return quitadoYmd >= ymdBrasil(socia.sociaDesde);
+      return vendaYmd >= ymdBrasil(socia.sociaDesde);
     });
     const donas = await tx.user.findMany({
       where: { ehDona: true, ativo: true },
