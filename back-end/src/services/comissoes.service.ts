@@ -83,6 +83,7 @@ export class ComissoesService {
         vendedorId: true,
         quitadoEm: true,
         vendaEm: true,
+        observacoes: true,
       },
     });
     if (!festa) return [];
@@ -115,10 +116,12 @@ export class ComissoesService {
       select: { id: true, sociaDesde: true },
       orderBy: { nome: "asc" },
     });
-    // Sócia com data: só em vendas fechadas a partir da entrada na sociedade
+    // Pipeline importado (planilha) não entra para sócia com data de início.
+    const pipelineImportado = (festa.observacoes || "").includes("import-");
     const vendaYmd = ymdBrasil(festa.vendaEm);
     const socias = sociasRaw.filter((socia) => {
       if (!socia.sociaDesde) return true;
+      if (pipelineImportado) return false;
       return vendaYmd >= ymdBrasil(socia.sociaDesde);
     });
     const donas = await tx.user.findMany({
