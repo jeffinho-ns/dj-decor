@@ -260,12 +260,15 @@ function RankingVendedores({
 }
 
 function ComissoesResumo({
-  pendentes,
+  liberadas,
+  futuras,
   pagas,
 }: {
-  pendentes: number;
+  liberadas: number;
+  futuras: number;
   pagas: number;
 }) {
+  const pendentes = liberadas + futuras;
   const total = pendentes + pagas;
   const pctPagas = total > 0 ? (pagas / total) * 100 : 0;
 
@@ -273,13 +276,14 @@ function ComissoesResumo({
     <div className="min-w-0 rounded-2xl p-4 sm:p-5 neo-sm">
       <div className="flex items-center gap-2">
         <Users className="size-4 text-balloon-sky" />
-        <p className="text-sm font-medium text-foreground">Comissões</p>
+        <p className="text-sm font-medium text-foreground">Comissões / repasses</p>
       </div>
       <p className="mt-3 font-display text-xl text-foreground sm:text-2xl">
         {formatCurrency(total)}
       </p>
       <p className="mt-1 break-words text-xs text-muted-foreground">
-        {formatCurrency(pagas)} pagas · {formatCurrency(pendentes)} pendentes
+        {formatCurrency(pagas)} pagas · {formatCurrency(liberadas)} liberadas ·{" "}
+        {formatCurrency(futuras)} aguardam mês do evento
       </p>
       <div className="mt-4 h-2 w-full max-w-full overflow-hidden rounded-full neo-inset">
         <div
@@ -316,7 +320,7 @@ export function FinanceiroPainel({
           value={formatCurrency(resumo.recebiveis)}
           icon={Wallet}
           accent="sun"
-          hint="Pagamentos pendentes de confirmação"
+          hint="Saldo ainda devido (entrada parcial etc.)"
         />
         <StatCard
           label="Comissões pagas"
@@ -325,10 +329,17 @@ export function FinanceiroPainel({
           accent="sky"
         />
         <StatCard
-          label="Comissões pendentes"
-          value={formatCurrency(resumo.comissoesPendentes)}
+          label="Liberadas p/ pagar"
+          value={formatCurrency(
+            resumo.comissoesPendentesLiberadas ?? resumo.comissoesPendentes
+          )}
           icon={Users}
           accent="lilac"
+          hint={
+            (resumo.comissoesPendentesFuturas ?? 0) > 0
+              ? `+ ${formatCurrency(resumo.comissoesPendentesFuturas ?? 0)} no mês futuro`
+              : "Só no mês do evento"
+          }
         />
       </section>
 
@@ -338,7 +349,10 @@ export function FinanceiroPainel({
           recebiveis={resumo.recebiveis}
         />
         <ComissoesResumo
-          pendentes={resumo.comissoesPendentes}
+          liberadas={
+            resumo.comissoesPendentesLiberadas ?? resumo.comissoesPendentes
+          }
+          futuras={resumo.comissoesPendentesFuturas ?? 0}
           pagas={resumo.comissoesPagas}
         />
       </section>

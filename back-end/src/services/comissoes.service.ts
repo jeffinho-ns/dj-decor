@@ -24,6 +24,23 @@ function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
 }
 
+/** Início do mês civil da festa no fuso America/Sao_Paulo (evita virar mês anterior em UTC). */
+function startOfMonthBrasil(dataEvento: Date): Date {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(dataEvento);
+  const year = Number(parts.find((p) => p.type === "year")?.value);
+  const month = Number(parts.find((p) => p.type === "month")?.value);
+  if (!year || !month) {
+    return startOfMonth(dataEvento);
+  }
+  // Meio-dia UTC no dia 1 evita ambiguidade de DST/limites
+  return new Date(Date.UTC(year, month - 1, 1, 12, 0, 0));
+}
+
 function money(value: number): number {
   return Number(value.toFixed(2));
 }
@@ -72,7 +89,7 @@ export class ComissoesService {
     }
 
     const cfg = await configuracoesService.getRegrasFinanceiras();
-    const elegivelEm = startOfMonth(festa.dataEvento);
+    const elegivelEm = startOfMonthBrasil(festa.dataEvento);
 
     const socias = await tx.user.findMany({
       where: { ehSocia: true, ativo: true },
@@ -165,7 +182,7 @@ export class ComissoesService {
     }
   ) {
     const cfg = await configuracoesService.getRegrasFinanceiras();
-    const elegivelEm = startOfMonth(params.dataEvento);
+    const elegivelEm = startOfMonthBrasil(params.dataEvento);
     const created = [];
 
     if (params.montadorId) {
@@ -329,6 +346,38 @@ export class ComissoesService {
       },
       data: { status: StatusComissao.PAGA, pagoEm: new Date() },
     });
+  }
+
+  /**
+   * Regenera o split de todas as festas quitadas (útil após import ou mudança de %).
+   * Não altera comissões já marcadas como PAGA.
+   */
+  async reconciliarQuitadas() {
+    const festas = await prisma.festa.findMany({
+      select: {
+        id: true,
+        valor: true,
+        pagamentos: {
+          where: { status: StatusPagamento.CONFIRMADO },
+          select: { valor: true },
+        },
+      },
+    });
+
+    let processadas = 0;
+    let geradas = 0;
+
+    for (const festa of festas) {
+      const pago = festa.pagamentos.reduce((acc, p) => acc + Number(p.valor), 0);
+      if (pago + 0.009 < Number(festa.valor)) continue;
+      processadas += 1;
+      const created = await prisma.$transaction(async (tx) =>
+        this.gerarSplitFesta(tx, festa.id)
+      );
+      geradas += created.length;
+    }
+
+    return { processadas, geradas };
   }
 
   parseRankingQuery(query: unknown): RankingQueryInput {

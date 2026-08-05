@@ -1248,10 +1248,32 @@ export async function getFinanceiroResumo(
 
   return {
     entradasConfirmadas: toNumber(raw.entradasConfirmadas),
-    recebiveis: toNumber(
-      raw.recebiveis ?? raw.recebiveisPendentes
+    recebiveis: toNumber(raw.recebiveis ?? raw.recebiveisPendentes),
+    recebiveisDetalhe:
+      raw.recebiveisDetalhe && typeof raw.recebiveisDetalhe === "object"
+        ? {
+            pagamentosPendentes: toNumber(
+              (raw.recebiveisDetalhe as Record<string, unknown>)
+                .pagamentosPendentes
+            ),
+            saldoFestasSemPagamentoCompleto: toNumber(
+              (raw.recebiveisDetalhe as Record<string, unknown>)
+                .saldoFestasSemPagamentoCompleto
+            ),
+          }
+        : undefined,
+    comissoesPendentes: toNumber(
+      raw.comissoesPendentesLiberadas ?? raw.comissoesPendentes
     ),
-    comissoesPendentes: toNumber(raw.comissoesPendentes),
+    comissoesPendentesLiberadas: toNumber(
+      raw.comissoesPendentesLiberadas ?? raw.comissoesPendentes
+    ),
+    comissoesPendentesFuturas: toNumber(raw.comissoesPendentesFuturas),
+    comissoesPendentesTotal: toNumber(
+      raw.comissoesPendentesTotal ??
+        (toNumber(raw.comissoesPendentesLiberadas ?? raw.comissoesPendentes) +
+          toNumber(raw.comissoesPendentesFuturas))
+    ),
     comissoesPagas: toNumber(raw.comissoesPagas),
     rentabilidadePorTema: rentabilidadeRaw.map((item) => {
       const row = item as Record<string, unknown>;

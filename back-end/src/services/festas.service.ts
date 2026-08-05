@@ -1,4 +1,4 @@
-import { StatusFesta, TamanhoDecoracao } from "@prisma/client";
+import { StatusFesta, StatusPagamento, TamanhoDecoracao } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
 import { pdfAdapter } from "../integrations/pdf";
@@ -7,6 +7,7 @@ import { estoqueService } from "./estoque.service";
 import { osService } from "./os.service";
 import { clientesService } from "./clientes.service";
 import { riscoService } from "./risco.service";
+import { comissoesService } from "./comissoes.service";
 
 const createFestaSchema = z
   .object({
@@ -421,20 +422,35 @@ export class FestasService {
           : blocoCompra ?? (semMarcador || null);
     }
 
-    const updated = await prisma.festa.update({
-      where: { id },
-      data: {
-        status: data.status,
-        alertaCompraEstoque,
-        itensFaltaEstoque,
-        observacoes,
-      },
-      include: {
-        cliente: true,
-        vendedor: {
-          select: { id: true, nome: true, email: true, role: true },
+    const updated = await prisma.$transaction(async (tx) => {
+      const festaUpdated = await tx.festa.update({
+        where: { id },
+        data: {
+          status: data.status,
+          alertaCompraEstoque,
+          itensFaltaEstoque,
+          observacoes,
         },
-      },
+        include: {
+          cliente: true,
+          vendedor: {
+            select: { id: true, nome: true, email: true, role: true },
+          },
+        },
+      });
+
+      if (data.status === StatusFesta.PAGO) {
+        const confirmados = await tx.pagamento.aggregate({
+          where: { festaId: id, status: StatusPagamento.CONFIRMADO },
+          _sum: { valor: true },
+        });
+        const totalPago = Number(confirmados._sum.valor ?? 0);
+        if (totalPago + 0.009 >= Number(festaUpdated.valor)) {
+          await comissoesService.gerarSplitFesta(tx, id);
+        }
+      }
+
+      return festaUpdated;
     });
 
     if (data.status === StatusFesta.FECHADO) {

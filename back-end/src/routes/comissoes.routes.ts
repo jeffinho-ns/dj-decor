@@ -31,4 +31,10 @@ comissoesRoutes.post(
   (req, res, next) => comissoesController.marcarPagas(req, res, next)
 );
 
+comissoesRoutes.post(
+  "/reconciliar",
+  requireRoles(Role.ADMIN),
+  (req, res, next) => comissoesController.reconciliar(req, res, next)
+);
+
 export { comissoesRoutes };

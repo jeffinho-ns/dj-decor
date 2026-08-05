@@ -62,6 +62,19 @@ export class ComissoesController {
       next(error);
     }
   }
+
+  async reconciliar(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await comissoesService.reconciliarQuitadas();
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const comissoesController = new ComissoesController();

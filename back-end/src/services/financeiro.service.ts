@@ -55,6 +55,13 @@ function clampDate(date: Date, min: Date, max: Date): Date {
   return date;
 }
 
+/** Status em que o cliente já comprometeu pagamento (resta saldo). */
+const STATUS_COM_RECEBIVEL: StatusFesta[] = [
+  StatusFesta.AGUARDANDO_PAGAMENTO,
+  StatusFesta.PAGO,
+  StatusFesta.FECHADO,
+];
+
 export class FinanceiroService {
   parseResumoQuery(query: unknown): ResumoQueryInput {
     return resumoQuerySchema.parse(query);
@@ -68,12 +75,11 @@ export class FinanceiroService {
     const { inicio, fim } = this.parseResumoQuery(rawQuery);
     const periodoPagamento = buildPeriodo(inicio, fim);
     const periodoFesta = buildPeriodo(inicio, fim);
+    const agora = new Date();
 
     const pagamentoConfirmadoWhere: Prisma.PagamentoWhereInput = {
       status: StatusPagamento.CONFIRMADO,
-      ...(periodoPagamento
-        ? { confirmadoEm: periodoPagamento }
-        : {}),
+      ...(periodoPagamento ? { confirmadoEm: periodoPagamento } : {}),
     };
 
     const pagamentoPendenteWhere: Prisma.PagamentoWhereInput = {
@@ -100,7 +106,8 @@ export class FinanceiroService {
       recebiveisPendentesAgg,
       festasComSaldo,
       rentabilidadePorTema,
-      comissoesPendentesAgg,
+      comissoesPendentesLiberadasAgg,
+      comissoesPendentesFuturasAgg,
       comissoesPagasAgg,
     ] = await Promise.all([
       prisma.pagamento.aggregate({
@@ -113,11 +120,12 @@ export class FinanceiroService {
       }),
       prisma.festa.findMany({
         where: {
-          status: { in: [StatusFesta.FECHADO, StatusFesta.PAGO] },
+          status: { in: STATUS_COM_RECEBIVEL },
           ...(periodoFesta ? { dataEvento: periodoFesta } : {}),
         },
         select: {
           valor: true,
+          status: true,
           pagamentos: {
             where: {
               status: {
@@ -139,6 +147,15 @@ export class FinanceiroService {
         where: {
           ...comissaoWhereBase,
           status: StatusComissao.PENDENTE,
+          elegivelEm: { lte: agora },
+        },
+        _sum: { valor: true },
+      }),
+      prisma.comissao.aggregate({
+        where: {
+          ...comissaoWhereBase,
+          status: StatusComissao.PENDENTE,
+          elegivelEm: { gt: agora },
         },
         _sum: { valor: true },
       }),
@@ -151,19 +168,25 @@ export class FinanceiroService {
       }),
     ]);
 
-    let saldoFestasSemPagamentoCompleto = 0;
+    let saldoFestasAberto = 0;
     for (const festa of festasComSaldo) {
       const totalRegistrado = festa.pagamentos.reduce(
         (acc, pagamento) => acc + Number(pagamento.valor),
         0
       );
       const valorFesta = Number(festa.valor);
-      if (totalRegistrado < valorFesta) {
-        saldoFestasSemPagamentoCompleto += valorFesta - totalRegistrado;
+      if (totalRegistrado + 0.009 < valorFesta) {
+        saldoFestasAberto += valorFesta - totalRegistrado;
       }
     }
 
     const pagamentosPendentes = toNumber(recebiveisPendentesAgg._sum.valor);
+    const comissoesPendentesLiberadas = toNumber(
+      comissoesPendentesLiberadasAgg._sum.valor
+    );
+    const comissoesPendentesFuturas = toNumber(
+      comissoesPendentesFuturasAgg._sum.valor
+    );
 
     return {
       periodo:
@@ -174,18 +197,22 @@ export class FinanceiroService {
             }
           : null,
       entradasConfirmadas: toNumber(entradasConfirmadasAgg._sum.valor),
-      recebiveisPendentes:
-        pagamentosPendentes + saldoFestasSemPagamentoCompleto,
+      recebiveisPendentes: pagamentosPendentes + saldoFestasAberto,
       recebiveisDetalhe: {
         pagamentosPendentes,
-        saldoFestasSemPagamentoCompleto,
+        saldoFestasSemPagamentoCompleto: saldoFestasAberto,
       },
       rentabilidadePorTema: rentabilidadePorTema.map((item) => ({
         tema: item.tema,
         totalValor: toNumber(item._sum.valor),
         quantidade: item._count.id,
       })),
-      comissoesPendentes: toNumber(comissoesPendentesAgg._sum.valor),
+      /** Liberadas para pagar agora (mês do evento já chegou). */
+      comissoesPendentes: comissoesPendentesLiberadas,
+      comissoesPendentesLiberadas,
+      comissoesPendentesFuturas,
+      comissoesPendentesTotal:
+        comissoesPendentesLiberadas + comissoesPendentesFuturas,
       comissoesPagas: toNumber(comissoesPagasAgg._sum.valor),
     };
   }
@@ -245,7 +272,7 @@ export class FinanceiroService {
         }),
         prisma.festa.findMany({
           where: {
-            status: { in: [StatusFesta.FECHADO, StatusFesta.PAGO] },
+            status: { in: STATUS_COM_RECEBIVEL },
             dataEvento: { gte: hoje, lte: fim },
           },
           select: {
@@ -291,7 +318,7 @@ export class FinanceiroService {
         0
       );
       const saldo = Number(festa.valor) - totalRegistrado;
-      if (saldo <= 0) continue;
+      if (saldo <= 0.009) continue;
 
       const dataRef = clampDate(festa.dataEvento, hoje, fim);
       const idx = bucketIndexFor(dataRef);

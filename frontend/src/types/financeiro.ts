@@ -76,7 +76,17 @@ export interface PrevisaoCaixa {
 export interface FinanceiroResumo {
   entradasConfirmadas: number;
   recebiveis: number;
+  /** Saldo ainda devido nas festas (sinais parciais etc.). */
+  recebiveisDetalhe?: {
+    pagamentosPendentes: number;
+    saldoFestasSemPagamentoCompleto: number;
+  };
+  /** Liberadas para pagar agora (mês do evento). */
   comissoesPendentes: number;
+  comissoesPendentesLiberadas?: number;
+  /** Pendentes mas ainda no mês futuro do evento. */
+  comissoesPendentesFuturas?: number;
+  comissoesPendentesTotal?: number;
   comissoesPagas: number;
   rentabilidadePorTema: RentabilidadeTema[];
   rankingVendedores?: RankingVendedor[];
