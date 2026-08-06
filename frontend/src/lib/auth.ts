@@ -39,7 +39,7 @@ const ROLE_LABELS: Record<Role, string> = {
 };
 
 /** Sócias e dona — labels de perfil financeiro. */
-const SOCIAS = new Set(["Lorena", "Suellem"]);
+const SOCIAS = new Set(["Lorena"]);
 const DONAS = new Set(["Debora"]);
 
 export function roleLabel(role: Role, nome?: string | null): string {

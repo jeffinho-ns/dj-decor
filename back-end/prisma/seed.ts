@@ -25,8 +25,9 @@ const seedUsers: SeedUser[] = [
   { nome: "Jefferson", role: Role.ADMIN },
   { nome: "Jonathan", role: Role.ADMIN },
   { nome: "Debora", role: Role.GERENTE },
+  /** Gerente/vendedora — comissão só nas festas que ela vender (não no split de sócia). */
   { nome: "Suellem", role: Role.GERENTE },
-  /** Sócia — mesmas permissões de gerente na operação. */
+  /** Sócia — % no geral das festas quitadas. */
   { nome: "Lorena", role: Role.GERENTE },
   { nome: "Vitória", role: Role.VENDEDOR },
   { nome: "Lais", role: Role.VENDEDOR },
@@ -41,14 +42,9 @@ async function seedUsuarios() {
   const senhaHash = await bcrypt.hash(SENHA_TEMPORARIA, SALT_ROUNDS);
 
   for (const seedUser of seedUsers) {
-    const ehSocia =
-      seedUser.nome === "Lorena" || seedUser.nome === "Suellem";
+    /** Sócia no geral: apenas Lorena. Suellem recebe só comissão de vendedora nas vendas dela. */
+    const ehSocia = seedUser.nome === "Lorena";
     const ehDona = seedUser.nome === "Debora";
-    /** Suellem: sócia desde 05/08/2026 — comissão só em vendas fechadas a partir dessa data. */
-    const sociaDesde =
-      seedUser.nome === "Suellem"
-        ? new Date(Date.UTC(2026, 7, 5, 12, 0, 0))
-        : null;
     const user = await prisma.user.upsert({
       where: { nome: seedUser.nome },
       update: {
@@ -58,7 +54,7 @@ async function seedUsuarios() {
         ativo: true,
         ehSocia,
         ehDona,
-        ...(ehSocia ? { sociaDesde } : { sociaDesde: null }),
+        sociaDesde: null,
       },
       create: {
         nome: seedUser.nome,
@@ -68,7 +64,7 @@ async function seedUsuarios() {
         ativo: true,
         ehSocia,
         ehDona,
-        sociaDesde: ehSocia ? sociaDesde : null,
+        sociaDesde: null,
       },
     });
 
