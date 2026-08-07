@@ -65,7 +65,7 @@ export default function LoginPage() {
             className="animate-fade-up mt-3 text-balance font-display text-4xl leading-tight text-foreground sm:mt-5 sm:text-6xl sm:leading-[0.95] lg:text-8xl"
             style={{ animationDelay: "0.15s" }}
           >
-            DJ <span className="text-balloon-pink">Decor</span>
+            DJ <span className="text-balloon-pink">festas</span>
           </h1>
           <p
             className="animate-fade-up mt-4 max-w-md text-base leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg"

@@ -150,7 +150,7 @@ export function Sidebar({ user }: SidebarProps) {
         </div>
         <div>
           <p className="font-display text-lg leading-none tracking-tight">
-            DJ <span className="text-balloon-pink">Decor</span>
+            DJ <span className="text-balloon-pink">festas</span>
           </p>
           <p className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground">
             <span className="balloon-dot bg-balloon-pink" />
