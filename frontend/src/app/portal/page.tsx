@@ -5,10 +5,10 @@ import { PortalClientView } from "@/components/portal/portal-client-view";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Portal do cliente — DJ Decor",
+  title: "Portal do cliente — DJ festas",
   description: "Acompanhe o status da decoração da sua festa.",
   openGraph: {
-    title: "Portal do cliente — DJ Decor",
+    title: "Portal do cliente — DJ festas",
     description: "Acompanhe o status da decoração da sua festa.",
     type: "website",
   },

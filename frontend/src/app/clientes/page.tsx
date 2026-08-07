@@ -10,7 +10,7 @@ import type { ClienteListItem } from "@/types/cliente";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Clientes | DJ Decor",
+  title: "Clientes | DJ festas",
 };
 
 export default async function ClientesPage() {

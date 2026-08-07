@@ -10,7 +10,7 @@ import type { AlertaQr, InventarioItem, Produto } from "@/types/estoque";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Estoque | DJ Decor",
+  title: "Estoque | DJ festas",
 };
 
 export default async function EstoquePage() {

@@ -15,7 +15,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   return {
-    title: `Cliente ${id.slice(0, 8)}… | DJ Decor`,
+    title: `Cliente ${id.slice(0, 8)}… | DJ festas`,
   };
 }
 

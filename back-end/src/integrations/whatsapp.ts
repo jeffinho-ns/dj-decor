@@ -61,21 +61,21 @@ export function buildMensagemSugerida(
         `Olá! 🎉 Recebemos o pagamento da decoração "${tema}" ` +
         `para ${dataFmt}. Valor confirmado: ${formatarValor(payload.valor)}. ` +
         `Em breve nossa equipe entrará em contato com os próximos passos. ` +
-        `Obrigado por confiar na DJ Decor!`
+        `Obrigado por confiar na DJ festas!`
       );
 
     case "equipe_a_caminho":
       return (
         `Boa notícia! 🚚 Nossa equipe já saiu para montar a decoração ` +
         `"${tema}" (${dataFmt}). Endereço: ${endereco}. ` +
-        `Qualquer dúvida, estamos à disposição. — DJ Decor`
+        `Qualquer dúvida, estamos à disposição. — DJ festas`
       );
 
     case "montagem_finalizada":
       return (
         `Tudo pronto! ✨ A montagem da decoração "${tema}" foi finalizada ` +
         `com sucesso. Esperamos que sua festa seja inesquecível! ` +
-        `— Equipe DJ Decor`
+        `— Equipe DJ festas`
       );
 
     case "upsell_extras": {
@@ -90,7 +90,7 @@ export function buildMensagemSugerida(
         `Olá! A decoração "${tema}" (${dataFmt}) está confirmada. ` +
         `Que tal deixar a festa ainda mais especial?\n\n` +
         `Temos opções extras disponíveis:\n${lista}\n\n` +
-        `Responda esta mensagem se quiser incluir algum item. — DJ Decor`
+        `Responda esta mensagem se quiser incluir algum item. — DJ festas`
       );
     }
 
@@ -99,11 +99,11 @@ export function buildMensagemSugerida(
         `Esperamos que tenha amado a decoração da festa "${tema}"! 💛 ` +
         `Sua opinião é muito importante para nós. ` +
         `Pode nos contar como foi a experiência? Responda com uma nota de 1 a 5 ` +
-        `ou deixe um comentário. Obrigado! — DJ Decor`
+        `ou deixe um comentário. Obrigado! — DJ festas`
       );
 
     default:
-      return `Mensagem DJ Decor — template: ${template}.`;
+      return `Mensagem DJ festas — template: ${template}.`;
   }
 }
 

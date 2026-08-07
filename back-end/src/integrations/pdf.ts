@@ -302,7 +302,7 @@ export class PdfKitAdapter implements PdfAdapter {
       : null;
 
     const pdfBuffer = await renderContratoPdf(festa, {
-      nomeEmpresa: config?.nomeEmpresa ?? "DJ Decor",
+      nomeEmpresa: config?.nomeEmpresa ?? "DJ festas",
       sloganEmpresa:
         config?.sloganEmpresa ??
         "Decoração de Festas · Locação de Materiais",

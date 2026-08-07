@@ -17,7 +17,7 @@ export default async function UsuariosPage() {
     <DashboardShell
       user={user}
       title="Usuários"
-      description="Gerencie acessos da equipe DJ Decor."
+      description="Gerencie acessos da equipe DJ festas."
     >
       <UsuariosPainel token={token} canEdit={user.role === "ADMIN"} />
     </DashboardShell>

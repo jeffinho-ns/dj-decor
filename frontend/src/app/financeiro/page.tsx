@@ -15,7 +15,7 @@ import type { ComissaoRanking, FinanceiroResumo, PrevisaoCaixa } from "@/types/f
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Financeiro | DJ Decor",
+  title: "Financeiro | DJ festas",
 };
 
 export default async function FinanceiroPage() {

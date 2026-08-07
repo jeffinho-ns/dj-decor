@@ -11,7 +11,7 @@ import type { AgendaOs, Montador } from "@/types/equipe";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Equipe | DJ Decor",
+  title: "Equipe | DJ festas",
 };
 
 export default async function EquipePage() {

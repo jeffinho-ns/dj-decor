@@ -256,7 +256,7 @@ export function montarTextoOrcamento(params: {
   observacoes?: string;
 }): string {
   const linhas = [
-    `*Orçamento DJ Decor*`,
+    `*Orçamento DJ festas*`,
     ``,
     `Cliente: ${params.nomeCliente || "—"}`,
     `Telefone: ${params.telefone || "—"}`,

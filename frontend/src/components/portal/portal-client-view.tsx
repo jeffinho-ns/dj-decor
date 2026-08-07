@@ -82,7 +82,7 @@ const TIMELINE_COLORS = [
 ];
 
 const TIPO_LABEL: Record<string, string> = {
-  REFERENCIA_FESTA: "Referência DJ Decor",
+  REFERENCIA_FESTA: "Referência DJ festas",
   CLIENTE_REFERENCIA: "Sua referência",
   MONTAGEM_FINAL: "Montagem final",
 };
@@ -181,7 +181,7 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: data?.tema ?? "Sua festa — DJ Decor",
+          title: data?.tema ?? "Sua festa — DJ festas",
           text: "Acompanhe a decoração da sua festa",
           url,
         });
@@ -257,7 +257,7 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
           Portal do cliente
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Use o link enviado pela equipe DJ Decor para acompanhar sua festa.
+          Use o link enviado pela equipe DJ festas para acompanhar sua festa.
         </p>
       </div>
     );
@@ -290,7 +290,7 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
     <div className="relative mx-auto min-h-screen max-w-lg px-4 pb-12 pt-8 sm:px-6">
       <header className="relative text-center">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-balloon-sky">
-          DJ Decor
+          DJ festas
         </p>
         <h1 className="mt-2 font-display text-2xl leading-tight text-foreground sm:text-3xl">
           Olá,{" "}
@@ -537,7 +537,7 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
       ) : null}
 
       <p className="mt-8 text-center text-[11px] text-muted-foreground/80">
-        Dúvidas? Fale com sua consultora DJ Decor.
+        Dúvidas? Fale com sua consultora DJ festas.
       </p>
     </div>
   );

@@ -18,7 +18,7 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "DJ Decor | Gestão de Festas",
+  title: "DJ festas | Gestão de Festas",
   description: "Sistema de gestão de agendamento de decorações de festas",
 };
 

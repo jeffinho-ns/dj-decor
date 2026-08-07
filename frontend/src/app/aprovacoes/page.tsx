@@ -10,7 +10,7 @@ import type { FestaDescontoPendente } from "@/types/desconto";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Aprovações | DJ Decor",
+  title: "Aprovações | DJ festas",
 };
 
 export default async function AprovacoesPage() {

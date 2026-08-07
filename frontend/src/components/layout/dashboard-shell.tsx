@@ -36,7 +36,7 @@ export function DashboardShell({
                 <span className="balloon-dot bg-balloon-sky" />
                 <span className="balloon-dot bg-balloon-sun" />
                 <p className="ml-1 font-display text-xs font-semibold text-balloon-pink">
-                  DJ Decor
+                  DJ festas
                 </p>
               </div>
               <h1 className="truncate font-display text-xl tracking-tight text-foreground sm:text-2xl">

@@ -440,7 +440,7 @@ model ConfiguracaoNegocio {
   diariaMontador          Decimal  @default(100) @map("diaria_montador") @db.Decimal(10, 2)
   diariaDesmontador       Decimal  @default(70) @map("diaria_desmontador") @db.Decimal(10, 2)
   clausulasContrato       String?  @map("clausulas_contrato") @db.Text
-  nomeEmpresa             String   @default("DJ Decor") @map("nome_empresa")
+  nomeEmpresa             String   @default("DJ festas") @map("nome_empresa")
   sloganEmpresa           String   @default("Decoração de Festas · Locação de Materiais") @map("slogan_empresa")
   telefoneEmpresa         String?  @map("telefone_empresa")
   whatsappEmpresa         String?  @map("whatsapp_empresa")

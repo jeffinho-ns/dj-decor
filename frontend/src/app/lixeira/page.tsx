@@ -8,7 +8,7 @@ import { requireSession } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Lixeira | DJ Decor",
+  title: "Lixeira | DJ festas",
 };
 
 export default async function LixeiraPage() {

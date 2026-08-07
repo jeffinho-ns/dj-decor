@@ -278,7 +278,7 @@ async function seedConfigECatalogoVendas() {
       comissaoMetaSemanal: 500,
       diariaMontador: 100,
       diariaDesmontador: 70,
-      nomeEmpresa: "DJ Decor",
+      nomeEmpresa: "DJ festas",
       sloganEmpresa: "Decoração de Festas · Locação de Materiais",
     },
   });
