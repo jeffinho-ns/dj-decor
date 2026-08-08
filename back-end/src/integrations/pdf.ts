@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 import PDFDocument from "pdfkit";
-import { TipoMidia, type Cliente, type Festa, type User } from "@prisma/client";
+import {
+  StatusPagamento,
+  TipoMidia,
+  type Cliente,
+  type Festa,
+  type Pagamento,
+  type User,
+} from "@prisma/client";
 import { prisma } from "../prisma/client";
 
 export interface ContratoLocacaoResult {
@@ -18,13 +25,38 @@ export interface PdfAdapter {
 type FestaContrato = Festa & {
   cliente: Cliente;
   vendedor: User;
+  pagamentos: Pick<Pagamento, "valor" | "status">[];
 };
+
+interface ValoresContrato {
+  valorTotal: number;
+  adiantamento: number;
+  saldo: number;
+}
+
+function calcularValoresContrato(
+  festa: Pick<FestaContrato, "valor" | "pagamentos">
+): ValoresContrato {
+  const valorTotal = Number(festa.valor.toString());
+  const adiantamento = festa.pagamentos
+    .filter((p) => p.status === StatusPagamento.CONFIRMADO)
+    .reduce((acc, p) => acc + Number(p.valor.toString()), 0);
+  const saldo = Math.max(0, Number((valorTotal - adiantamento).toFixed(2)));
+  return { valorTotal, adiantamento, saldo };
+}
 
 function formatarData(data: Date): string {
   return data.toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "long",
     year: "numeric",
+  });
+}
+
+function formatarHora(data: Date): string {
+  return data.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -38,8 +70,8 @@ function formatarDataHora(data: Date): string {
   });
 }
 
-function formatarMoeda(valor: { toString(): string }): string {
-  const numero = Number(valor.toString());
+function formatarMoeda(valor: { toString(): string } | number): string {
+  const numero = typeof valor === "number" ? valor : Number(valor.toString());
   return numero.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
@@ -102,6 +134,14 @@ function renderContratoPdf(
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
+    const { valorTotal, adiantamento: totalPago, saldo } =
+      calcularValoresContrato(festa);
+    const pegueEMonte = Boolean(festa.pegueEMonte);
+    const labelData = pegueEMonte ? "Data da retirada" : "Data do evento";
+    const labelHora = pegueEMonte
+      ? "Horário da retirada"
+      : "Horário do evento";
+
     if (opts.logoBuffer) {
       try {
         doc.image(opts.logoBuffer, doc.page.width / 2 - 40, 40, {
@@ -159,6 +199,30 @@ function renderContratoPdf(
     doc.text(`Telefone: ${festa.cliente.telefone}`);
     doc.moveDown(1);
 
+    // Bloco de dados da festa — sempre presente (mesmo com cláusulas custom)
+    doc.font("Helvetica-Bold").text("DADOS DO PEDIDO");
+    doc.font("Helvetica");
+    doc.text(`Cliente: ${festa.cliente.nome}`);
+    doc.text(`Tema: ${festa.tema}`);
+    doc.text(
+      `Modalidade: ${pegueEMonte ? "Pegue e monte" : "Montagem pela equipe"}`
+    );
+    doc.text(`${labelData}: ${formatarData(festa.dataEvento)}`);
+    doc.text(`${labelHora}: ${formatarHora(festa.dataEvento)}`);
+    if (!pegueEMonte) {
+      doc.text(
+        `Horário de montagem: ${formatarDataHora(festa.horarioMontagem)}`
+      );
+    }
+    doc.text(`Local: ${festa.endereco}`);
+    doc.text(`Valor total: ${formatarMoeda(valorTotal)}`);
+    doc.text(
+      totalPago > 0
+        ? `Adiantamento / pago: ${formatarMoeda(totalPago)} · Saldo: ${formatarMoeda(saldo)}`
+        : `Adiantamento / pago: nenhum valor confirmado até o momento · Saldo: ${formatarMoeda(saldo)}`
+    );
+    doc.moveDown(1);
+
     const itensDescricao = [
       festa.kitCatalogo ? `Kit: ${festa.kitCatalogo}` : null,
       festa.itensExtras.length > 0
@@ -182,20 +246,27 @@ function renderContratoPdf(
       ]);
 
       clausula(doc, "CLÁUSULA 2 — DO PRAZO E DO LOCAL", [
-        `2.1. Data do evento: ${formatarData(festa.dataEvento)}.`,
-        `2.2. Horário previsto para montagem: ${formatarDataHora(festa.horarioMontagem)}.`,
-        `2.3. Local de montagem: ${festa.endereco}.`,
-        "2.4. O(A) LOCATÁRIO(A) deverá garantir acesso ao local no horário acordado, com espaço adequado para montagem e desmontagem.",
+        `2.1. ${labelData}: ${formatarData(festa.dataEvento)}.`,
+        `2.2. ${labelHora}: ${formatarHora(festa.dataEvento)}.`,
+        pegueEMonte
+          ? `2.3. Local de retirada/entrega: ${festa.endereco}.`
+          : `2.3. Horário previsto para montagem: ${formatarDataHora(festa.horarioMontagem)}.`,
+        pegueEMonte
+          ? "2.4. No pegue e monte, o(a) LOCATÁRIO(A) retira e devolve os materiais conforme combinado, salvo se houver serviço de leva e busca."
+          : `2.4. Local de montagem: ${festa.endereco}.`,
+        "2.5. O(A) LOCATÁRIO(A) deverá garantir acesso ao local no horário acordado, com espaço adequado.",
       ]);
 
       clausula(doc, "CLÁUSULA 3 — DO VALOR E DO PAGAMENTO", [
-        `3.1. Valor total da locação: ${formatarMoeda(festa.valor)}.`,
-        "3.2. O pagamento deverá ser efetuado conforme condições acordadas entre as partes (PIX, transferência ou outro meio combinado).",
+        `3.1. Valor total da locação: ${formatarMoeda(valorTotal)}.`,
+        totalPago > 0
+          ? `3.2. Adiantamento já confirmado: ${formatarMoeda(totalPago)}. Saldo restante: ${formatarMoeda(saldo)}.`
+          : "3.2. Nenhum adiantamento confirmado até a emissão deste contrato. O pagamento deverá ser efetuado conforme condições acordadas (PIX, transferência ou outro meio).",
         "3.3. A não quitação integral até a data do evento poderá impedir a montagem, a entrega dos materiais ou a desmontagem programada.",
       ]);
 
       clausula(doc, "CLÁUSULA 4 — DAS RESPONSABILIDADES", [
-        "4.1. A LOCADORA responsabiliza-se pela montagem e desmontagem conforme especificações acordadas, empregando materiais em bom estado de conservação.",
+        "4.1. A LOCADORA responsabiliza-se pela disponibilidade dos materiais conforme especificações acordadas, em bom estado de conservação.",
         "4.2. O(A) LOCATÁRIO(A) responsabiliza-se pela integridade dos materiais locados durante o período do evento, respondendo por danos, extravios ou mau uso.",
         "4.3. Alterações de layout, itens ou horários após a confirmação poderão gerar custos adicionais, mediante concordância prévia.",
         "4.4. A LOCADORA não se responsabiliza por impedimentos causados por condições climáticas extremas, falta de energia elétrica ou restrições do local não informadas previamente.",
@@ -266,27 +337,32 @@ export class PdfKitAdapter implements PdfAdapter {
   async gerarContratoLocacao(festaId: string): Promise<ContratoLocacaoResult> {
     const festa = await prisma.festa.findUnique({
       where: { id: festaId },
-      include: { cliente: true, vendedor: true },
+      include: {
+        cliente: true,
+        vendedor: true,
+        pagamentos: { select: { valor: true, status: true } },
+      },
     });
 
     if (!festa) {
       throw new Error(`Festa não encontrada: ${festaId}`);
     }
 
-    const config = await prisma.configuracaoNegocio.findUnique({
-      where: { id: "default" },
-      include: { logoMidia: true },
-    });
-
-    const midias = await prisma.midia.findMany({
-      where: {
-        festaId,
-        tipo: {
-          in: [TipoMidia.REFERENCIA_FESTA, TipoMidia.ASSINATURA_CLIENTE],
+    const [config, midias] = await Promise.all([
+      prisma.configuracaoNegocio.findUnique({
+        where: { id: "default" },
+        include: { logoMidia: true },
+      }),
+      prisma.midia.findMany({
+        where: {
+          festaId,
+          tipo: {
+            in: [TipoMidia.REFERENCIA_FESTA, TipoMidia.ASSINATURA_CLIENTE],
+          },
         },
-      },
-      orderBy: { criadoEm: "desc" },
-    });
+        orderBy: { criadoEm: "desc" },
+      }),
+    ]);
 
     const referencias = midias
       .filter((m) => m.tipo === TipoMidia.REFERENCIA_FESTA)

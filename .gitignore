@@ -27,3 +27,5 @@ Thumbs.db
 # Prisma
 back-end/prisma/*.db
 back-end/prisma/*.db-journal
+.vercel
+.env*.local

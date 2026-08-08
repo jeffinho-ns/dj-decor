@@ -41,6 +41,7 @@ export const CATALOGO_KITS: CatalogoKit[] = [
     categoria: "mesa",
     descricaoCurta: "Painel pequeno, bandejas e cachepô — ideal para mesa de bolo.",
     valorEquipe: 80,
+    valorPegueEMonte: 80,
     tamanhoSugerido: "P",
     itens: ["Painel 50x50", "3 bandejas", "Cachepô"],
   },
@@ -50,6 +51,7 @@ export const CATALOGO_KITS: CatalogoKit[] = [
     categoria: "mesa",
     descricaoCurta: "Mesmo kit + mesa inclusa.",
     valorEquipe: 130,
+    valorPegueEMonte: 130,
     tamanhoSugerido: "P",
     itens: ["Painel 50x50", "3 bandejas", "Cachepô", "Mesa"],
   },
@@ -196,19 +198,49 @@ export function filtrarAddonsParaKit(
   return addonIds.filter((id) => !EXTRA_METROS_IDS.has(id));
 }
 
+/** Taxa fixa quando montador leva e busca no modo pegue e monte. */
+export const TAXA_PEGUE_ENTREGA = 30;
+
+export const ITEM_TAXA_PEGUE_ENTREGA =
+  "Taxa entrega e retirada pegue e monte — R$30";
+
+export const TAG_PEGUE_ENTREGA = "[PEGUE_ENTREGA_30]";
+
+/**
+ * Extrai o último valor em reais do texto (ex.: "… R$100" → 100).
+ * Aceita R$ 1.234,56 / R$100 / R$ 90,00.
+ */
+export function extrairValorReais(texto: string): number {
+  const matches = [
+    ...texto.matchAll(/R\$\s*([\d.]+(?:,\d{1,2})?|\d+(?:,\d{1,2})?)/gi),
+  ];
+  if (!matches.length) return 0;
+  const raw = matches[matches.length - 1]?.[1] ?? "";
+  const normalized = raw.includes(",")
+    ? raw.replace(/\./g, "").replace(",", ".")
+    : raw;
+  const value = Number(normalized);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
 export interface CalcularOrcamentoInput {
   kit: CatalogoKit | undefined;
   pegueEMonte: boolean;
   addonIds: string[];
   extrasManuais?: string[];
+  /** Taxa entrega/retirada pegue e monte (ex.: 30). */
+  taxaEntrega?: number;
 }
 
 export interface CalcularOrcamentoResult {
   valorBase: number;
   valorAddons: number;
+  valorExtras: number;
+  valorTaxa: number;
   total: number;
   itensKit: string[];
   itensAddons: string[];
+  itensExtras: string[];
   itens: string[];
 }
 
@@ -217,6 +249,7 @@ export function calcularOrcamento({
   pegueEMonte,
   addonIds,
   extrasManuais = [],
+  taxaEntrega = 0,
 }: CalcularOrcamentoInput): CalcularOrcamentoResult {
   const valorBase = kit ? valorDoKit(kit, pegueEMonte) : 0;
   const addons = getAddonsByIds(addonIds);
@@ -231,15 +264,35 @@ export function calcularOrcamento({
         !itensKit.some((k) => k.toLowerCase() === item.toLowerCase()) &&
         !itensAddons.some((a) => a.toLowerCase() === item.toLowerCase())
     );
+  const valorExtras = extras.reduce(
+    (sum, item) => sum + extrairValorReais(item),
+    0
+  );
+  const valorTaxa = taxaEntrega > 0 ? taxaEntrega : 0;
+  const itensTaxa =
+    valorTaxa > 0
+      ? [
+          valorTaxa === TAXA_PEGUE_ENTREGA
+            ? ITEM_TAXA_PEGUE_ENTREGA
+            : `Taxa entrega e retirada pegue e monte — R$${valorTaxa}`,
+        ]
+      : [];
 
   return {
     valorBase,
     valorAddons,
-    total: valorBase + valorAddons,
+    valorExtras,
+    valorTaxa,
+    total: valorBase + valorAddons + valorExtras + valorTaxa,
     itensKit,
     itensAddons,
-    itens: [...itensKit, ...itensAddons, ...extras],
+    itensExtras: extras,
+    itens: [...itensKit, ...itensAddons, ...extras, ...itensTaxa],
   };
+}
+
+function formatarReaisTexto(valor: number): string {
+  return `R$ ${valor.toFixed(2).replace(".", ",")}`;
 }
 
 export function montarTextoOrcamento(params: {
@@ -248,13 +301,22 @@ export function montarTextoOrcamento(params: {
   tema: string;
   kitNome: string | null;
   pegueEMonte: boolean;
+  tamanho?: string;
   dataEvento: string;
   horaEvento: string;
+  horaMontagem?: string;
   endereco: string;
+  /** true = montador leva e busca (taxa); false = retirada no depósito */
+  entregaPegue?: boolean;
   itens: string[];
+  valorBase?: number;
+  valorAddons?: number;
+  valorExtras?: number;
+  valorTaxa?: number;
   valor: number;
   observacoes?: string;
 }): string {
+  const modo = params.pegueEMonte ? "Pegue e monte" : "Montagem pela equipe";
   const linhas = [
     `*Orçamento DJ festas*`,
     ``,
@@ -263,16 +325,40 @@ export function montarTextoOrcamento(params: {
     `Tema: ${params.tema || "—"}`,
   ];
 
+  if (params.tamanho) {
+    linhas.push(`Tamanho: ${params.tamanho}`);
+  }
+
   if (params.kitNome) {
+    linhas.push(`Kit: ${params.kitNome}`);
+  }
+
+  linhas.push(`Modo: ${modo}`);
+
+  if (params.pegueEMonte) {
     linhas.push(
-      `Kit: ${params.kitNome}${params.pegueEMonte ? " (pegue e monte)" : ""}`
+      params.entregaPegue
+        ? `Retirada: entrega e busca pelo montador (+ taxa)`
+        : `Retirada: cliente retira no depósito`
     );
   }
 
   if (params.dataEvento) {
+    const rotuloData = params.pegueEMonte ? "Data da retirada" : "Data do evento";
+    const rotuloHora = params.pegueEMonte
+      ? "Horário da retirada"
+      : "Horário da festa";
     linhas.push(
-      `Data: ${params.dataEvento}${params.horaEvento ? ` às ${params.horaEvento}` : ""}`
+      `${rotuloData}: ${params.dataEvento}${
+        params.horaEvento ? ` às ${params.horaEvento}` : ""
+      }`
     );
+    if (params.horaEvento) {
+      linhas.push(`${rotuloHora}: ${params.horaEvento}`);
+    }
+    if (!params.pegueEMonte && params.horaMontagem) {
+      linhas.push(`Horário de montagem: ${params.horaMontagem}`);
+    }
   }
 
   if (params.endereco) {
@@ -283,10 +369,40 @@ export function montarTextoOrcamento(params: {
     linhas.push(``, `Itens:`, ...params.itens.map((item) => `• ${item}`));
   }
 
-  linhas.push(``, `Valor: R$ ${params.valor.toFixed(2).replace(".", ",")}`);
+  const temBreakdown =
+    params.valorBase != null ||
+    params.valorAddons != null ||
+    params.valorExtras != null ||
+    params.valorTaxa != null;
+
+  if (temBreakdown) {
+    linhas.push(``, `Valores:`);
+    if (params.valorBase != null && params.valorBase > 0) {
+      linhas.push(`• Base: ${formatarReaisTexto(params.valorBase)}`);
+    }
+    if (params.valorAddons != null && params.valorAddons > 0) {
+      linhas.push(`• Add-ons: ${formatarReaisTexto(params.valorAddons)}`);
+    }
+    if (params.valorExtras != null && params.valorExtras > 0) {
+      linhas.push(`• Extras: ${formatarReaisTexto(params.valorExtras)}`);
+    }
+    if (params.valorTaxa != null && params.valorTaxa > 0) {
+      linhas.push(`• Taxa entrega/retirada: ${formatarReaisTexto(params.valorTaxa)}`);
+    }
+  }
+
+  linhas.push(``, `Total: ${formatarReaisTexto(params.valor)}`);
 
   if (params.observacoes?.trim()) {
-    linhas.push(``, `Obs.: ${params.observacoes.trim()}`);
+    const obs = params.observacoes
+      .trim()
+      .split(TAG_PEGUE_ENTREGA)
+      .join("")
+      .replace(/\n{2,}/g, "\n")
+      .trim();
+    if (obs) {
+      linhas.push(``, `Obs.: ${obs}`);
+    }
   }
 
   return linhas.join("\n");

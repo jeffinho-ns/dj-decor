@@ -8,3 +8,5 @@ out
 .DS_Store
 *.tsbuildinfo
 yarn.lock
+.vercel
+.env*.local

@@ -1,21 +1,41 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, Copy, Loader2, MessageCircle, UserCheck, X } from "lucide-react";
+import {
+  Check,
+  CheckCircle2,
+  Copy,
+  Loader2,
+  MessageCircle,
+  UserCheck,
+  X,
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { createFesta, buscarClientePorTelefone, getClienteById, sugestoesProdutos } from "@/lib/api";
+import { FestaContratoPanel } from "@/components/vendas/festa-contrato-panel";
+import { PagamentoForm } from "@/components/vendas/pagamento-form";
+import {
+  createFesta,
+  buscarClientePorTelefone,
+  getClienteById,
+  getConfiguracoes,
+  sugestoesProdutos,
+} from "@/lib/api";
 import {
   CATALOGO_ADDONS,
   CATALOGO_EXTRAS_METROS,
   CATALOGO_KITS,
+  ITEM_TAXA_PEGUE_ENTREGA,
+  TAG_PEGUE_ENTREGA,
+  TAXA_PEGUE_ENTREGA,
   calcularOrcamento,
   filtrarAddonsParaKit,
   getCatalogoKit,
@@ -25,7 +45,8 @@ import {
 } from "@/lib/catalogo-kits";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { TamanhoDecoracao } from "@/types/festa";
+import type { Role } from "@/types/auth";
+import type { Festa, Pagamento, TamanhoDecoracao } from "@/types/festa";
 import type { ProdutoSugestao } from "@/types/estoque";
 
 const selectClassName =
@@ -74,15 +95,30 @@ function kitIdFromSugestao(reason: string): CatalogoKitId | null {
 interface NovaVendaFormProps {
   token: string;
   initialClienteId?: string | null;
+  viewerRole?: Role;
+  /** Endereço do depósito (config). Se omitido, o form busca via API. */
+  enderecoEmpresaInicial?: string | null;
 }
 
-export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
+export function NovaVendaForm({
+  token,
+  initialClienteId,
+  viewerRole,
+  enderecoEmpresaInicial,
+}: NovaVendaFormProps) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [extraInput, setExtraInput] = useState("");
   const [extrasManuais, setExtrasManuais] = useState<string[]>([]);
   const [kitId, setKitId] = useState<CatalogoKitId | "">("");
   const [pegueEMonte, setPegueEMonte] = useState(false);
+  /** Quando pegue e monte: montador leva e busca (+ R$30). */
+  const [montadorLevaBusca, setMontadorLevaBusca] = useState(false);
+  const [enderecoEmpresa, setEnderecoEmpresa] = useState(
+    enderecoEmpresaInicial?.trim() ?? ""
+  );
+  const [festaCriada, setFestaCriada] = useState<Festa | null>(null);
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [addonIds, setAddonIds] = useState<string[]>([]);
   const [valorManual, setValorManual] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
@@ -101,6 +137,7 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
     control,
     setValue,
     getValues,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<NovaVendaFormValues>({
     resolver: zodResolver(novaVendaSchema),
@@ -127,6 +164,8 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
   const telefone = useWatch({ control, name: "telefone" });
 
   const kitSelecionado = getCatalogoKit(kitId);
+  const taxaEntrega =
+    pegueEMonte && montadorLevaBusca ? TAXA_PEGUE_ENTREGA : 0;
 
   const orcamento = useMemo(
     () =>
@@ -135,9 +174,31 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
         pegueEMonte,
         addonIds,
         extrasManuais,
+        taxaEntrega,
       }),
-    [kitSelecionado, pegueEMonte, addonIds, extrasManuais]
+    [kitSelecionado, pegueEMonte, addonIds, extrasManuais, taxaEntrega]
   );
+
+  useEffect(() => {
+    if (enderecoEmpresaInicial?.trim()) {
+      setEnderecoEmpresa(enderecoEmpresaInicial.trim());
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const cfg = await getConfiguracoes(token);
+        if (cancelled) return;
+        const deposito = cfg.enderecoEmpresa?.trim() ?? "";
+        setEnderecoEmpresa(deposito);
+      } catch {
+        // ignora falha de config
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, enderecoEmpresaInicial]);
 
   useEffect(() => {
     if (!initialClienteId) return;
@@ -196,6 +257,10 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
 
   useEffect(() => {
     if (!dataEvento || !horaEvento) return;
+    if (pegueEMonte) {
+      setValue("horaMontagem", horaEvento);
+      return;
+    }
     const [h, m] = horaEvento.split(":").map(Number);
     if (!Number.isFinite(h) || !Number.isFinite(m)) return;
     const montagem = new Date(`${dataEvento}T${horaEvento}:00`);
@@ -203,14 +268,30 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
     const hh = String(montagem.getHours()).padStart(2, "0");
     const mm = String(montagem.getMinutes()).padStart(2, "0");
     setValue("horaMontagem", `${hh}:${mm}`);
-  }, [dataEvento, horaEvento, setValue]);
+  }, [dataEvento, horaEvento, pegueEMonte, setValue]);
+
+  /** Pegue e monte sem entrega: força endereço do depósito. */
+  useEffect(() => {
+    if (!pegueEMonte || montadorLevaBusca) return;
+    if (!enderecoEmpresa) return;
+    setValue("endereco", enderecoEmpresa, { shouldValidate: true });
+  }, [pegueEMonte, montadorLevaBusca, enderecoEmpresa, setValue]);
 
   useEffect(() => {
     if (valorManual) return;
-    if (!kitSelecionado && addonIds.length === 0) return;
+    if (!kitSelecionado && addonIds.length === 0 && extrasManuais.length === 0 && taxaEntrega <= 0)
+      return;
     if (orcamento.total <= 0) return;
     setValue("valor", String(orcamento.total), { shouldValidate: true });
-  }, [orcamento.total, kitSelecionado, addonIds.length, valorManual, setValue]);
+  }, [
+    orcamento.total,
+    kitSelecionado,
+    addonIds.length,
+    extrasManuais.length,
+    taxaEntrega,
+    valorManual,
+    setValue,
+  ]);
 
   async function buscarSugestoes(temaValue: string) {
     const trimmed = temaValue.trim();
@@ -289,12 +370,37 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
     setAddonIds((prev) => filtrarAddonsParaKit(prev, id || null));
     if (!id) {
       setPegueEMonte(false);
+      setMontadorLevaBusca(false);
       return;
     }
     const kit = getCatalogoKit(id);
     if (!kit) return;
     setPegueEMonte(false);
+    setMontadorLevaBusca(false);
     setValue("tamanhoDecoracao", kit.tamanhoSugerido, { shouldValidate: true });
+  }
+
+  function ativarPegueEMonte(ativo: boolean) {
+    setPegueEMonte(ativo);
+    setValorManual(false);
+    if (!ativo) {
+      setMontadorLevaBusca(false);
+      return;
+    }
+    setMontadorLevaBusca(false);
+    if (enderecoEmpresa) {
+      setValue("endereco", enderecoEmpresa, { shouldValidate: true });
+    }
+    const hora = getValues("horaEvento");
+    if (hora) setValue("horaMontagem", hora);
+  }
+
+  function toggleMontadorLevaBusca(ativo: boolean) {
+    setMontadorLevaBusca(ativo);
+    setValorManual(false);
+    if (!ativo && enderecoEmpresa) {
+      setValue("endereco", enderecoEmpresa, { shouldValidate: true });
+    }
   }
 
   function toggleAddon(id: string) {
@@ -317,11 +423,13 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
       setExtraInput("");
       return;
     }
+    setValorManual(false);
     setExtrasManuais((prev) => [...prev, value]);
     setExtraInput("");
   }
 
   function removeExtra(item: string) {
+    setValorManual(false);
     setExtrasManuais((prev) => prev.filter((extra) => extra !== item));
   }
 
@@ -334,10 +442,17 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
       tema: values.tema,
       kitNome: kitSelecionado?.nome ?? null,
       pegueEMonte,
+      tamanho: values.tamanhoDecoracao,
       dataEvento: values.dataEvento,
       horaEvento: values.horaEvento,
+      horaMontagem: values.horaMontagem,
       endereco: values.endereco,
+      entregaPegue: pegueEMonte && montadorLevaBusca,
       itens: orcamento.itens,
+      valorBase: orcamento.valorBase,
+      valorAddons: orcamento.valorAddons,
+      valorExtras: orcamento.valorExtras,
+      valorTaxa: orcamento.valorTaxa,
       valor: valorNum,
       observacoes: values.observacoes,
     });
@@ -365,29 +480,49 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
   async function onSubmit(data: NovaVendaFormValues) {
     setSubmitError(null);
     try {
-      await createFesta(
+      const pegueAtivo = Boolean(kitSelecionado && pegueEMonte);
+      const horaMontagem = pegueAtivo ? data.horaEvento : data.horaMontagem;
+      const enderecoFinal =
+        pegueAtivo && !montadorLevaBusca && enderecoEmpresa
+          ? enderecoEmpresa
+          : data.endereco;
+
+      let observacoes = data.observacoes?.trim() || "";
+      if (pegueAtivo && montadorLevaBusca) {
+        if (!observacoes.includes(TAG_PEGUE_ENTREGA)) {
+          observacoes = observacoes
+            ? `${observacoes}\n${TAG_PEGUE_ENTREGA}`
+            : TAG_PEGUE_ENTREGA;
+        }
+      } else if (observacoes.includes(TAG_PEGUE_ENTREGA)) {
+        observacoes = observacoes
+          .split(TAG_PEGUE_ENTREGA)
+          .join("")
+          .replace(/\n{2,}/g, "\n")
+          .trim();
+      }
+
+      const festa = await createFesta(
         {
           ...(clienteId ? { clienteId } : {}),
           nomeCliente: data.nomeCliente,
           telefone: data.telefone,
           tema: data.tema,
           dataEvento: combineDateAndTime(data.dataEvento, data.horaEvento),
-          horarioMontagem: combineDateAndTime(
-            data.dataEvento,
-            data.horaMontagem
-          ),
+          horarioMontagem: combineDateAndTime(data.dataEvento, horaMontagem),
           tamanhoDecoracao: data.tamanhoDecoracao,
           itensExtras: orcamento.itens,
           kitCatalogo: kitId || null,
-          pegueEMonte: Boolean(kitSelecionado && pegueEMonte),
-          observacoes: data.observacoes?.trim() || null,
-          endereco: data.endereco,
+          pegueEMonte: pegueAtivo,
+          observacoes: observacoes || null,
+          endereco: enderecoFinal,
           valor: Number(data.valor.replace(",", ".")),
         },
         token
       );
-      router.push("/dashboard");
-      router.refresh();
+      setPagamentos([]);
+      setFestaCriada(festa);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       setSubmitError(
         error instanceof Error
@@ -395,6 +530,114 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
           : "Não foi possível salvar a venda"
       );
     }
+  }
+
+  function reiniciarFormulario() {
+    setFestaCriada(null);
+    setPagamentos([]);
+    setSubmitError(null);
+    setExtraInput("");
+    setExtrasManuais([]);
+    setKitId("");
+    setPegueEMonte(false);
+    setMontadorLevaBusca(false);
+    setAddonIds([]);
+    setValorManual(false);
+    setSugestoes([]);
+    setSugestoesError(null);
+    setClienteId(initialClienteId ?? null);
+    setClienteEncontrado(null);
+    reset({
+      nomeCliente: "",
+      telefone: "",
+      tema: "",
+      dataEvento: "",
+      horaEvento: "15:00",
+      horaMontagem: "11:00",
+      tamanhoDecoracao: "M",
+      endereco: "",
+      observacoes: "",
+      valor: "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  if (festaCriada) {
+    return (
+      <div
+        id="nova-venda-sucesso"
+        className="mx-auto max-w-3xl space-y-4 pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom,0px)+1.5rem)] sm:space-y-6"
+      >
+        <div className="rounded-2xl neo-sm p-4 sm:p-6 md:p-8">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-2xl neo-mint">
+              <CheckCircle2 className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-balloon-mint">
+                Venda criada
+              </p>
+              <h2 className="mt-1 font-display text-2xl text-foreground">
+                {festaCriada.tema}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {festaCriada.cliente.nome} ·{" "}
+                <span className="tabular-nums text-foreground">
+                  {formatCurrency(Number(festaCriada.valor))}
+                </span>
+              </p>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Registre o pagamento e gere o contrato abaixo — sem sair da
+                página.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 w-full sm:w-auto"
+              onClick={reiniciarFormulario}
+            >
+              Nova venda
+            </Button>
+            <Link
+              href="/vendas?minhas=1"
+              className={cn(
+                buttonVariants({ variant: "default", size: "default" }),
+                "inline-flex min-h-11 w-full items-center justify-center sm:w-auto"
+              )}
+            >
+              Ir para minhas vendas
+            </Link>
+          </div>
+        </div>
+
+        <div className="rounded-2xl neo-sm p-4 sm:p-6 md:p-8">
+          <p className="text-xs font-medium uppercase tracking-wider text-balloon-mint">
+            Pagamento
+          </p>
+          <div className="mt-3">
+            <PagamentoForm
+              festaId={festaCriada.id}
+              token={token}
+              pagamentos={pagamentos}
+              valorFesta={Number(festaCriada.valor)}
+              viewerRole={viewerRole}
+              onPagamentosChange={setPagamentos}
+            />
+          </div>
+          <div className="mt-4 border-t border-border/50 pt-4">
+            <FestaContratoPanel
+              festaId={festaCriada.id}
+              token={token}
+              clienteNome={festaCriada.cliente.nome}
+            />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -529,10 +772,7 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setPegueEMonte(false);
-                  setValorManual(false);
-                }}
+                onClick={() => ativarPegueEMonte(false)}
                 className={cn(
                   "min-h-11 w-full rounded-2xl px-4 py-2.5 text-left text-sm whitespace-normal transition-all md:min-h-0 md:w-auto md:px-3 md:py-1.5",
                   !pegueEMonte
@@ -545,10 +785,7 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setPegueEMonte(true);
-                  setValorManual(false);
-                }}
+                onClick={() => ativarPegueEMonte(true)}
                 className={cn(
                   "min-h-11 w-full rounded-2xl px-4 py-2.5 text-left text-sm whitespace-normal transition-all md:min-h-0 md:w-auto md:px-3 md:py-1.5",
                   pegueEMonte
@@ -560,6 +797,30 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
                 {formatCurrency(kitSelecionado.valorPegueEMonte)}
               </button>
             </div>
+          ) : null}
+
+          {pegueEMonte && kitSelecionado?.valorPegueEMonte != null ? (
+            <label
+              className={cn(
+                "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm transition-all",
+                montadorLevaBusca ? "neo-sun" : "neo-sm"
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-balloon-sun"
+                  checked={montadorLevaBusca}
+                  onChange={(event) =>
+                    toggleMontadorLevaBusca(event.target.checked)
+                  }
+                />
+                Montador leva e busca ({formatCurrency(TAXA_PEGUE_ENTREGA)})
+              </span>
+              <span className="tabular-nums text-muted-foreground">
+                +{formatCurrency(TAXA_PEGUE_ENTREGA)}
+              </span>
+            </label>
           ) : null}
         </div>
 
@@ -695,7 +956,9 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="dataEvento">Data</Label>
+              <Label htmlFor="dataEvento">
+                {pegueEMonte ? "Data da retirada" : "Data"}
+              </Label>
               <Input
                 id="dataEvento"
                 type="date"
@@ -732,7 +995,9 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="horaEvento">Horário da festa</Label>
+              <Label htmlFor="horaEvento">
+                {pegueEMonte ? "Horário da retirada" : "Horário da festa"}
+              </Label>
               <Input
                 id="horaEvento"
                 type="time"
@@ -747,24 +1012,28 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
               ) : null}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="horaMontagem">Horário de montagem</Label>
-              <Input
-                id="horaMontagem"
-                type="time"
-                className="h-11 text-base md:h-9 md:text-sm"
-                aria-invalid={Boolean(errors.horaMontagem)}
-                {...register("horaMontagem")}
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Sugestão: 4h antes do início da festa.
-              </p>
-              {errors.horaMontagem ? (
-                <p className="text-xs text-destructive">
-                  {errors.horaMontagem.message}
+            {!pegueEMonte ? (
+              <div className="space-y-2">
+                <Label htmlFor="horaMontagem">Horário de montagem</Label>
+                <Input
+                  id="horaMontagem"
+                  type="time"
+                  className="h-11 text-base md:h-9 md:text-sm"
+                  aria-invalid={Boolean(errors.horaMontagem)}
+                  {...register("horaMontagem")}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Sugestão: 4h antes do início da festa.
                 </p>
-              ) : null}
-            </div>
+                {errors.horaMontagem ? (
+                  <p className="text-xs text-destructive">
+                    {errors.horaMontagem.message}
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <input type="hidden" {...register("horaMontagem")} />
+            )}
           </div>
 
           <div className="space-y-2">
@@ -781,12 +1050,15 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
                     addExtra();
                   }
                 }}
-                placeholder="Ex.: toalha especial, placa personalizada"
+                placeholder="Ex.: toalha especial R$50, placa personalizada"
               />
               <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto sm:shrink-0" onClick={addExtra}>
                 Adicionar
               </Button>
             </div>
+            <p className="text-[11px] text-muted-foreground">
+              Inclua R$ no texto para somar ao total (ex.: &quot;acréscimo R$100&quot;).
+            </p>
             {extrasManuais.length > 0 ? (
               <ul className="flex flex-wrap gap-2 pt-1">
                 {extrasManuais.map((item) => (
@@ -810,14 +1082,31 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="endereco">Endereço</Label>
+            <Label htmlFor="endereco">
+              {pegueEMonte
+                ? montadorLevaBusca
+                  ? "Endereço de entrega"
+                  : "Local da retirada"
+                : "Endereço"}
+            </Label>
             <Input
               id="endereco"
               className="h-11 text-base md:h-9 md:text-sm"
-              placeholder="Rua das Flores, 123 — São Paulo/SP"
+              placeholder={
+                pegueEMonte && !montadorLevaBusca
+                  ? enderecoEmpresa || "Depósito da empresa"
+                  : "Rua das Flores, 123 — São Paulo/SP"
+              }
+              readOnly={pegueEMonte && !montadorLevaBusca}
               aria-invalid={Boolean(errors.endereco)}
               {...register("endereco")}
             />
+            {pegueEMonte && !montadorLevaBusca ? (
+              <p className="text-[11px] text-muted-foreground">
+                Endereço do depósito (configurações). Ative &quot;Montador leva e
+                busca&quot; para informar o endereço do cliente.
+              </p>
+            ) : null}
             {errors.endereco ? (
               <p className="text-xs text-destructive">
                 {errors.endereco.message}
@@ -851,6 +1140,16 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
                 {kitSelecionado && pegueEMonte ? " · Pegue e monte" : ""}
               </span>
             </li>
+            {pegueEMonte ? (
+              <li>
+                Retirada:{" "}
+                <span className="text-foreground">
+                  {montadorLevaBusca
+                    ? `Entrega e busca (+ ${formatCurrency(TAXA_PEGUE_ENTREGA)})`
+                    : "Cliente retira no depósito"}
+                </span>
+              </li>
+            ) : null}
             {tema ? (
               <li>
                 Tema: <span className="text-foreground">{tema}</span>
@@ -883,7 +1182,30 @@ export function NovaVendaForm({ token, initialClienteId }: NovaVendaFormProps) {
                   </span>
                 </>
               ) : null}
+              {orcamento.valorExtras > 0 ? (
+                <>
+                  {" "}
+                  + extras{" "}
+                  <span className="tabular-nums text-foreground">
+                    {formatCurrency(orcamento.valorExtras)}
+                  </span>
+                </>
+              ) : null}
+              {orcamento.valorTaxa > 0 ? (
+                <>
+                  {" "}
+                  + taxa{" "}
+                  <span className="tabular-nums text-foreground">
+                    {formatCurrency(orcamento.valorTaxa)}
+                  </span>
+                </>
+              ) : null}
             </li>
+            {orcamento.valorTaxa > 0 ? (
+              <li className="text-xs text-muted-foreground">
+                {ITEM_TAXA_PEGUE_ENTREGA}
+              </li>
+            ) : null}
             <li className="pt-1 text-base font-medium text-foreground">
               Total sugerido:{" "}
               <span className="tabular-nums text-balloon-sun">

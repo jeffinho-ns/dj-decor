@@ -26,7 +26,8 @@ function resolveMinhas(
 ): boolean {
   if (minhasParam === "1") return true;
   if (minhasParam === "0") return false;
-  return role === "VENDEDOR";
+  // Vendedores e gerentes (também vendem) começam em Minhas; ADMIN fica em Todas
+  return role === "VENDEDOR" || role === "GERENTE";
 }
 
 export default async function VendasPage({ searchParams }: VendasPageProps) {
@@ -37,6 +38,12 @@ export default async function VendasPage({ searchParams }: VendasPageProps) {
   }
 
   const params = await searchParams;
+  if (
+    params.minhas === undefined &&
+    (user.role === "VENDEDOR" || user.role === "GERENTE")
+  ) {
+    redirect("/vendas?minhas=1");
+  }
   const minhas = resolveMinhas(user.role, params.minhas);
 
   let festas: Festa[] = [];
