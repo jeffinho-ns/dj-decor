@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,6 +12,7 @@ import {
   Copy,
   Loader2,
   MessageCircle,
+  Upload,
   UserCheck,
   X,
 } from "lucide-react";
@@ -23,11 +24,14 @@ import { Separator } from "@/components/ui/separator";
 import { FestaContratoPanel } from "@/components/vendas/festa-contrato-panel";
 import { PagamentoForm } from "@/components/vendas/pagamento-form";
 import {
-  createFesta,
   buscarClientePorTelefone,
+  confirmarPagamento,
+  createFesta,
+  createPagamento,
   getClienteById,
   getConfiguracoes,
   sugestoesProdutos,
+  uploadMidia,
 } from "@/lib/api";
 import {
   CATALOGO_ADDONS,
@@ -46,13 +50,27 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types/auth";
-import type { Festa, Pagamento, TamanhoDecoracao } from "@/types/festa";
+import type {
+  Festa,
+  Pagamento,
+  TamanhoDecoracao,
+  TipoPagamento,
+} from "@/types/festa";
 import type { ProdutoSugestao } from "@/types/estoque";
 
 const selectClassName =
   "flex h-11 w-full rounded-xl neo-inset px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-balloon-sky/30 md:h-9 md:text-sm";
 
 const TAMANHOS: TamanhoDecoracao[] = ["P", "M", "G", "GG"];
+
+const TIPOS_PAGAMENTO: TipoPagamento[] = ["PIX", "DINHEIRO", "CARTAO", "OUTRO"];
+
+const tipoPagamentoLabel: Record<TipoPagamento, string> = {
+  PIX: "PIX",
+  DINHEIRO: "Dinheiro",
+  CARTAO: "Cartão",
+  OUTRO: "Outro",
+};
 
 const novaVendaSchema = z.object({
   nomeCliente: z.string().min(2, "Informe o nome do cliente"),
@@ -130,6 +148,11 @@ export function NovaVendaForm({
   );
   const [clienteEncontrado, setClienteEncontrado] = useState<string | null>(null);
   const [buscandoCliente, setBuscandoCliente] = useState(false);
+  const [pagamentoValor, setPagamentoValor] = useState("");
+  const [pagamentoTipo, setPagamentoTipo] = useState<TipoPagamento>("PIX");
+  const [pagamentoFile, setPagamentoFile] = useState<File | null>(null);
+  const [pagamentoAviso, setPagamentoAviso] = useState<string | null>(null);
+  const pagamentoFileRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -479,6 +502,19 @@ export function NovaVendaForm({
 
   async function onSubmit(data: NovaVendaFormValues) {
     setSubmitError(null);
+    setPagamentoAviso(null);
+
+    const entradaAmount = Number(pagamentoValor.replace(",", "."));
+    const temEntrada =
+      pagamentoValor.trim() !== "" &&
+      Number.isFinite(entradaAmount) &&
+      entradaAmount > 0;
+
+    if (pagamentoValor.trim() !== "" && !temEntrada) {
+      setSubmitError("Informe um valor válido no lançamento de pagamento");
+      return;
+    }
+
     try {
       const pegueAtivo = Boolean(kitSelecionado && pegueEMonte);
       const horaMontagem = pegueAtivo ? data.horaEvento : data.horaMontagem;
@@ -520,7 +556,59 @@ export function NovaVendaForm({
         },
         token
       );
-      setPagamentos([]);
+
+      const novosPagamentos: Pagamento[] = [];
+      let avisoPagamento: string | null = null;
+
+      if (temEntrada) {
+        try {
+          const pagamento = await createPagamento(
+            festa.id,
+            { valor: entradaAmount, tipo: pagamentoTipo },
+            token
+          );
+          let atualizado = pagamento;
+
+          if (pagamentoFile) {
+            try {
+              const midia = await uploadMidia(
+                {
+                  file: pagamentoFile,
+                  tipo: "COMPROVANTE_PIX",
+                  festaId: festa.id,
+                },
+                token
+              );
+              atualizado = await confirmarPagamento(
+                pagamento.id,
+                { comprovanteMidiaId: midia.id },
+                token
+              );
+            } catch (uploadErr) {
+              novosPagamentos.push(pagamento);
+              avisoPagamento =
+                uploadErr instanceof Error
+                  ? `Venda salva e pagamento criado, mas o comprovante falhou: ${uploadErr.message}. Anexe de novo abaixo.`
+                  : "Venda salva e pagamento criado, mas o comprovante falhou. Anexe de novo abaixo.";
+              setPagamentos(novosPagamentos);
+              setPagamentoAviso(avisoPagamento);
+              setFestaCriada(festa);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+              return;
+            }
+          }
+
+          novosPagamentos.push(atualizado);
+        } catch (pagErr) {
+          avisoPagamento =
+            pagErr instanceof Error
+              ? `Venda salva, mas o pagamento não foi registrado: ${pagErr.message}. Lance abaixo.`
+              : "Venda salva, mas o pagamento não foi registrado. Lance abaixo.";
+        }
+      }
+
+      setPagamentos(novosPagamentos);
+      setPagamentoAviso(avisoPagamento);
       setFestaCriada(festa);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -536,6 +624,11 @@ export function NovaVendaForm({
     setFestaCriada(null);
     setPagamentos([]);
     setSubmitError(null);
+    setPagamentoAviso(null);
+    setPagamentoValor("");
+    setPagamentoTipo("PIX");
+    setPagamentoFile(null);
+    if (pagamentoFileRef.current) pagamentoFileRef.current.value = "";
     setExtraInput("");
     setExtrasManuais([]);
     setKitId("");
@@ -587,16 +680,31 @@ export function NovaVendaForm({
                 </span>
               </p>
               <p className="mt-3 text-sm text-muted-foreground">
-                Role um pouco abaixo para{" "}
-                <strong className="font-medium text-foreground">
-                  registrar pagamento/entrada
-                </strong>{" "}
-                e{" "}
-                <strong className="font-medium text-foreground">
-                  gerar o contrato
-                </strong>{" "}
-                — tudo nesta mesma tela.
+                {pagamentos.length > 0 ? (
+                  <>
+                    Entrada registrada. Abaixo você pode lançar o restante e{" "}
+                    <strong className="font-medium text-foreground">
+                      gerar o contrato
+                    </strong>
+                    .
+                  </>
+                ) : (
+                  <>
+                    Role um pouco abaixo para{" "}
+                    <strong className="font-medium text-foreground">
+                      registrar pagamento/entrada
+                    </strong>{" "}
+                    e{" "}
+                    <strong className="font-medium text-foreground">
+                      gerar o contrato
+                    </strong>{" "}
+                    — tudo nesta mesma tela.
+                  </>
+                )}
               </p>
+              {pagamentoAviso ? (
+                <p className="mt-2 text-sm text-balloon-sun">{pagamentoAviso}</p>
+              ) : null}
             </div>
           </div>
 
@@ -623,11 +731,14 @@ export function NovaVendaForm({
 
         <div className="rounded-2xl neo-sm p-4 sm:p-6 md:p-8">
           <p className="text-xs font-medium uppercase tracking-wider text-balloon-mint">
-            Registrar pagamento / entrada
+            {pagamentos.length > 0
+              ? "Pagamentos"
+              : "Registrar pagamento / entrada"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Lance a entrada ou o valor pago agora. A festa só fica quitada quando
-            o total confirmado cobrir o valor.
+            {pagamentos.length > 0
+              ? "A festa só fica quitada quando o total confirmado cobrir o valor."
+              : "Lance a entrada ou o valor pago agora. A festa só fica quitada quando o total confirmado cobrir o valor."}
           </p>
           <div className="mt-3">
             <PagamentoForm
@@ -1288,14 +1399,105 @@ export function NovaVendaForm({
           </div>
         </div>
 
-        <div className="rounded-2xl neo-inset px-3 py-2.5 text-xs text-muted-foreground">
-          Depois de salvar, esta tela abre{" "}
-          <span className="font-medium text-foreground">
+        <div className="space-y-3 rounded-2xl neo-inset p-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-balloon-mint">
             Registrar pagamento / entrada
-          </span>{" "}
-          e{" "}
-          <span className="font-medium text-foreground">Contrato</span> para a
-          cliente — sem precisar ir ao Kanban.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Pode lançar só a entrada agora e o restante depois — o saldo
+            atualiza sozinho.
+          </p>
+          <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="pagamento-valor-nova" className="text-xs">
+                Valor deste lançamento (R$)
+              </Label>
+              <Input
+                id="pagamento-valor-nova"
+                type="number"
+                step="0.01"
+                min="0"
+                className="h-11 text-base md:h-9 md:text-sm"
+                placeholder="400.00"
+                value={pagamentoValor}
+                onChange={(event) => setPagamentoValor(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="pagamento-tipo-nova" className="text-xs">
+                Tipo
+              </Label>
+              <select
+                id="pagamento-tipo-nova"
+                className={selectClassName}
+                value={pagamentoTipo}
+                onChange={(event) =>
+                  setPagamentoTipo(event.target.value as TipoPagamento)
+                }
+              >
+                {TIPOS_PAGAMENTO.map((item) => (
+                  <option key={item} value={item} className="bg-background">
+                    {tipoPagamentoLabel[item]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="pagamento-comprovante-nova" className="text-xs">
+              Comprovante (foto ou PDF)
+            </Label>
+            <label
+              htmlFor="pagamento-comprovante-nova"
+              className={cn(
+                "flex min-h-11 cursor-pointer items-center gap-2 rounded-xl neo-inset px-3 text-sm text-muted-foreground transition-all hover:brightness-[1.02] md:h-9 md:px-2.5 md:text-xs",
+                pagamentoFile && "text-balloon-sun ring-1 ring-balloon-sun/30"
+              )}
+            >
+              <Upload className="size-4 shrink-0" />
+              <span className="truncate">
+                {pagamentoFile
+                  ? pagamentoFile.name
+                  : "Anexar comprovante de PIX"}
+              </span>
+            </label>
+            <input
+              ref={pagamentoFileRef}
+              id="pagamento-comprovante-nova"
+              type="file"
+              accept="image/*,application/pdf,.heic,.heif"
+              className="hidden"
+              onChange={(event) =>
+                setPagamentoFile(event.target.files?.[0] ?? null)
+              }
+            />
+            {pagamentoFile ? (
+              <p className="text-xs text-muted-foreground">
+                Ao salvar com comprovante, o lançamento já fica confirmado.
+              </p>
+            ) : null}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Opcional: deixe o valor em branco para salvar só a venda e lançar
+            o pagamento depois.
+          </p>
+
+          <Button
+            type="submit"
+            className="min-h-11 w-full"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              "Registrar pagamento"
+            )}
+          </Button>
         </div>
 
         {submitError ? (
@@ -1315,8 +1517,21 @@ export function NovaVendaForm({
             >
               Cancelar
             </Button>
-            <Button type="submit" className="min-h-11 w-full md:w-auto" disabled={isSubmitting}>
-              {isSubmitting ? "Salvando..." : "Salvar e registrar pagamento"}
+            <Button
+              type="submit"
+              className="min-h-11 w-full md:w-auto"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : pagamentoValor.trim() ? (
+                "Salvar e registrar pagamento"
+              ) : (
+                "Salvar venda"
+              )}
             </Button>
           </div>
         </div>
