@@ -581,14 +581,21 @@ export function NovaVendaForm({
                 {festaCriada.tema}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {festaCriada.cliente.nome} ·{" "}
+                {festaCriada.cliente?.nome ?? "Cliente"} ·{" "}
                 <span className="tabular-nums text-foreground">
                   {formatCurrency(Number(festaCriada.valor))}
                 </span>
               </p>
               <p className="mt-3 text-sm text-muted-foreground">
-                Registre o pagamento e gere o contrato abaixo — sem sair da
-                página.
+                Role um pouco abaixo para{" "}
+                <strong className="font-medium text-foreground">
+                  registrar pagamento/entrada
+                </strong>{" "}
+                e{" "}
+                <strong className="font-medium text-foreground">
+                  gerar o contrato
+                </strong>{" "}
+                — tudo nesta mesma tela.
               </p>
             </div>
           </div>
@@ -605,7 +612,7 @@ export function NovaVendaForm({
             <Link
               href="/vendas?minhas=1"
               className={cn(
-                buttonVariants({ variant: "default", size: "default" }),
+                buttonVariants({ variant: "outline", size: "default" }),
                 "inline-flex min-h-11 w-full items-center justify-center sm:w-auto"
               )}
             >
@@ -616,7 +623,11 @@ export function NovaVendaForm({
 
         <div className="rounded-2xl neo-sm p-4 sm:p-6 md:p-8">
           <p className="text-xs font-medium uppercase tracking-wider text-balloon-mint">
-            Pagamento
+            Registrar pagamento / entrada
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Lance a entrada ou o valor pago agora. A festa só fica quitada quando
+            o total confirmado cobrir o valor.
           </p>
           <div className="mt-3">
             <PagamentoForm
@@ -628,11 +639,25 @@ export function NovaVendaForm({
               onPagamentosChange={setPagamentos}
             />
           </div>
-          <div className="mt-4 border-t border-border/50 pt-4">
+        </div>
+
+        <div className="rounded-2xl neo-sm p-4 sm:p-6 md:p-8">
+          <p className="text-xs font-medium uppercase tracking-wider text-balloon-lilac">
+            Contrato
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Gere o PDF com nome da cliente, data, hora, valor e adiantamento já
+            registrado.
+          </p>
+          <div className="mt-3">
             <FestaContratoPanel
               festaId={festaCriada.id}
               token={token}
-              clienteNome={festaCriada.cliente.nome}
+              clienteNome={
+                festaCriada.cliente?.nome ||
+                getValues("nomeCliente") ||
+                undefined
+              }
             />
           </div>
         </div>
@@ -1263,6 +1288,16 @@ export function NovaVendaForm({
           </div>
         </div>
 
+        <div className="rounded-2xl neo-inset px-3 py-2.5 text-xs text-muted-foreground">
+          Depois de salvar, esta tela abre{" "}
+          <span className="font-medium text-foreground">
+            Registrar pagamento / entrada
+          </span>{" "}
+          e{" "}
+          <span className="font-medium text-foreground">Contrato</span> para a
+          cliente — sem precisar ir ao Kanban.
+        </div>
+
         {submitError ? (
           <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {submitError}
@@ -1281,7 +1316,7 @@ export function NovaVendaForm({
               Cancelar
             </Button>
             <Button type="submit" className="min-h-11 w-full md:w-auto" disabled={isSubmitting}>
-              {isSubmitting ? "Salvando..." : "Salvar venda"}
+              {isSubmitting ? "Salvando..." : "Salvar e registrar pagamento"}
             </Button>
           </div>
         </div>
