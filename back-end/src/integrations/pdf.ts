@@ -121,6 +121,8 @@ function renderContratoPdf(
     nomeEmpresa: string;
     sloganEmpresa: string;
     clausulasContrato: string | null;
+    telefoneEmpresa?: string | null;
+    enderecoEmpresa?: string | null;
     logoBuffer: Buffer | null;
     referencias: Buffer[];
     assinaturaBuffer: Buffer | null;
@@ -191,6 +193,12 @@ function renderContratoPdf(
     doc.font("Helvetica");
     doc.text(`Razão social: ${opts.nomeEmpresa} — Decoração de Festas`);
     doc.text(`Representante / vendedor(a): ${festa.vendedor.nome}`);
+    if (opts.telefoneEmpresa?.trim()) {
+      doc.text(`Telefone / WhatsApp: ${opts.telefoneEmpresa.trim()}`);
+    }
+    if (opts.enderecoEmpresa?.trim()) {
+      doc.text(`Endereço / depósito: ${opts.enderecoEmpresa.trim()}`);
+    }
     doc.moveDown(0.8);
 
     doc.font("Helvetica-Bold").text("LOCATÁRIO(A)");
@@ -203,7 +211,9 @@ function renderContratoPdf(
     doc.font("Helvetica-Bold").text("DADOS DO PEDIDO");
     doc.font("Helvetica");
     doc.text(`Cliente: ${festa.cliente.nome}`);
+    doc.text(`Telefone: ${festa.cliente.telefone}`);
     doc.text(`Tema: ${festa.tema}`);
+    doc.text(`Tamanho: ${festa.tamanhoDecoracao}`);
     doc.text(
       `Modalidade: ${pegueEMonte ? "Pegue e monte" : "Montagem pela equipe"}`
     );
@@ -218,9 +228,29 @@ function renderContratoPdf(
     doc.text(`Valor total: ${formatarMoeda(valorTotal)}`);
     doc.text(
       totalPago > 0
-        ? `Adiantamento / pago: ${formatarMoeda(totalPago)} · Saldo: ${formatarMoeda(saldo)}`
-        : `Adiantamento / pago: nenhum valor confirmado até o momento · Saldo: ${formatarMoeda(saldo)}`
+        ? `Adiantamento / sinal confirmado: ${formatarMoeda(totalPago)}`
+        : "Adiantamento / sinal confirmado: nenhum valor confirmado até o momento"
     );
+    doc.text(`Saldo restante: ${formatarMoeda(saldo)}`);
+    if (saldo > 0) {
+      doc.text(
+        "O saldo deverá ser quitado até a véspera do evento, independentemente do meio (PIX, espécie ou cartão)."
+      );
+    }
+    doc.moveDown(0.6);
+
+    if (festa.kitCatalogo) {
+      doc.text(`Kit: ${festa.kitCatalogo}`);
+    }
+    if (festa.itensExtras.length > 0) {
+      doc.text("Itens / extras:");
+      for (const item of festa.itensExtras) {
+        doc.text(`• ${item}`);
+      }
+    }
+    if (festa.observacoes?.trim()) {
+      doc.text(`Observações: ${festa.observacoes.trim()}`);
+    }
     doc.moveDown(1);
 
     const itensDescricao = [
@@ -238,7 +268,7 @@ function renderContratoPdf(
     } else {
       clausula(doc, "CLÁUSULA 1 — DO OBJETO", [
         `1.1. A LOCADORA compromete-se a disponibilizar, em regime de locação, a decoração ` +
-          `referente ao tema "${festa.tema}" para o evento do(a) LOCATÁRIO(A).`,
+          `referente ao tema "${festa.tema}" (tamanho ${festa.tamanhoDecoracao}) para o evento do(a) LOCATÁRIO(A).`,
         itensDescricao
           ? `1.2. Composição contratada: ${itensDescricao}.`
           : "1.2. A composição detalhada dos itens consta do orçamento aprovado entre as partes.",
@@ -260,9 +290,10 @@ function renderContratoPdf(
       clausula(doc, "CLÁUSULA 3 — DO VALOR E DO PAGAMENTO", [
         `3.1. Valor total da locação: ${formatarMoeda(valorTotal)}.`,
         totalPago > 0
-          ? `3.2. Adiantamento já confirmado: ${formatarMoeda(totalPago)}. Saldo restante: ${formatarMoeda(saldo)}.`
-          : "3.2. Nenhum adiantamento confirmado até a emissão deste contrato. O pagamento deverá ser efetuado conforme condições acordadas (PIX, transferência ou outro meio).",
-        "3.3. A não quitação integral até a data do evento poderá impedir a montagem, a entrega dos materiais ou a desmontagem programada.",
+          ? `3.2. Adiantamento / sinal já confirmado: ${formatarMoeda(totalPago)}. Saldo restante: ${formatarMoeda(saldo)}.`
+          : "3.2. Nenhum adiantamento confirmado até a emissão deste contrato. O pagamento deverá ser efetuado conforme condições acordadas (PIX, espécie, cartão ou outro meio).",
+        "3.3. Se houver valor restante, deverá ser quitado até a véspera do evento, independentemente do meio de pagamento (PIX, espécie ou cartão).",
+        "3.4. A não quitação integral até a véspera do evento poderá impedir a montagem, a entrega dos materiais ou a desmontagem programada.",
       ]);
 
       clausula(doc, "CLÁUSULA 4 — DAS RESPONSABILIDADES", [
@@ -275,9 +306,15 @@ function renderContratoPdf(
       clausula(doc, "CLÁUSULA 5 — DISPOSIÇÕES GERAIS E FORO", [
         "5.1. Este contrato é firmado em caráter particular, obrigando as partes, seus herdeiros e sucessores.",
         "5.2. Eventuais tolerâncias quanto ao cumprimento de cláusulas não implicam novação ou renúncia de direitos.",
-        "5.3. Fica eleito o foro da comarca de domicílio da LOCADORA para dirimir quaisquer controvérsias oriundas deste contrato, com renúncia a qualquer outro, por mais privilegiado que seja.",
+        "5.3. Fica eleito o foro da comarca de Paracambi/RJ (domicílio da LOCADORA) para dirimir quaisquer controvérsias oriundas deste contrato, com renúncia a qualquer outro, por mais privilegiado que seja.",
       ]);
     }
+
+    // Sempre presente — regra de negócio acordada com a marca
+    clausula(doc, "CLÁUSULA — DESISTÊNCIA E CRÉDITO", [
+      "O valor pago (sinal ou qualquer parcela) não é devolvido em caso de desistência.",
+      "O montante fica como crédito por até 12 (doze) meses, podendo ser usado em outra data ou transferido para outra pessoa.",
+    ]);
 
     if (opts.referencias.length > 0) {
       doc.addPage();
@@ -378,11 +415,13 @@ export class PdfKitAdapter implements PdfAdapter {
       : null;
 
     const pdfBuffer = await renderContratoPdf(festa, {
-      nomeEmpresa: config?.nomeEmpresa ?? "DJ festas",
+      nomeEmpresa: config?.nomeEmpresa ?? "Débora Pimentel Decoradora",
       sloganEmpresa:
         config?.sloganEmpresa ??
-        "Decoração de Festas · Locação de Materiais",
+        "Decoração de Festas · Paracambi - RJ",
       clausulasContrato: config?.clausulasContrato ?? null,
+      telefoneEmpresa: config?.telefoneEmpresa ?? null,
+      enderecoEmpresa: config?.enderecoEmpresa ?? null,
       logoBuffer,
       referencias,
       assinaturaBuffer: assinatura ? Buffer.from(assinatura.data) : null,

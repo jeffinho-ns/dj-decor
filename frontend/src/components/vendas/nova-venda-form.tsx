@@ -459,6 +459,14 @@ export function NovaVendaForm({
   function textoOrcamento(): string {
     const values = getValues();
     const valorNum = Number(values.valor.replace(",", ".")) || orcamento.total;
+    const sinalNum = Number(pagamentoValor.replace(",", "."));
+    const valorSinal =
+      pagamentoValor.trim() !== "" &&
+      Number.isFinite(sinalNum) &&
+      sinalNum > 0
+        ? sinalNum
+        : undefined;
+
     return montarTextoOrcamento({
       nomeCliente: values.nomeCliente,
       telefone: values.telefone,
@@ -471,12 +479,10 @@ export function NovaVendaForm({
       horaMontagem: values.horaMontagem,
       endereco: values.endereco,
       entregaPegue: pegueEMonte && montadorLevaBusca,
-      itens: orcamento.itens,
-      valorBase: orcamento.valorBase,
-      valorAddons: orcamento.valorAddons,
-      valorExtras: orcamento.valorExtras,
-      valorTaxa: orcamento.valorTaxa,
+      // Linhas livres do WhatsApp (extras manuais), não a composição completa do kit
+      itens: extrasManuais,
       valor: valorNum,
+      valorSinal,
       observacoes: values.observacoes,
     });
   }
@@ -753,24 +759,15 @@ export function NovaVendaForm({
         </div>
 
         <div className="rounded-2xl neo-sm p-4 sm:p-6 md:p-8">
-          <p className="text-xs font-medium uppercase tracking-wider text-balloon-lilac">
-            Contrato
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Gere o PDF com nome da cliente, data, hora, valor e adiantamento já
-            registrado.
-          </p>
-          <div className="mt-3">
-            <FestaContratoPanel
-              festaId={festaCriada.id}
-              token={token}
-              clienteNome={
-                festaCriada.cliente?.nome ||
-                getValues("nomeCliente") ||
-                undefined
-              }
-            />
-          </div>
+          <FestaContratoPanel
+            festaId={festaCriada.id}
+            token={token}
+            clienteNome={
+              festaCriada.cliente?.nome ||
+              getValues("nomeCliente") ||
+              undefined
+            }
+          />
         </div>
       </div>
     );
@@ -1382,21 +1379,6 @@ export function NovaVendaForm({
               <p className="text-xs text-destructive">{errors.valor.message}</p>
             ) : null}
           </div>
-
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={copiarOrcamento}>
-              {copyFeedback ? (
-                <Check className="size-4" />
-              ) : (
-                <Copy className="size-4" />
-              )}
-              {copyFeedback ? "Copiado" : "Copiar orçamento"}
-            </Button>
-            <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={abrirWhatsApp}>
-              <MessageCircle className="size-4" />
-              WhatsApp
-            </Button>
-          </div>
         </div>
 
         <div className="space-y-3 rounded-2xl neo-inset p-4">
@@ -1497,6 +1479,21 @@ export function NovaVendaForm({
             ) : (
               "Registrar pagamento"
             )}
+          </Button>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={copiarOrcamento}>
+            {copyFeedback ? (
+              <Check className="size-4" />
+            ) : (
+              <Copy className="size-4" />
+            )}
+            {copyFeedback ? "Copiado" : "Copiar orçamento"}
+          </Button>
+          <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={abrirWhatsApp}>
+            <MessageCircle className="size-4" />
+            WhatsApp
           </Button>
         </div>
 

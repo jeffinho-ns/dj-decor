@@ -292,9 +292,25 @@ export function calcularOrcamento({
 }
 
 function formatarReaisTexto(valor: number): string {
-  return `R$ ${valor.toFixed(2).replace(".", ",")}`;
+  return valor.toFixed(2).replace(".", ",");
 }
 
+/** Data do form (YYYY-MM-DD ou dd/mm/aaaa) → dd/MM */
+function formatarDataCurta(dataEvento: string): string {
+  const iso = dataEvento.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}/${iso[2]}`;
+  const br = dataEvento.match(/^(\d{2})\/(\d{2})/);
+  if (br) return `${br[1]}/${br[2]}`;
+  return dataEvento;
+}
+
+const MARCA_CONFIRMACAO = "Débora Pimentel Decoradora";
+const RODAPE_CONFIRMACAO =
+  "📍 Paracambi - RJ | 📱 Instagram: @deborapimenteldecoradora";
+
+/**
+ * Texto WhatsApp no formato de confirmação de sinal da marca.
+ */
 export function montarTextoOrcamento(params: {
   nomeCliente: string;
   telefone: string;
@@ -314,85 +330,34 @@ export function montarTextoOrcamento(params: {
   valorExtras?: number;
   valorTaxa?: number;
   valor: number;
+  /** Valor do sinal/entrada. Se omitido ou 0, usa o valor total. */
+  valorSinal?: number;
   observacoes?: string;
 }): string {
-  const modo = params.pegueEMonte ? "Pegue e monte" : "Montagem pela equipe";
-  const linhas = [
-    `*Orçamento DJ festas*`,
-    ``,
-    `Cliente: ${params.nomeCliente || "—"}`,
-    `Telefone: ${params.telefone || "—"}`,
-    `Tema: ${params.tema || "—"}`,
-  ];
+  const total = Number.isFinite(params.valor) ? params.valor : 0;
+  const sinalRaw =
+    params.valorSinal != null &&
+    Number.isFinite(params.valorSinal) &&
+    params.valorSinal > 0
+      ? params.valorSinal
+      : total;
+  const sinalTxt = formatarReaisTexto(sinalRaw);
+  const totalTxt = formatarReaisTexto(total);
 
-  if (params.tamanho) {
-    linhas.push(`Tamanho: ${params.tamanho}`);
+  let local = params.endereco?.trim() || "—";
+  if (params.pegueEMonte && !params.entregaPegue) {
+    local = "Retirada no Depósito";
+  } else if (params.pegueEMonte && params.entregaPegue) {
+    local = params.endereco?.trim()
+      ? `Entrega no local — ${params.endereco.trim()}`
+      : "Entrega e busca pelo montador";
   }
 
-  if (params.kitNome) {
-    linhas.push(`Kit: ${params.kitNome}`);
+  const detalhes: string[] = [];
+  for (const item of params.itens) {
+    const t = item.trim();
+    if (t && !detalhes.includes(t)) detalhes.push(t);
   }
-
-  linhas.push(`Modo: ${modo}`);
-
-  if (params.pegueEMonte) {
-    linhas.push(
-      params.entregaPegue
-        ? `Retirada: entrega e busca pelo montador (+ taxa)`
-        : `Retirada: cliente retira no depósito`
-    );
-  }
-
-  if (params.dataEvento) {
-    const rotuloData = params.pegueEMonte ? "Data da retirada" : "Data do evento";
-    const rotuloHora = params.pegueEMonte
-      ? "Horário da retirada"
-      : "Horário da festa";
-    linhas.push(
-      `${rotuloData}: ${params.dataEvento}${
-        params.horaEvento ? ` às ${params.horaEvento}` : ""
-      }`
-    );
-    if (params.horaEvento) {
-      linhas.push(`${rotuloHora}: ${params.horaEvento}`);
-    }
-    if (!params.pegueEMonte && params.horaMontagem) {
-      linhas.push(`Horário de montagem: ${params.horaMontagem}`);
-    }
-  }
-
-  if (params.endereco) {
-    linhas.push(`Local: ${params.endereco}`);
-  }
-
-  if (params.itens.length) {
-    linhas.push(``, `Itens:`, ...params.itens.map((item) => `• ${item}`));
-  }
-
-  const temBreakdown =
-    params.valorBase != null ||
-    params.valorAddons != null ||
-    params.valorExtras != null ||
-    params.valorTaxa != null;
-
-  if (temBreakdown) {
-    linhas.push(``, `Valores:`);
-    if (params.valorBase != null && params.valorBase > 0) {
-      linhas.push(`• Base: ${formatarReaisTexto(params.valorBase)}`);
-    }
-    if (params.valorAddons != null && params.valorAddons > 0) {
-      linhas.push(`• Add-ons: ${formatarReaisTexto(params.valorAddons)}`);
-    }
-    if (params.valorExtras != null && params.valorExtras > 0) {
-      linhas.push(`• Extras: ${formatarReaisTexto(params.valorExtras)}`);
-    }
-    if (params.valorTaxa != null && params.valorTaxa > 0) {
-      linhas.push(`• Taxa entrega/retirada: ${formatarReaisTexto(params.valorTaxa)}`);
-    }
-  }
-
-  linhas.push(``, `Total: ${formatarReaisTexto(params.valor)}`);
-
   if (params.observacoes?.trim()) {
     const obs = params.observacoes
       .trim()
@@ -400,10 +365,36 @@ export function montarTextoOrcamento(params: {
       .join("")
       .replace(/\n{2,}/g, "\n")
       .trim();
-    if (obs) {
-      linhas.push(``, `Obs.: ${obs}`);
+    for (const linha of obs.split("\n")) {
+      const t = linha.trim();
+      if (t && !detalhes.includes(t)) detalhes.push(t);
     }
   }
+
+  const linhas = [
+    `💬 Confirmação de sinal — ${MARCA_CONFIRMACAO} 🎈`,
+    ``,
+    `Recebi o sinal de R$*${sinalTxt}*`,
+    `referente à decoração de R$ ${totalTxt}*`,
+    `evento de ${params.nomeCliente || "—"}`,
+    `Data ${params.dataEvento ? formatarDataCurta(params.dataEvento) : "—"}`,
+    `Local ${local}`,
+    ...detalhes,
+    `Telefone ${params.telefone || "—"}`,
+    `Horário início ${params.horaEvento || "—"}`,
+    ``,
+    `Segue foto referência decoração.`,
+    `⸻`,
+    `Se houver valor restante deverá ser quitado até a véspera do evento independente se for Pix, espécie ou cartão !`,
+    `_________`,
+    ``,
+    `Aviso importante:`,
+    `O valor pago não é devolvido em caso de desistência.`,
+    `Fica como crédito por até 12 meses, podendo ser usado em outra data ou transferido para outra pessoa.`,
+    ``,
+    `✨ ${MARCA_CONFIRMACAO}`,
+    RODAPE_CONFIRMACAO,
+  ];
 
   return linhas.join("\n");
 }
