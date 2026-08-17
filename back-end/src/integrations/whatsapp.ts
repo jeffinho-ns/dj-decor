@@ -1,6 +1,7 @@
-import { StatusMensagemWhatsApp, type Prisma } from "@prisma/client";
+import { CanalAtendimento, DirecaoMensagem, StatusMensagemWhatsApp, type Prisma } from "@prisma/client";
 import { env } from "../config/env";
 import { prisma } from "../prisma/client";
+import { metaMessaging } from "./meta-messaging";
 
 export interface WhatsAppDispatchInput {
   template: string;
@@ -124,19 +125,21 @@ export function enrichWhatsAppPayload(
 /**
  * Templates disparados automaticamente pelo backend:
  *
- * - `pagamento_confirmado` — após confirmar pagamento (payload: tema, data, valor, mensagemSugerida)
- * - `upsell_extras` — após pagamento confirmado; oferta de itens extras (payload: tema, data, itensExtras[], mensagemSugerida)
- * - `equipe_a_caminho` — após concluir romaneio / OS EM_TRANSITO (payload: tema, data, endereco, mensagemSugerida)
- * - `montagem_finalizada` — após foto final / OS FINALIZADA (payload: tema, data, mensagemSugerida)
- * - `pos_venda_avaliacao` — após festa CONCLUIDO / foto final; pedido de avaliação (payload: tema, data, mensagemSugerida)
+ * - `pagamento_confirmado` — após confirmar pagamento
+ * - `upsell_extras` — após pagamento confirmado
+ * - `equipe_a_caminho` — após concluir romaneio / OS EM_TRANSITO
+ * - `montagem_finalizada` — após foto final / OS FINALIZADA
+ * - `pos_venda_avaliacao` — após festa CONCLUIDO / foto final
  *
- * Adapter para o projeto paralelo de IA / WhatsApp.
- * Registra a mensagem no banco e, se WHATSAPP_IA_WEBHOOK_URL estiver
- * configurada, encaminha o payload para esse serviço.
+ * Ordem de envio: Meta Cloud API (se configurada) → WHATSAPP_IA_WEBHOOK_URL (legado).
+ * Também espelha a mensagem na inbox de atendimento quando há conversa do telefone.
  */
 export class WhatsAppAdapter {
   async dispatch(input: WhatsAppDispatchInput): Promise<WhatsAppDispatchResult> {
     const payloadEnriquecido = enrichWhatsAppPayload(input.template, input.payload);
+    const mensagemSugerida = String(
+      asRecord(payloadEnriquecido).mensagemSugerida ?? ""
+    );
 
     const registro = await prisma.mensagemWhatsApp.create({
       data: {
@@ -148,9 +151,44 @@ export class WhatsAppAdapter {
       },
     });
 
+    // Espelha na inbox CRM (best-effort)
+    if (input.telefone && mensagemSugerida) {
+      void this.mirrorToInbox(input, mensagemSugerida).catch((err) => {
+        console.warn("[whatsapp] falha ao espelhar na inbox:", err);
+      });
+    }
+
+    // Preferência: Meta Cloud API
+    if (metaMessaging.isConfigured() && input.telefone && mensagemSugerida) {
+      try {
+        const sent = await metaMessaging.sendText({
+          canal: CanalAtendimento.WHATSAPP,
+          to: input.telefone,
+          text: mensagemSugerida,
+        });
+        await prisma.mensagemWhatsApp.update({
+          where: { id: registro.id },
+          data: {
+            status: StatusMensagemWhatsApp.ENVIADA,
+            enviadoEm: new Date(),
+            providerId: sent.providerMessageId,
+          },
+        });
+        return {
+          id: registro.id,
+          status: StatusMensagemWhatsApp.ENVIADA,
+          forwarded: !sent.stub,
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Falha Meta WhatsApp";
+        console.error("[whatsapp] Meta send falhou, tentando webhook legado:", message);
+      }
+    }
+
     if (!env.WHATSAPP_IA_WEBHOOK_URL) {
       console.info(
-        "[whatsapp] mensagem registrada (sem webhook configurado):",
+        "[whatsapp] mensagem registrada (sem Meta/webhook):",
         registro.id,
         input.template
       );
@@ -224,6 +262,42 @@ export class WhatsAppAdapter {
         forwarded: false,
       };
     }
+  }
+
+  private async mirrorToInbox(
+    input: WhatsAppDispatchInput,
+    texto: string
+  ): Promise<void> {
+    const digits = (input.telefone ?? "").replace(/\D/g, "");
+    if (digits.length < 8) return;
+
+    const conversa = await prisma.conversa.findFirst({
+      where: {
+        canal: CanalAtendimento.WHATSAPP,
+        OR: [
+          { externalThreadId: digits },
+          { externalThreadId: { endsWith: digits.slice(-8) } },
+          { contatoExterno: { contains: digits.slice(-8) } },
+        ],
+      },
+      orderBy: { atualizadoEm: "desc" },
+    });
+    if (!conversa) return;
+
+    await prisma.mensagemCanal.create({
+      data: {
+        conversaId: conversa.id,
+        direcao: DirecaoMensagem.OUT,
+        texto,
+        autorTipo: "SISTEMA",
+        statusEnvio: "TEMPLATE",
+        festaId: input.festaId ?? conversa.festaId,
+      },
+    });
+    await prisma.conversa.update({
+      where: { id: conversa.id },
+      data: { ultimaMensagemEm: new Date() },
+    });
   }
 }
 

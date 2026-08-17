@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ContactRound,
   Hammer,
+  Headphones,
   LayoutGrid,
   Package,
   PartyPopper,
@@ -36,6 +37,7 @@ type NavItem = {
 
 const DEFAULT_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/atendimento", label: "Atendimento", shortLabel: "Inbox", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", shortLabel: "Nova", icon: PlusCircle },
   { href: "/clientes", label: "Clientes", shortLabel: "Carteira", icon: ContactRound },
@@ -48,6 +50,7 @@ const DEFAULT_ITEMS: NavItem[] = [
 
 const GESTAO_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/atendimento", label: "Atendimento", shortLabel: "Inbox", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", shortLabel: "Nova", icon: PlusCircle },
   { href: "/clientes", label: "Clientes", shortLabel: "Carteira", icon: ContactRound },
@@ -64,6 +67,7 @@ const GESTAO_ITEMS: NavItem[] = [
 
 const ADMIN_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/atendimento", label: "Atendimento", shortLabel: "Inbox", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", shortLabel: "Nova", icon: PlusCircle },
   { href: "/clientes", label: "Clientes", shortLabel: "Carteira", icon: ContactRound },
@@ -87,18 +91,21 @@ const MONTADOR_ITEMS: NavItem[] = [
 ];
 
 const PRIMARY_HREFS_DEFAULT = new Set([
+  "/atendimento",
   "/vendas",
   "/vendas/nova",
   "/clientes",
 ]);
 
 const PRIMARY_HREFS_GESTAO = new Set([
+  "/atendimento",
   "/vendas",
   "/financeiro",
   "/equipe",
 ]);
 
 const PRIMARY_HREFS_ADMIN = new Set([
+  "/atendimento",
   "/vendas",
   "/financeiro",
   "/equipe",

@@ -1,8 +1,17 @@
 import type { Cliente, StatusFesta } from "./festa";
+import type { Role } from "./auth";
 
 export interface Montador {
   id: string;
   nome: string;
+  role?: Role;
+}
+
+export interface EquipeFestaValue {
+  montadorEquipeId: string | null;
+  desmontadorEquipeId: string | null;
+  montadorCarroProprio: boolean;
+  desmontadorCarroProprio: boolean;
 }
 
 export interface AgendaOsFesta {
@@ -20,6 +29,8 @@ export interface AgendaOs {
   status: string;
   montadorId: string | null;
   desmontadorId?: string | null;
+  montadorCarroProprio?: boolean;
+  desmontadorCarroProprio?: boolean;
   festa: AgendaOsFesta;
   montador: Montador | null;
   desmontador?: Montador | null;
@@ -28,4 +39,6 @@ export interface AgendaOs {
 export interface AssignMontadorPayload {
   montadorId?: string | null;
   desmontadorId?: string | null;
+  montadorCarroProprio?: boolean;
+  desmontadorCarroProprio?: boolean;
 }

@@ -101,6 +101,41 @@ enum StatusMensagemWhatsApp {
   FALHA
 }
 
+enum CanalAtendimento {
+  WHATSAPP
+  INSTAGRAM
+  MANUAL
+}
+
+enum ModoAtendimento {
+  AI
+  HUMANO
+  HIBRIDO
+}
+
+enum StatusConversa {
+  ABERTA
+  AGUARDANDO
+  FECHADA
+}
+
+enum DirecaoMensagem {
+  IN
+  OUT
+}
+
+enum TipoAtendimentoEvento {
+  CRIADA
+  MENSAGEM
+  HANDOFF
+  TAKEOVER
+  DEVOLVER_IA
+  TOOL_CALL
+  TOOL_RESULT
+  FECHADA
+  ATRIBUICAO
+}
+
 enum StatusDesconto {
   NENHUM
   PENDENTE
@@ -126,6 +161,8 @@ model User {
   comissaoMetaSemanal Decimal? @map("comissao_meta_semanal") @db.Decimal(10, 2)
 
   festas                    Festa[]            @relation("FestaVendedor")
+  festasMontadorEquipe      Festa[]            @relation("FestaMontadorEquipe")
+  festasDesmontadorEquipe   Festa[]            @relation("FestaDesmontadorEquipe")
   midiasUploaded            Midia[]            @relation("MidiaUploadedBy")
   ordensServico             OrdemServico[]     @relation("OsMontador")
   ordensServicoDesmontagem  OrdemServico[]     @relation("OsDesmontador")
@@ -134,6 +171,8 @@ model User {
   descontosSolicitados      Festa[]            @relation("DescontoSolicitadoPor")
   descontosAprovados        Festa[]            @relation("DescontoAprovadoPor")
   followUpsRegistrados      FollowUpContato[]
+  conversasAtribuidas       Conversa[]           @relation("ConversaVendedor")
+  eventosAtendimento        AtendimentoEvento[]  @relation("AtendimentoEventoAutor")
 
   @@map("users")
 }
@@ -149,6 +188,7 @@ model Cliente {
   criadoEm     DateTime @default(now()) @map("criado_em")
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
   festas       Festa[]
+  conversas    Conversa[]
 
   @@index([telefone])
   @@map("clientes")
@@ -187,6 +227,15 @@ model Festa {
   vendedorId String @map("vendedor_id")
   vendedor   User   @relation("FestaVendedor", fields: [vendedorId], references: [id])
 
+  /** Equipe prevista — qualquer usuário ativo (vendedor também pode montar/desmontar). */
+  montadorEquipeId String? @map("montador_equipe_id")
+  montadorEquipe   User?   @relation("FestaMontadorEquipe", fields: [montadorEquipeId], references: [id], onDelete: SetNull)
+  desmontadorEquipeId String? @map("desmontador_equipe_id")
+  desmontadorEquipe   User?   @relation("FestaDesmontadorEquipe", fields: [desmontadorEquipeId], references: [id], onDelete: SetNull)
+  /** true = carro próprio; false = carro da empresa. */
+  montadorCarroProprio     Boolean @default(true) @map("montador_carro_proprio")
+  desmontadorCarroProprio  Boolean @default(true) @map("desmontador_carro_proprio")
+
   valorOriginal           Decimal?       @map("valor_original") @db.Decimal(10, 2)
   descontoPercentual      Decimal?       @map("desconto_percentual") @db.Decimal(5, 2)
   descontoStatus          StatusDesconto @default(NENHUM) @map("desconto_status")
@@ -203,6 +252,8 @@ model Festa {
   contrato          Contrato?
   mensagensWhatsApp MensagemWhatsApp[]
   followUps         FollowUpContato[]
+  mensagensCanal    MensagemCanal[]
+  conversas         Conversa[]
 
   @@map("festas")
 }
@@ -290,6 +341,8 @@ model Comissao {
   pagoEm     DateTime?      @map("pago_em")
   /** Início do mês da festa — só pode ser pago a partir desta data. */
   elegivelEm DateTime       @default(now()) @map("elegivel_em")
+  /** Dia civil (fuso BR) da diária — 1 pagamento por pessoa/tipo/dia. */
+  diaReferencia DateTime?   @map("dia_referencia")
   criadoEm   DateTime       @default(now()) @map("criado_em")
 
   festaId String @map("festa_id")
@@ -303,6 +356,7 @@ model Comissao {
   @@index([beneficiarioId])
   @@index([festaId])
   @@index([status, elegivelEm])
+  @@index([beneficiarioId, tipo, diaReferencia])
   @@map("comissoes")
 }
 
@@ -324,6 +378,8 @@ model OrdemServico {
 
   desmontadorId String? @map("desmontador_id")
   desmontador   User?   @relation("OsDesmontador", fields: [desmontadorId], references: [id])
+  montadorCarroProprio     Boolean @default(true) @map("montador_carro_proprio")
+  desmontadorCarroProprio  Boolean @default(true) @map("desmontador_carro_proprio")
 
   itensRomaneio   ItemRomaneio[]
   movimentacoesQr MovimentacaoQr[]
@@ -437,8 +493,12 @@ model ConfiguracaoNegocio {
   /** % de cada sócia sobre o valor da festa (default 30). */
   comissaoSociaPercentual Decimal  @default(30) @map("comissao_socia_percentual") @db.Decimal(5, 2)
   comissaoMetaSemanal     Decimal  @default(500) @map("comissao_meta_semanal") @db.Decimal(10, 2)
-  diariaMontador          Decimal  @default(100) @map("diaria_montador") @db.Decimal(10, 2)
-  diariaDesmontador       Decimal  @default(70) @map("diaria_desmontador") @db.Decimal(10, 2)
+  /** Diária montagem com carro próprio (default R$150). */
+  diariaMontador          Decimal  @default(150) @map("diaria_montador") @db.Decimal(10, 2)
+  /** Diária desmontagem com carro próprio (default R$130). */
+  diariaDesmontador       Decimal  @default(130) @map("diaria_desmontador") @db.Decimal(10, 2)
+  diariaMontadorCarroEmpresa     Decimal @default(130) @map("diaria_montador_carro_empresa") @db.Decimal(10, 2)
+  diariaDesmontadorCarroEmpresa  Decimal @default(80) @map("diaria_desmontador_carro_empresa") @db.Decimal(10, 2)
   clausulasContrato       String?  @map("clausulas_contrato") @db.Text
   nomeEmpresa             String   @default("DJ festas") @map("nome_empresa")
   sloganEmpresa           String   @default("Decoração de Festas · Locação de Materiais") @map("slogan_empresa")
@@ -503,4 +563,76 @@ model FollowUpContato {
   @@index([festaId])
   @@index([proximoContatoEm])
   @@map("follow_up_contatos")
+}
+
+/** Thread de atendimento omnicanal (WhatsApp / Instagram / manual). */
+model Conversa {
+  id               String           @id @default(cuid())
+  canal            CanalAtendimento @default(WHATSAPP)
+  /** ID externo do contato/thread no provedor (ex.: wa_id / IGSID). */
+  externalThreadId String           @map("external_thread_id")
+  /** Telefone ou handle exibido. */
+  contatoExterno   String?          @map("contato_externo")
+  contatoNome      String?          @map("contato_nome")
+  modo             ModoAtendimento  @default(AI)
+  status           StatusConversa   @default(ABERTA)
+  ultimaMensagemEm DateTime?        @map("ultima_mensagem_em")
+  resumo           String?          @db.Text
+  criadoEm         DateTime         @default(now()) @map("criado_em")
+  atualizadoEm     DateTime         @updatedAt @map("atualizado_em")
+
+  clienteId String?  @map("cliente_id")
+  cliente   Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+
+  vendedorId String? @map("vendedor_id")
+  vendedor   User?   @relation("ConversaVendedor", fields: [vendedorId], references: [id], onDelete: SetNull)
+
+  festaId String? @map("festa_id")
+  festa   Festa?  @relation(fields: [festaId], references: [id], onDelete: SetNull)
+
+  mensagens MensagemCanal[]
+  eventos   AtendimentoEvento[]
+
+  @@unique([canal, externalThreadId])
+  @@index([status, ultimaMensagemEm])
+  @@index([vendedorId])
+  @@index([clienteId])
+  @@map("conversas")
+}
+
+model MensagemCanal {
+  id                String          @id @default(cuid())
+  direcao           DirecaoMensagem
+  texto             String?         @db.Text
+  midiaUrl          String?         @map("midia_url")
+  midiaMimeType     String?         @map("midia_mime_type")
+  providerMessageId String?         @unique @map("provider_message_id")
+  statusEnvio       String?         @map("status_envio")
+  autorTipo         String          @default("CLIENTE") @map("autor_tipo")
+  criadoEm          DateTime        @default(now()) @map("criado_em")
+
+  conversaId String   @map("conversa_id")
+  conversa   Conversa @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+
+  festaId String? @map("festa_id")
+  festa   Festa?  @relation(fields: [festaId], references: [id], onDelete: SetNull)
+
+  @@index([conversaId, criadoEm])
+  @@map("mensagens_canal")
+}
+
+model AtendimentoEvento {
+  id        String                @id @default(cuid())
+  tipo      TipoAtendimentoEvento
+  payload   Json?
+  criadoEm  DateTime              @default(now()) @map("criado_em")
+
+  conversaId String   @map("conversa_id")
+  conversa   Conversa @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+
+  autorId String? @map("autor_id")
+  autor   User?   @relation("AtendimentoEventoAutor", fields: [autorId], references: [id], onDelete: SetNull)
+
+  @@index([conversaId, criadoEm])
+  @@map("atendimento_eventos")
 }

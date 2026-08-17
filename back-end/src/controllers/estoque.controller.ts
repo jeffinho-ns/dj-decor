@@ -122,6 +122,27 @@ export class EstoqueController {
     }
   }
 
+  async avaliarItens(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const data = estoqueService.parseAvaliarItens(req.body);
+      const result = await estoqueService.avaliarItensFesta(data);
+      res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          message: "Dados inválidos",
+          details: error.flatten().fieldErrors,
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+
   async sincronizarCatalogo(
     _req: AuthenticatedRequest,
     res: Response,

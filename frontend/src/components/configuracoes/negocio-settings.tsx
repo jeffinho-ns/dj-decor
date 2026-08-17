@@ -143,22 +143,48 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
             />
           </div>
           <div className="space-y-1">
-            <Label>Diária montador (R$)</Label>
+            <Label>Diária montagem · carro próprio (R$)</Label>
             <Input
               type="number"
-              value={String(config.diariaMontador ?? 100)}
+              value={String(config.diariaMontador ?? 150)}
               onChange={(e) =>
                 setConfig({ ...config, diariaMontador: e.target.value })
               }
             />
           </div>
           <div className="space-y-1">
-            <Label>Diária desmontador (R$)</Label>
+            <Label>Diária montagem · carro da empresa (R$)</Label>
             <Input
               type="number"
-              value={String(config.diariaDesmontador ?? 70)}
+              value={String(config.diariaMontadorCarroEmpresa ?? 130)}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  diariaMontadorCarroEmpresa: e.target.value,
+                })
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Diária desmontagem · carro próprio (R$)</Label>
+            <Input
+              type="number"
+              value={String(config.diariaDesmontador ?? 130)}
               onChange={(e) =>
                 setConfig({ ...config, diariaDesmontador: e.target.value })
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Diária desmontagem · carro da empresa (R$)</Label>
+            <Input
+              type="number"
+              value={String(config.diariaDesmontadorCarroEmpresa ?? 80)}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  diariaDesmontadorCarroEmpresa: e.target.value,
+                })
               }
             />
           </div>
@@ -203,8 +229,14 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
                     config.comissaoSociaPercentual ?? 30
                   ),
                   comissaoMetaSemanal: Number(config.comissaoMetaSemanal),
-                  diariaMontador: Number(config.diariaMontador ?? 100),
-                  diariaDesmontador: Number(config.diariaDesmontador ?? 70),
+                  diariaMontador: Number(config.diariaMontador ?? 150),
+                  diariaDesmontador: Number(config.diariaDesmontador ?? 130),
+                  diariaMontadorCarroEmpresa: Number(
+                    config.diariaMontadorCarroEmpresa ?? 130
+                  ),
+                  diariaDesmontadorCarroEmpresa: Number(
+                    config.diariaDesmontadorCarroEmpresa ?? 80
+                  ),
                   clausulasContrato: config.clausulasContrato,
                 },
                 token

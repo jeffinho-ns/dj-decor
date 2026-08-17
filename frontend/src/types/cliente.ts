@@ -27,6 +27,14 @@ export interface ClienteFestaResumo {
 export interface ClienteDetalhe extends Cliente {
   totalFestas: number;
   festas: ClienteFestaResumo[];
+  conversas?: Array<{
+    id: string;
+    canal: string;
+    status: string;
+    modo: string;
+    ultimaMensagemEm: string | null;
+    contatoExterno: string | null;
+  }>;
 }
 
 export interface CreateClientePayload {

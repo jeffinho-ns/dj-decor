@@ -191,6 +191,34 @@ export function ClienteFicha({ token, cliente: initial }: ClienteFichaProps) {
         </form>
       </div>
 
+      {(initial.conversas?.length ?? 0) > 0 ? (
+        <section className="rounded-2xl neo-sm p-4 sm:p-6">
+          <h3 className="font-display text-xl text-foreground">Conversas</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Atendimentos recentes deste cliente na inbox.
+          </p>
+          <ul className="mt-4 space-y-2">
+            {initial.conversas!.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href="/atendimento"
+                  className="flex items-center justify-between gap-2 rounded-2xl p-3 neo-inset text-sm hover:ring-1 hover:ring-balloon-sky/30"
+                >
+                  <span>
+                    {c.canal} · {c.modo} · {c.status}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {c.ultimaMensagemEm
+                      ? formatDateTime(c.ultimaMensagemEm)
+                      : "—"}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="rounded-2xl neo-sm p-4 sm:p-6">
         <div className="flex items-center gap-2">
           <span className="balloon-dot bg-balloon-pink" />

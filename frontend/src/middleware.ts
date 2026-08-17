@@ -18,9 +18,10 @@ const PROTECTED_PREFIXES = [
   "/follow-ups",
   "/lixeira",
   "/comissoes",
+  "/atendimento",
 ];
-const VENDEDOR_ONLY_PREFIXES = ["/vendas", "/clientes", "/comissoes"];
-const MONTADOR_BLOCKED_PREFIXES = ["/follow-ups"];
+const VENDEDOR_ONLY_PREFIXES = ["/vendas", "/clientes", "/comissoes", "/atendimento"];
+const MONTADOR_BLOCKED_PREFIXES = ["/follow-ups", "/atendimento"];
 const GESTAO_ONLY_PREFIXES = ["/estoque", "/equipe", "/aprovacoes"];
 const GESTAO_FINANCEIRO_PREFIXES = ["/financeiro"];
 const ADMIN_ONLY_PREFIXES: string[] = [];
@@ -154,6 +155,8 @@ export const config = {
     "/aprovacoes/:path*",
     "/follow-ups",
     "/follow-ups/:path*",
+    "/atendimento",
+    "/atendimento/:path*",
     "/lixeira",
     "/lixeira/:path*",
     "/comissoes",

@@ -31,7 +31,12 @@ function handleMulter(req: Request, res: Response, next: NextFunction): void {
 
 const osRoutes = Router();
 
-const montagemRoles = [Role.ADMIN, Role.GERENTE, Role.MONTADOR] as const;
+const montagemRoles = [
+  Role.ADMIN,
+  Role.GERENTE,
+  Role.MONTADOR,
+  Role.VENDEDOR,
+] as const;
 
 osRoutes.use(auth);
 
@@ -49,13 +54,13 @@ osRoutes.get(
 
 osRoutes.get(
   "/mine",
-  requireRoles(Role.MONTADOR),
+  requireRoles(Role.MONTADOR, Role.VENDEDOR, Role.ADMIN, Role.GERENTE),
   (req, res, next) => osController.listMine(req, res, next)
 );
 
 osRoutes.patch(
   "/:id/montador",
-  requireRoles(Role.ADMIN, Role.GERENTE),
+  requireRoles(Role.ADMIN, Role.GERENTE, Role.VENDEDOR),
   (req, res, next) => osController.assignMontador(req, res, next)
 );
 

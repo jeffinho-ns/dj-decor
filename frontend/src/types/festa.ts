@@ -52,6 +52,12 @@ export interface Festa {
   descontoStatus?: StatusDesconto;
   alertaCompraEstoque?: boolean;
   itensFaltaEstoque?: string[];
+  montadorEquipeId?: string | null;
+  desmontadorEquipeId?: string | null;
+  montadorCarroProprio?: boolean;
+  desmontadorCarroProprio?: boolean;
+  montadorEquipe?: { id: string; nome: string; role?: string } | null;
+  desmontadorEquipe?: { id: string; nome: string; role?: string } | null;
 }
 
 export interface Pagamento {
@@ -93,6 +99,10 @@ export interface CreateFestaPayload {
   observacoes?: string | null;
   endereco: string;
   valor: number;
+  montadorEquipeId?: string | null;
+  desmontadorEquipeId?: string | null;
+  montadorCarroProprio?: boolean;
+  desmontadorCarroProprio?: boolean;
 }
 
 export interface UpdateFestaPayload {
@@ -108,4 +118,8 @@ export interface UpdateFestaPayload {
   valor?: number;
   nomeCliente?: string;
   telefone?: string;
+  montadorEquipeId?: string | null;
+  desmontadorEquipeId?: string | null;
+  montadorCarroProprio?: boolean;
+  desmontadorCarroProprio?: boolean;
 }

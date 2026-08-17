@@ -23,13 +23,16 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { FestaContratoPanel } from "@/components/vendas/festa-contrato-panel";
 import { PagamentoForm } from "@/components/vendas/pagamento-form";
+import { EquipeFestaFields } from "@/components/equipe/equipe-festa-fields";
 import {
+  avaliarItensEstoque,
   buscarClientePorTelefone,
   confirmarPagamento,
   createFesta,
   createPagamento,
   getClienteById,
   getConfiguracoes,
+  listMontadores,
   sugestoesProdutos,
   uploadMidia,
 } from "@/lib/api";
@@ -56,7 +59,8 @@ import type {
   TamanhoDecoracao,
   TipoPagamento,
 } from "@/types/festa";
-import type { ProdutoSugestao } from "@/types/estoque";
+import type { EstoqueAvaliacao, ProdutoSugestao } from "@/types/estoque";
+import type { EquipeFestaValue, Montador } from "@/types/equipe";
 
 const selectClassName =
   "flex h-11 w-full rounded-xl neo-inset px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-balloon-sky/30 md:h-9 md:text-sm";
@@ -153,6 +157,19 @@ export function NovaVendaForm({
   const [pagamentoFile, setPagamentoFile] = useState<File | null>(null);
   const [pagamentoAviso, setPagamentoAviso] = useState<string | null>(null);
   const pagamentoFileRef = useRef<HTMLInputElement>(null);
+  const [equipePessoas, setEquipePessoas] = useState<Montador[]>([]);
+  const [equipe, setEquipe] = useState<EquipeFestaValue>({
+    montadorEquipeId: null,
+    desmontadorEquipeId: null,
+    montadorCarroProprio: true,
+    desmontadorCarroProprio: true,
+  });
+  const [estoqueAvaliacao, setEstoqueAvaliacao] =
+    useState<EstoqueAvaliacao | null>(null);
+  const [estoqueCarregando, setEstoqueCarregando] = useState(false);
+  const [itensConferidos, setItensConferidos] = useState<Set<string>>(
+    new Set()
+  );
 
   const {
     register,
@@ -180,6 +197,7 @@ export function NovaVendaForm({
 
   const dataEvento = useWatch({ control, name: "dataEvento" });
   const horaEvento = useWatch({ control, name: "horaEvento" });
+  const horaMontagem = useWatch({ control, name: "horaMontagem" });
   const nomeCliente = useWatch({ control, name: "nomeCliente" });
   const tema = useWatch({ control, name: "tema" });
   const tamanhoDecoracao = useWatch({ control, name: "tamanhoDecoracao" });
@@ -222,6 +240,65 @@ export function NovaVendaForm({
       cancelled = true;
     };
   }, [token, enderecoEmpresaInicial]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void listMontadores(token)
+      .then((pessoas) => {
+        if (!cancelled) setEquipePessoas(pessoas);
+      })
+      .catch(() => {
+        if (!cancelled) setEquipePessoas([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    if (!dataEvento || orcamento.itens.length === 0) {
+      setEstoqueAvaliacao(null);
+      setItensConferidos(new Set());
+      return;
+    }
+    const pegueAtivo = Boolean(kitSelecionado && pegueEMonte);
+    const hora = pegueAtivo ? horaEvento : horaMontagem;
+    if (!hora || !horaEvento) return;
+
+    const inicio = combineDateAndTime(dataEvento, hora);
+    const fim = combineDateAndTime(dataEvento, horaEvento);
+    let cancelled = false;
+    setEstoqueCarregando(true);
+    const timer = window.setTimeout(() => {
+      void avaliarItensEstoque(
+        { itensExtras: orcamento.itens, inicio, fim: fim < inicio ? inicio : fim },
+        token
+      )
+        .then((result) => {
+          if (cancelled) return;
+          setEstoqueAvaliacao(result);
+          setItensConferidos(new Set());
+        })
+        .catch(() => {
+          if (!cancelled) setEstoqueAvaliacao(null);
+        })
+        .finally(() => {
+          if (!cancelled) setEstoqueCarregando(false);
+        });
+    }, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    token,
+    dataEvento,
+    horaEvento,
+    horaMontagem,
+    orcamento.itens,
+    kitSelecionado,
+    pegueEMonte,
+  ]);
 
   useEffect(() => {
     if (!initialClienteId) return;
@@ -521,6 +598,28 @@ export function NovaVendaForm({
       return;
     }
 
+    const pegueAtivo = Boolean(kitSelecionado && pegueEMonte);
+    const precisaEquipe = !pegueAtivo || montadorLevaBusca;
+    if (
+      precisaEquipe &&
+      (!equipe.montadorEquipeId || !equipe.desmontadorEquipeId)
+    ) {
+      setSubmitError("Escolha quem monta e quem desmonta antes de salvar");
+      return;
+    }
+
+    if (estoqueAvaliacao && estoqueAvaliacao.detalhes.length > 0) {
+      const faltaConferir = estoqueAvaliacao.detalhes.some(
+        (item) => !itensConferidos.has(item.nome)
+      );
+      if (faltaConferir) {
+        setSubmitError(
+          "Confira o checklist de itens no estoque antes de salvar a venda"
+        );
+        return;
+      }
+    }
+
     try {
       const pegueAtivo = Boolean(kitSelecionado && pegueEMonte);
       const horaMontagem = pegueAtivo ? data.horaEvento : data.horaMontagem;
@@ -559,6 +658,14 @@ export function NovaVendaForm({
           observacoes: observacoes || null,
           endereco: enderecoFinal,
           valor: Number(data.valor.replace(",", ".")),
+          ...(precisaEquipe
+            ? {
+                montadorEquipeId: equipe.montadorEquipeId,
+                desmontadorEquipeId: equipe.desmontadorEquipeId,
+                montadorCarroProprio: equipe.montadorCarroProprio,
+                desmontadorCarroProprio: equipe.desmontadorCarroProprio,
+              }
+            : {}),
         },
         token
       );
@@ -1380,6 +1487,93 @@ export function NovaVendaForm({
             ) : null}
           </div>
         </div>
+
+        {orcamento.itens.length > 0 ? (
+          <div className="space-y-3 rounded-2xl neo-inset p-4">
+            <p className="text-xs font-medium uppercase tracking-wider text-balloon-sun">
+              Checklist de estoque
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Confira cada item da festa no estoque antes de salvar. Marque
+              para confirmar que viu a quantidade.
+            </p>
+            {estoqueCarregando ? (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-3.5 animate-spin" />
+                Conferindo estoque…
+              </p>
+            ) : estoqueAvaliacao && estoqueAvaliacao.detalhes.length > 0 ? (
+              <ul className="space-y-2">
+                {estoqueAvaliacao.detalhes.map((item) => {
+                  const ok = item.falta === 0;
+                  return (
+                    <li key={item.nome}>
+                      <label className="flex items-start gap-2 rounded-xl neo-sm px-3 py-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="mt-1"
+                          checked={itensConferidos.has(item.nome)}
+                          onChange={(e) => {
+                            setItensConferidos((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(item.nome);
+                              else next.delete(item.nome);
+                              return next;
+                            });
+                          }}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="font-medium text-foreground">
+                            {item.nome}
+                          </span>
+                          <span
+                            className={
+                              ok
+                                ? "mt-0.5 block text-xs text-balloon-mint"
+                                : "mt-0.5 block text-xs text-destructive"
+                            }
+                          >
+                            Precisa {item.necessario} · tem {item.disponivel}
+                            {ok
+                              ? " · ok"
+                              : ` · faltam ${item.falta} (comprar)`}
+                          </span>
+                        </span>
+                        {ok ? (
+                          <Check className="mt-0.5 size-4 shrink-0 text-balloon-mint" />
+                        ) : null}
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Informe a data da festa para conferir o estoque.
+              </p>
+            )}
+            {estoqueAvaliacao?.alertaCompraEstoque ? (
+              <p className="text-xs text-destructive">
+                Tem item em falta — a venda ainda pode ser salva, mas o alerta
+                de compra vai junto.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {!(kitSelecionado && pegueEMonte && !montadorLevaBusca) ? (
+          <div className="space-y-3 rounded-2xl neo-inset p-4">
+            <p className="text-xs font-medium uppercase tracking-wider text-balloon-sky">
+              Equipe de montagem e desmontagem
+            </p>
+            <EquipeFestaFields
+              pessoas={equipePessoas}
+              value={equipe}
+              onChange={setEquipe}
+              required
+            />
+          </div>
+        ) : null}
 
         <div className="space-y-3 rounded-2xl neo-inset p-4">
           <p className="text-xs font-medium uppercase tracking-wider text-balloon-mint">

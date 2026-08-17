@@ -8,6 +8,8 @@ const updateConfigSchema = z.object({
   comissaoMetaSemanal: z.coerce.number().min(0).optional(),
   diariaMontador: z.coerce.number().min(0).optional(),
   diariaDesmontador: z.coerce.number().min(0).optional(),
+  diariaMontadorCarroEmpresa: z.coerce.number().min(0).optional(),
+  diariaDesmontadorCarroEmpresa: z.coerce.number().min(0).optional(),
   clausulasContrato: z.string().max(20000).nullable().optional(),
   nomeEmpresa: z.string().min(2).max(120).optional(),
   sloganEmpresa: z.string().min(2).max(200).optional(),
@@ -38,8 +40,10 @@ export class ConfiguracoesService {
         comissaoPercentual: env.COMISSAO_PERCENTUAL_DEFAULT,
         comissaoSociaPercentual: 30,
         comissaoMetaSemanal: env.COMISSAO_META_SEMANAL,
-        diariaMontador: 100,
-        diariaDesmontador: 70,
+        diariaMontador: 150,
+        diariaDesmontador: 130,
+        diariaMontadorCarroEmpresa: 130,
+        diariaDesmontadorCarroEmpresa: 80,
         nomeEmpresa: "DJ festas",
         sloganEmpresa: "Decoração de Festas · Locação de Materiais",
       },
@@ -72,6 +76,14 @@ export class ConfiguracoesService {
           : {}),
         ...(data.diariaDesmontador !== undefined
           ? { diariaDesmontador: data.diariaDesmontador }
+          : {}),
+        ...(data.diariaMontadorCarroEmpresa !== undefined
+          ? { diariaMontadorCarroEmpresa: data.diariaMontadorCarroEmpresa }
+          : {}),
+        ...(data.diariaDesmontadorCarroEmpresa !== undefined
+          ? {
+              diariaDesmontadorCarroEmpresa: data.diariaDesmontadorCarroEmpresa,
+            }
           : {}),
         ...(data.clausulasContrato !== undefined
           ? { clausulasContrato: data.clausulasContrato }
@@ -121,6 +133,8 @@ export class ConfiguracoesService {
       comissaoSociaPercentual: Number(cfg.comissaoSociaPercentual),
       diariaMontador: Number(cfg.diariaMontador),
       diariaDesmontador: Number(cfg.diariaDesmontador),
+      diariaMontadorCarroEmpresa: Number(cfg.diariaMontadorCarroEmpresa),
+      diariaDesmontadorCarroEmpresa: Number(cfg.diariaDesmontadorCarroEmpresa),
       comissaoMetaSemanal: Number(cfg.comissaoMetaSemanal),
     };
   }

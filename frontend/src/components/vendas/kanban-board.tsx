@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronDown, LayoutGrid, List, Loader2 } from "lucide-react";
@@ -17,8 +17,10 @@ import { PagamentoForm } from "@/components/vendas/pagamento-form";
 import { RiscoBadge } from "@/components/vendas/risco-badge";
 import { FestasTable } from "@/components/vendas/festas-table";
 import {
+  listMontadores,
   listPagamentos,
   solicitarDesconto,
+  updateFesta,
   updateFestaStatus,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
@@ -26,6 +28,8 @@ import { cn } from "@/lib/utils";
 import type { Role } from "@/types/auth";
 import type { Festa, Pagamento, StatusFesta } from "@/types/festa";
 import type { StatusDesconto } from "@/types/desconto";
+import { EquipeFestaFields } from "@/components/equipe/equipe-festa-fields";
+import type { EquipeFestaValue, Montador } from "@/types/equipe";
 
 const KANBAN_COLUMNS: StatusFesta[] = [
   "ORCAMENTO",
@@ -95,6 +99,7 @@ interface FestaCardProps {
   onMove: (status: StatusFesta) => void;
   onPagamentosChange: (list: Pagamento[]) => void;
   onFestaUpdate: (festa: Festa) => void;
+  pessoas: Montador[];
 }
 
 function FestaCard({
@@ -109,6 +114,7 @@ function FestaCard({
   onMove,
   onPagamentosChange,
   onFestaUpdate,
+  pessoas,
 }: FestaCardProps) {
   const next = STATUS_TRANSITIONS[festa.status];
   const [percentualDesconto, setPercentualDesconto] = useState("10");
@@ -327,6 +333,37 @@ function FestaCard({
                 ) : null}
               </div>
               <div className="mt-4 border-t border-border/50 pt-3">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Equipe
+                </p>
+                <EquipeFestaFields
+                  pessoas={pessoas}
+                  compact
+                  required={!festa.pegueEMonte}
+                  value={{
+                    montadorEquipeId: festa.montadorEquipeId ?? null,
+                    desmontadorEquipeId: festa.desmontadorEquipeId ?? null,
+                    montadorCarroProprio: festa.montadorCarroProprio ?? true,
+                    desmontadorCarroProprio:
+                      festa.desmontadorCarroProprio ?? true,
+                  }}
+                  onChange={(value: EquipeFestaValue) => {
+                    void updateFesta(
+                      festa.id,
+                      {
+                        montadorEquipeId: value.montadorEquipeId,
+                        desmontadorEquipeId: value.desmontadorEquipeId,
+                        montadorCarroProprio: value.montadorCarroProprio,
+                        desmontadorCarroProprio: value.desmontadorCarroProprio,
+                      },
+                      token
+                    )
+                      .then(onFestaUpdate)
+                      .catch(() => undefined);
+                  }}
+                />
+              </div>
+              <div className="mt-4 border-t border-border/50 pt-3">
                 <FestaContratoPanel
                   festaId={festa.id}
                   token={token}
@@ -360,6 +397,13 @@ export function KanbanBoard({
   const [movingId, setMovingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+  const [pessoas, setPessoas] = useState<Montador[]>([]);
+
+  useEffect(() => {
+    void listMontadores(token)
+      .then(setPessoas)
+      .catch(() => setPessoas([]));
+  }, [token]);
 
   const festaDetalhe = detalheId
     ? (festas.find((f) => f.id === detalheId) ?? null)
@@ -394,6 +438,18 @@ export function KanbanBoard({
 
   async function moverStatus(festaId: string, status: StatusFesta) {
     setError(null);
+    const festa = festas.find((f) => f.id === festaId);
+    if (
+      status === "FECHADO" &&
+      festa &&
+      !festa.pegueEMonte &&
+      (!festa.montadorEquipeId || !festa.desmontadorEquipeId)
+    ) {
+      setError(
+        "Abra o card e escolha quem monta e quem desmonta antes de fechar a festa."
+      );
+      return;
+    }
     setMovingId(festaId);
     try {
       const atualizada = await updateFestaStatus(festaId, status, token);
@@ -480,6 +536,7 @@ export function KanbanBoard({
           }
         }}
         onFestaUpdate={handleFestaUpdate}
+        pessoas={pessoas}
       />
     );
   }

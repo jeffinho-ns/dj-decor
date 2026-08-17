@@ -87,6 +87,18 @@ export class ClientesService {
           },
           orderBy: { dataEvento: "desc" },
         },
+        conversas: {
+          select: {
+            id: true,
+            canal: true,
+            status: true,
+            modo: true,
+            ultimaMensagemEm: true,
+            contatoExterno: true,
+          },
+          orderBy: { atualizadoEm: "desc" },
+          take: 20,
+        },
         _count: { select: { festas: true } },
       },
     });
@@ -106,6 +118,7 @@ export class ClientesService {
       atualizadoEm: cliente.atualizadoEm,
       totalFestas: cliente._count.festas,
       festas: cliente.festas,
+      conversas: cliente.conversas,
     };
   }
 

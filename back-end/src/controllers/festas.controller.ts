@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 import type { AuthenticatedRequest } from "../middlewares/auth";
 import {
   FestaNotFoundError,
+  FestaValidationError,
   festasService,
   InvalidStatusTransitionError,
 } from "../services/festas.service";
@@ -264,6 +265,11 @@ export class FestasController {
 
     if (error instanceof InvalidStatusTransitionError) {
       res.status(409).json({ error: error.message });
+      return;
+    }
+
+    if (error instanceof FestaValidationError) {
+      res.status(400).json({ error: error.message });
       return;
     }
 

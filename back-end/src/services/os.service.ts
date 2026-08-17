@@ -1,6 +1,5 @@
 import {
   Prisma,
-  Role,
   StatusFesta,
   StatusOS,
   TipoMidia,
@@ -45,6 +44,8 @@ const fotoFinalSchema = z.object({
 const assignMontadorSchema = z.object({
   montadorId: z.string().min(1).nullable().optional(),
   desmontadorId: z.string().min(1).nullable().optional(),
+  montadorCarroProprio: z.boolean().optional(),
+  desmontadorCarroProprio: z.boolean().optional(),
 });
 
 export type AddRomaneioItemInput = z.infer<typeof addRomaneioItemSchema>;
@@ -244,24 +245,14 @@ export class OsService {
     await this.getById(osId);
 
     if (data.montadorId) {
-      const montador = await prisma.user.findUnique({
-        where: { id: data.montadorId },
-      });
-      if (!montador || montador.role !== Role.MONTADOR) {
-        throw new OsValidationError("Montador inválido");
-      }
+      await this.assertUsuarioEquipe(data.montadorId);
     }
 
     if (data.desmontadorId) {
-      const desmontador = await prisma.user.findUnique({
-        where: { id: data.desmontadorId },
-      });
-      if (!desmontador || desmontador.role !== Role.MONTADOR) {
-        throw new OsValidationError("Desmontador inválido");
-      }
+      await this.assertUsuarioEquipe(data.desmontadorId);
     }
 
-    return prisma.ordemServico.update({
+    const os = await prisma.ordemServico.update({
       where: { id: osId },
       data: {
         ...(data.montadorId !== undefined
@@ -270,6 +261,68 @@ export class OsService {
         ...(data.desmontadorId !== undefined
           ? { desmontadorId: data.desmontadorId }
           : {}),
+        ...(data.montadorCarroProprio !== undefined
+          ? { montadorCarroProprio: data.montadorCarroProprio }
+          : {}),
+        ...(data.desmontadorCarroProprio !== undefined
+          ? { desmontadorCarroProprio: data.desmontadorCarroProprio }
+          : {}),
+      },
+      include: osInclude,
+    });
+
+    await prisma.festa.update({
+      where: { id: os.festaId },
+      data: {
+        ...(data.montadorId !== undefined
+          ? { montadorEquipeId: data.montadorId }
+          : {}),
+        ...(data.desmontadorId !== undefined
+          ? { desmontadorEquipeId: data.desmontadorId }
+          : {}),
+        ...(data.montadorCarroProprio !== undefined
+          ? { montadorCarroProprio: data.montadorCarroProprio }
+          : {}),
+        ...(data.desmontadorCarroProprio !== undefined
+          ? { desmontadorCarroProprio: data.desmontadorCarroProprio }
+          : {}),
+      },
+    });
+
+    return os;
+  }
+
+  private async assertUsuarioEquipe(userId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.ativo) {
+      throw new OsValidationError("Pessoa inválida ou inativa");
+    }
+  }
+
+  async syncEquipeFromFesta(festaId: string) {
+    const festa = await prisma.festa.findUnique({
+      where: { id: festaId },
+      select: {
+        montadorEquipeId: true,
+        desmontadorEquipeId: true,
+        montadorCarroProprio: true,
+        desmontadorCarroProprio: true,
+      },
+    });
+    if (!festa) return null;
+
+    const existing = await prisma.ordemServico.findUnique({
+      where: { festaId },
+    });
+    if (!existing) return null;
+
+    return prisma.ordemServico.update({
+      where: { id: existing.id },
+      data: {
+        montadorId: festa.montadorEquipeId,
+        desmontadorId: festa.desmontadorEquipeId,
+        montadorCarroProprio: festa.montadorCarroProprio,
+        desmontadorCarroProprio: festa.desmontadorCarroProprio,
       },
       include: osInclude,
     });
@@ -282,12 +335,18 @@ export class OsService {
     });
 
     if (existing) {
-      return existing;
+      return (await this.syncEquipeFromFesta(festaId)) ?? existing;
     }
 
     const festa = await prisma.festa.findUnique({
       where: { id: festaId },
-      select: { id: true },
+      select: {
+        id: true,
+        montadorEquipeId: true,
+        desmontadorEquipeId: true,
+        montadorCarroProprio: true,
+        desmontadorCarroProprio: true,
+      },
     });
 
     if (!festa) {
@@ -298,6 +357,10 @@ export class OsService {
       data: {
         festaId,
         status: StatusOS.ABERTA,
+        montadorId: festa.montadorEquipeId,
+        desmontadorId: festa.desmontadorEquipeId,
+        montadorCarroProprio: festa.montadorCarroProprio,
+        desmontadorCarroProprio: festa.desmontadorCarroProprio,
       },
       include: osInclude,
     });
@@ -392,7 +455,7 @@ export class OsService {
 
     return prisma.ordemServico.findMany({
       where: {
-        montadorId,
+        OR: [{ montadorId }, { desmontadorId: montadorId }],
         festa: {
           OR: [
             { horarioMontagem: { gte: inicio, lte: fim } },
@@ -912,8 +975,11 @@ export class OsService {
       await comissoesService.gerarDiariasOs(tx, {
         festaId: updated.festaId,
         dataEvento: updated.festa.dataEvento,
+        horarioMontagem: updated.festa.horarioMontagem,
         montadorId: updated.montadorId,
         desmontadorId: updated.desmontadorId,
+        montadorCarroProprio: updated.montadorCarroProprio,
+        desmontadorCarroProprio: updated.desmontadorCarroProprio,
       });
 
       return updated;

@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createUser, listUsers, updateUser } from "@/lib/api";
+import { createUser, deleteUser, listUsers, updateUser } from "@/lib/api";
 import { roleLabel } from "@/lib/auth";
 import type { Role } from "@/types/auth";
 import type { UserAdmin } from "@/types/admin";
@@ -205,6 +205,42 @@ export function UsuariosPainel({ token, canEdit }: UsuariosPainelProps) {
                 >
                   Reset senha
                 </Button>
+                {u.ativo ? (
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="outline"
+                    className="w-full text-destructive sm:w-auto"
+                    disabled={pending}
+                    onClick={() => {
+                      const ok = window.confirm(
+                        `Excluir ${u.nome}? Se a pessoa já tiver vendas, OS ou pagamentos no histórico, o acesso é bloqueado e o cadastro fica inativo.`
+                      );
+                      if (!ok) return;
+                      startTransition(async () => {
+                        try {
+                          const result = await deleteUser(u.id, token);
+                          if (result.modo === "desativado") {
+                            setError(
+                              `${u.nome} tem histórico — o acesso foi bloqueado em vez de apagar o cadastro.`
+                            );
+                          } else {
+                            setError(null);
+                          }
+                          await reload();
+                        } catch (err) {
+                          setError(
+                            err instanceof Error
+                              ? err.message
+                              : "Falha ao excluir"
+                          );
+                        }
+                      });
+                    }}
+                  >
+                    Excluir
+                  </Button>
+                ) : null}
               </div>
             ) : null}
           </article>

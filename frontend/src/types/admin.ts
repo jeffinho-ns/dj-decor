@@ -20,6 +20,8 @@ export interface ConfiguracaoNegocio {
   comissaoMetaSemanal: number | string;
   diariaMontador?: number | string;
   diariaDesmontador?: number | string;
+  diariaMontadorCarroEmpresa?: number | string;
+  diariaDesmontadorCarroEmpresa?: number | string;
   clausulasContrato: string | null;
   nomeEmpresa: string;
   sloganEmpresa: string;

@@ -21,4 +21,8 @@ usersRoutes.patch("/:id", requireRoles(Role.ADMIN), (req, res, next) =>
   usersController.update(req, res, next)
 );
 
+usersRoutes.delete("/:id", requireRoles(Role.ADMIN), (req, res, next) =>
+  usersController.remove(req, res, next)
+);
+
 export { usersRoutes };

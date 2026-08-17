@@ -152,6 +152,92 @@ export class UsersService {
       throw error;
     }
   }
+
+  /**
+   * Remove o usuário se não houver histórico. Caso tenha vendas, OS,
+   * comissões etc., apenas desativa o acesso para preservar o histórico.
+   */
+  async remove(id: string, requesterId: string) {
+    if (id === requesterId) {
+      throw new UsersConflictError("Não é possível excluir a si mesmo");
+    }
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) throw new UsersNotFoundError(id);
+
+    if (existing.role === Role.ADMIN && existing.ativo) {
+      const adminsAtivos = await prisma.user.count({
+        where: { role: Role.ADMIN, ativo: true },
+      });
+      if (adminsAtivos <= 1) {
+        throw new UsersConflictError("Não é possível excluir o último admin");
+      }
+    }
+
+    const [
+      festasVendedor,
+      comissoes,
+      movimentacoes,
+      followUps,
+      conversas,
+      eventos,
+      osMontagem,
+      osDesmontagem,
+      midias,
+    ] = await Promise.all([
+      prisma.festa.count({ where: { vendedorId: id } }),
+      prisma.comissao.count({ where: { beneficiarioId: id } }),
+      prisma.movimentacaoQr.count({ where: { userId: id } }),
+      prisma.followUpContato.count({ where: { userId: id } }),
+      prisma.conversa.count({ where: { vendedorId: id } }),
+      prisma.atendimentoEvento.count({ where: { autorId: id } }),
+      prisma.ordemServico.count({ where: { montadorId: id } }),
+      prisma.ordemServico.count({ where: { desmontadorId: id } }),
+      prisma.midia.count({ where: { uploadedById: id } }),
+    ]);
+
+    const temHistorico =
+      festasVendedor +
+        comissoes +
+        movimentacoes +
+        followUps +
+        conversas +
+        eventos +
+        osMontagem +
+        osDesmontagem +
+        midias >
+      0;
+
+    if (temHistorico) {
+      const usuario = await prisma.user.update({
+        where: { id },
+        data: { ativo: false },
+        select: userSelect,
+      });
+      return { modo: "desativado" as const, usuario };
+    }
+
+    try {
+      const usuario = await prisma.user.delete({
+        where: { id },
+        select: userSelect,
+      });
+      return { modo: "excluido" as const, usuario };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === "P2003" || error.code === "P2014")
+      ) {
+        const usuario = await prisma.user.update({
+          where: { id },
+          data: { ativo: false },
+          select: userSelect,
+        });
+        return { modo: "desativado" as const, usuario };
+      }
+      throw error;
+    }
+  }
 }
 
 export const usersService = new UsersService();

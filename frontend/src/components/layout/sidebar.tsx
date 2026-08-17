@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ContactRound,
   Hammer,
+  Headphones,
   Package,
   PartyPopper,
   PlusCircle,
@@ -26,6 +27,7 @@ import type { User } from "@/types/auth";
 
 const DEFAULT_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/atendimento", label: "Atendimento", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
   { href: "/clientes", label: "Clientes", icon: ContactRound },
@@ -38,6 +40,7 @@ const DEFAULT_NAV = [
 
 const GESTAO_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/atendimento", label: "Atendimento", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
   { href: "/clientes", label: "Clientes", icon: ContactRound },
@@ -54,6 +57,7 @@ const GESTAO_NAV = [
 
 const ADMIN_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/atendimento", label: "Atendimento", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
   { href: "/clientes", label: "Clientes", icon: ContactRound },
@@ -120,6 +124,9 @@ export function isNavActive(pathname: string, href: string): boolean {
   }
   if (href === "/follow-ups") {
     return pathname === "/follow-ups" || pathname.startsWith("/follow-ups/");
+  }
+  if (href === "/atendimento") {
+    return pathname === "/atendimento" || pathname.startsWith("/atendimento/");
   }
   if (href === "/configuracoes") {
     return (

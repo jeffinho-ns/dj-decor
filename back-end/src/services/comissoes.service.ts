@@ -46,6 +46,20 @@ function startOfMonthBrasil(dataEvento: Date): Date {
   return new Date(Date.UTC(year, month - 1, 1, 12, 0, 0));
 }
 
+/** Meio-dia UTC do dia civil em SP — 1 diária por pessoa/tipo/dia. */
+function inicioDiaBrasil(date: Date): Date {
+  const parts = ymdBrasil(date).split("-");
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const day = Number(parts[2]);
+  if (!year || !month || !day) {
+    return new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0)
+    );
+  }
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+}
+
 function money(value: number): number {
   return Number(value.toFixed(2));
 }
@@ -199,14 +213,20 @@ export class ComissoesService {
     return created;
   }
 
-  /** Diárias ao finalizar a OS (1 diária montagem + 1 diária desmontagem). */
+  /**
+   * Diárias ao finalizar a OS — 1 pagamento por pessoa/tipo/dia civil (BR).
+   * Montar e desmontar no mesmo dia geram duas diárias (tipos diferentes).
+   */
   async gerarDiariasOs(
     tx: Prisma.TransactionClient,
     params: {
       festaId: string;
       dataEvento: Date;
+      horarioMontagem: Date;
       montadorId: string | null;
       desmontadorId: string | null;
+      montadorCarroProprio?: boolean;
+      desmontadorCarroProprio?: boolean;
     }
   ) {
     const cfg = await configuracoesService.getRegrasFinanceiras();
@@ -214,32 +234,67 @@ export class ComissoesService {
     const created = [];
 
     if (params.montadorId) {
-      created.push(
-        await this.upsertRepasse(tx, {
-          festaId: params.festaId,
-          beneficiarioId: params.montadorId,
-          tipo: TipoRepasse.DIARIA_MONTAGEM,
-          percentual: null,
-          valor: money(cfg.diariaMontador),
-          elegivelEm,
-        })
-      );
+      const diaria = await this.emitirDiariaSeNova(tx, {
+        festaId: params.festaId,
+        beneficiarioId: params.montadorId,
+        tipo: TipoRepasse.DIARIA_MONTAGEM,
+        valor: money(
+          params.montadorCarroProprio === false
+            ? cfg.diariaMontadorCarroEmpresa
+            : cfg.diariaMontador
+        ),
+        elegivelEm,
+        diaReferencia: inicioDiaBrasil(params.horarioMontagem),
+      });
+      if (diaria) created.push(diaria);
     }
 
     if (params.desmontadorId) {
-      created.push(
-        await this.upsertRepasse(tx, {
-          festaId: params.festaId,
-          beneficiarioId: params.desmontadorId,
-          tipo: TipoRepasse.DIARIA_DESMONTAGEM,
-          percentual: null,
-          valor: money(cfg.diariaDesmontador),
-          elegivelEm,
-        })
-      );
+      const diaria = await this.emitirDiariaSeNova(tx, {
+        festaId: params.festaId,
+        beneficiarioId: params.desmontadorId,
+        tipo: TipoRepasse.DIARIA_DESMONTAGEM,
+        valor: money(
+          params.desmontadorCarroProprio === false
+            ? cfg.diariaDesmontadorCarroEmpresa
+            : cfg.diariaDesmontador
+        ),
+        elegivelEm,
+        diaReferencia: inicioDiaBrasil(params.dataEvento),
+      });
+      if (diaria) created.push(diaria);
     }
 
     return created;
+  }
+
+  /** Não duplica diária se a pessoa já tem o mesmo tipo no mesmo dia. */
+  private async emitirDiariaSeNova(
+    tx: Prisma.TransactionClient,
+    data: {
+      festaId: string;
+      beneficiarioId: string;
+      tipo: TipoRepasse;
+      valor: number;
+      elegivelEm: Date;
+      diaReferencia: Date;
+    }
+  ) {
+    const jaNoDia = await tx.comissao.findFirst({
+      where: {
+        beneficiarioId: data.beneficiarioId,
+        tipo: data.tipo,
+        diaReferencia: data.diaReferencia,
+        status: { not: StatusComissao.CANCELADA },
+        NOT: { festaId: data.festaId },
+      },
+    });
+    if (jaNoDia) return null;
+
+    return this.upsertRepasse(tx, {
+      ...data,
+      percentual: null,
+    });
   }
 
   private async upsertRepasse(
@@ -251,6 +306,7 @@ export class ComissoesService {
       percentual: number | null;
       valor: number;
       elegivelEm: Date;
+      diaReferencia?: Date | null;
     }
   ) {
     const existing = await tx.comissao.findUnique({
@@ -274,6 +330,9 @@ export class ComissoesService {
           percentual: data.percentual,
           valor: data.valor,
           elegivelEm: data.elegivelEm,
+          ...(data.diaReferencia !== undefined
+            ? { diaReferencia: data.diaReferencia }
+            : {}),
           status: StatusComissao.PENDENTE,
           pagoEm: null,
         },
@@ -288,6 +347,7 @@ export class ComissoesService {
         percentual: data.percentual,
         valor: data.valor,
         elegivelEm: data.elegivelEm,
+        diaReferencia: data.diaReferencia ?? null,
         status: StatusComissao.PENDENTE,
       },
     });

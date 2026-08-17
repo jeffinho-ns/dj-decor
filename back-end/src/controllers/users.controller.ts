@@ -46,6 +46,25 @@ export class UsersController {
     }
   }
 
+  async remove(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const id = getParamId(req.params.id);
+      if (!id) {
+        res.status(400).json({ error: "ID é obrigatório" });
+        return;
+      }
+      const requesterId = req.user?.id;
+      if (!requesterId) {
+        res.status(401).json({ error: "Não autenticado" });
+        return;
+      }
+      const result = await usersService.remove(id, requesterId);
+      res.status(200).json(result);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
   private handleError(error: unknown, res: Response, next: NextFunction) {
     if (error instanceof ZodError) {
       res.status(400).json({

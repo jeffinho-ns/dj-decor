@@ -48,6 +48,8 @@ export interface OrdemServico {
   festaId: string;
   montadorId: string | null;
   desmontadorId?: string | null;
+  montadorCarroProprio?: boolean;
+  desmontadorCarroProprio?: boolean;
   festa: Festa;
   montador?: User | null;
   desmontador?: User | null;

@@ -24,7 +24,14 @@ export function createApp() {
     })
   );
 
-  app.use(express.json());
+  // Captura raw body para validar assinatura do webhook Meta
+  app.use(
+    express.json({
+      verify: (req, _res, buf) => {
+        (req as typeof req & { rawBody?: Buffer }).rawBody = buf;
+      },
+    })
+  );
   app.use(express.urlencoded({ extended: true }));
 
   app.use("/api", routes);

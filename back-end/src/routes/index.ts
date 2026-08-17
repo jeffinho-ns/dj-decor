@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authRoutes } from "./auth.routes";
+import { atendimentoRoutes } from "./atendimento.routes";
 import { catalogoRoutes } from "./catalogo.routes";
 import { clientesRoutes } from "./clientes.routes";
 import { comissoesRoutes } from "./comissoes.routes";
@@ -25,10 +26,11 @@ routes.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
     service: "dj-decor-api",
-    version: "1.2.0",
+    version: "1.3.0",
     routes: [
       "festas",
       "clientes",
+      "atendimento",
       "comissoes",
       "financeiro",
       "estoque",
@@ -37,6 +39,7 @@ routes.get("/health", (_req, res) => {
       "users",
       "configuracoes",
       "catalogo",
+      "webhooks/meta",
     ],
   });
 });
@@ -47,6 +50,7 @@ routes.use("/configuracoes", configuracoesRoutes);
 routes.use("/catalogo", catalogoRoutes);
 routes.use("/festas", festasRoutes);
 routes.use("/clientes", clientesRoutes);
+routes.use("/atendimento", atendimentoRoutes);
 routes.use("/financeiro", financeiroRoutes);
 routes.use("/comissoes", comissoesRoutes);
 routes.use("/produtos", produtosRoutes);

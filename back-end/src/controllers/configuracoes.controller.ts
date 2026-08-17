@@ -10,6 +10,8 @@ const CAMPOS_FINANCEIROS = new Set([
   "comissaoMetaSemanal",
   "diariaMontador",
   "diariaDesmontador",
+  "diariaMontadorCarroEmpresa",
+  "diariaDesmontadorCarroEmpresa",
 ]);
 
 export class ConfiguracoesController {

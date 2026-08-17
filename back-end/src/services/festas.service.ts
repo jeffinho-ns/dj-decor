@@ -9,6 +9,28 @@ import { clientesService } from "./clientes.service";
 import { riscoService } from "./risco.service";
 import { comissoesService } from "./comissoes.service";
 
+const equipeUserSelect = {
+  id: true,
+  nome: true,
+  role: true,
+} as const;
+
+const festaInclude = {
+  cliente: true,
+  vendedor: {
+    select: { id: true, nome: true, email: true, role: true },
+  },
+  montadorEquipe: { select: equipeUserSelect },
+  desmontadorEquipe: { select: equipeUserSelect },
+} as const;
+
+const equipeFieldsSchema = {
+  montadorEquipeId: z.string().min(1).nullable().optional(),
+  desmontadorEquipeId: z.string().min(1).nullable().optional(),
+  montadorCarroProprio: z.boolean().optional(),
+  desmontadorCarroProprio: z.boolean().optional(),
+};
+
 const createFestaSchema = z
   .object({
     clienteId: z.string().optional(),
@@ -35,6 +57,7 @@ const createFestaSchema = z
   valor: z.coerce.number().positive("Valor deve ser positivo"),
   status: z.nativeEnum(StatusFesta).optional().default(StatusFesta.ORCAMENTO),
   vendedorId: z.string().optional(),
+  ...equipeFieldsSchema,
   })
   .superRefine((data, ctx) => {
     if (!data.clienteId) {
@@ -69,6 +92,7 @@ const updateFestaSchema = z.object({
   status: z.nativeEnum(StatusFesta).optional(),
   nomeCliente: z.string().min(2).optional(),
   telefone: z.string().min(8).optional(),
+  ...equipeFieldsSchema,
 });
 
 const updateChecklistSchema = z.object({
@@ -115,12 +139,7 @@ export class FestasService {
         ...statusWhere,
         ...(options?.vendedorId ? { vendedorId: options.vendedorId } : {}),
       },
-      include: {
-        cliente: true,
-        vendedor: {
-          select: { id: true, nome: true, email: true, role: true },
-        },
-      },
+      include: festaInclude,
       orderBy: options?.lixeira
         ? [{ criadoEm: "desc" }]
         : [{ dataEvento: "asc" }, { horarioMontagem: "asc" }],
@@ -141,12 +160,7 @@ export class FestasService {
   async getById(id: string) {
     const festa = await prisma.festa.findUnique({
       where: { id },
-      include: {
-        cliente: true,
-        vendedor: {
-          select: { id: true, nome: true, email: true, role: true },
-        },
-      },
+      include: festaInclude,
     });
 
     if (!festa) {
@@ -156,11 +170,27 @@ export class FestasService {
     return festa;
   }
 
+  private async assertUsuarioEquipe(userId: string | null | undefined) {
+    if (!userId) return;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.ativo) {
+      throw new FestaValidationError("Pessoa da equipe inválida ou inativa");
+    }
+  }
+
+  private precisaEquipeMontagem(festa: {
+    pegueEMonte: boolean;
+  }): boolean {
+    return !festa.pegueEMonte;
+  }
+
   async create(rawInput: unknown, fallbackVendedorId: string) {
     const data = createFestaSchema.parse(rawInput);
     const vendedorId = data.vendedorId ?? fallbackVendedorId;
 
     await this.ensureVendedorExists(vendedorId);
+    await this.assertUsuarioEquipe(data.montadorEquipeId);
+    await this.assertUsuarioEquipe(data.desmontadorEquipeId);
 
     let cliente;
     if (data.clienteId) {
@@ -225,19 +255,20 @@ export class FestasService {
         alertaCompraEstoque: avaliacao.alertaCompraEstoque,
         itensFaltaEstoque: avaliacao.itensFaltaEstoque,
         vendaEm: new Date(),
+        montadorEquipeId: data.montadorEquipeId ?? null,
+        desmontadorEquipeId: data.desmontadorEquipeId ?? null,
+        montadorCarroProprio: data.montadorCarroProprio ?? true,
+        desmontadorCarroProprio: data.desmontadorCarroProprio ?? true,
       },
-      include: {
-        cliente: true,
-        vendedor: {
-          select: { id: true, nome: true, email: true, role: true },
-        },
-      },
+      include: festaInclude,
     });
   }
 
   async update(id: string, rawInput: unknown) {
     const data = updateFestaSchema.parse(rawInput);
     const festa = await this.getById(id);
+    await this.assertUsuarioEquipe(data.montadorEquipeId);
+    await this.assertUsuarioEquipe(data.desmontadorEquipeId);
 
     if (data.nomeCliente || data.telefone) {
       await prisma.cliente.update({
@@ -324,16 +355,25 @@ export class FestasService {
         ...(data.endereco !== undefined ? { endereco: data.endereco } : {}),
         ...(data.valor !== undefined ? { valor: data.valor } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),
+        ...(data.montadorEquipeId !== undefined
+          ? { montadorEquipeId: data.montadorEquipeId }
+          : {}),
+        ...(data.desmontadorEquipeId !== undefined
+          ? { desmontadorEquipeId: data.desmontadorEquipeId }
+          : {}),
+        ...(data.montadorCarroProprio !== undefined
+          ? { montadorCarroProprio: data.montadorCarroProprio }
+          : {}),
+        ...(data.desmontadorCarroProprio !== undefined
+          ? { desmontadorCarroProprio: data.desmontadorCarroProprio }
+          : {}),
         alertaCompraEstoque,
         itensFaltaEstoque,
       },
-      include: {
-        cliente: true,
-        vendedor: {
-          select: { id: true, nome: true, email: true, role: true },
-        },
-      },
+      include: festaInclude,
     });
+
+    await osService.syncEquipeFromFesta(id);
 
     if (itensMudaram || valorMudou) {
       try {
@@ -367,12 +407,7 @@ export class FestasService {
       data: {
         itensExtrasConcluidos: itensFiltrados,
       },
-      include: {
-        cliente: true,
-        vendedor: {
-          select: { id: true, nome: true, email: true, role: true },
-        },
-      },
+      include: festaInclude,
     });
   }
 
@@ -384,6 +419,17 @@ export class FestasService {
       const permitidos = STATUS_TRANSITIONS[festa.status] ?? [];
       if (!permitidos.includes(data.status)) {
         throw new InvalidStatusTransitionError(festa.status, data.status);
+      }
+    }
+
+    if (
+      data.status === StatusFesta.FECHADO &&
+      this.precisaEquipeMontagem(festa)
+    ) {
+      if (!festa.montadorEquipeId || !festa.desmontadorEquipeId) {
+        throw new FestaValidationError(
+          "Antes de fechar, escolha quem monta e quem desmonta"
+        );
       }
     }
 
@@ -432,12 +478,7 @@ export class FestasService {
           itensFaltaEstoque,
           observacoes,
         },
-        include: {
-          cliente: true,
-          vendedor: {
-            select: { id: true, nome: true, email: true, role: true },
-          },
-        },
+        include: festaInclude,
       });
 
       if (data.status === StatusFesta.PAGO) {
@@ -507,6 +548,13 @@ export class InvalidStatusTransitionError extends Error {
   constructor(from: StatusFesta, to: StatusFesta) {
     super(`Transição de status inválida: ${from} -> ${to}`);
     this.name = "InvalidStatusTransitionError";
+  }
+}
+
+export class FestaValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FestaValidationError";
   }
 }
 

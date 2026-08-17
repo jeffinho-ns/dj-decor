@@ -59,8 +59,26 @@ const disponibilidadeSchema = z
     path: ["fim"],
   });
 
+const avaliarItensSchema = z
+  .object({
+    itensExtras: z.array(z.string().min(1)).optional().default([]),
+    inicio: z.coerce.date({
+      required_error: "início é obrigatório",
+      invalid_type_error: "início inválido",
+    }),
+    fim: z.coerce.date({
+      required_error: "fim é obrigatório",
+      invalid_type_error: "fim inválido",
+    }),
+  })
+  .refine((data) => data.fim >= data.inicio, {
+    message: "fim deve ser igual ou posterior ao início",
+    path: ["fim"],
+  });
+
 export type ReservarInput = z.infer<typeof reservarSchema>;
 export type DisponibilidadeInput = z.infer<typeof disponibilidadeSchema>;
+export type AvaliarItensInput = z.infer<typeof avaliarItensSchema>;
 
 export class OverbookingError extends Error {
   constructor(message = "Unidade indisponível no período solicitado (overbooking)") {
@@ -141,6 +159,10 @@ export class EstoqueService {
 
   parseDisponibilidade(query: unknown): DisponibilidadeInput {
     return disponibilidadeSchema.parse(query);
+  }
+
+  parseAvaliarItens(body: unknown): AvaliarItensInput {
+    return avaliarItensSchema.parse(body);
   }
 
   async disponibilidade({ produtoId, inicio, fim }: DisponibilidadeInput) {

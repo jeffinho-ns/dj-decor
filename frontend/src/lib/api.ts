@@ -9,6 +9,7 @@ import type {
   CreateProdutoPayload,
   CreateUnidadePayload,
   DisponibilidadeResult,
+  EstoqueAvaliacao,
   InventarioItem,
   Produto,
   ProdutoSugestao,
@@ -37,6 +38,14 @@ import type {
 import type { Midia, TipoMidia } from "@/types/midia";
 import type { Contrato, MensagemWhatsApp } from "@/types/contrato";
 import type { FestaDescontoPendente, SolicitarDescontoPayload } from "@/types/desconto";
+import type {
+  AtendimentoMetricas,
+  AtendimentoVendedor,
+  CanalAtendimento,
+  ConversaDetalhe,
+  ConversaListItem,
+  StatusConversa,
+} from "@/types/atendimento";
 import type {
   AgendaOs,
   AssignMontadorPayload,
@@ -566,6 +575,19 @@ export async function sugestoesProdutos(
   return handleResponse<ProdutoSugestao[]>(response);
 }
 
+/** Conferência de estoque dos itens da festa (POST /api/estoque/avaliar-itens). */
+export async function avaliarItensEstoque(
+  payload: { itensExtras: string[]; inicio: string; fim: string },
+  token: string
+): Promise<EstoqueAvaliacao> {
+  const response = await fetch(`${getBaseUrl()}/api/estoque/avaliar-itens`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<EstoqueAvaliacao>(response);
+}
+
 /** Festas/OS de montagem do dia (GET /api/os/today). */
 export async function listOsHoje(token: string): Promise<FestaMontagemHoje[]> {
   const response = await fetch(`${getBaseUrl()}/api/os/today`, {
@@ -725,6 +747,20 @@ export async function updateUser(
     method: "PATCH",
     headers: authHeaders(token),
     body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function deleteUser(
+  id: string,
+  token: string
+): Promise<{
+  modo: "excluido" | "desativado";
+  usuario: import("@/types/admin").UserAdmin;
+}> {
+  const response = await fetch(`${getBaseUrl()}/api/users/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
   });
   return handleResponse(response);
 }
@@ -1399,7 +1435,7 @@ export async function listMensagensWhatsApp(
   return handleResponse<MensagemWhatsApp[]>(response);
 }
 
-/** Montadores disponíveis (GET /api/equipe/montadores). */
+/** Equipe ativa para montar/desmontar (GET /api/equipe/montadores). */
 export async function listMontadores(token: string): Promise<Montador[]> {
   const response = await fetch(`${getBaseUrl()}/api/equipe/montadores`, {
     headers: authHeaders(token),
@@ -1494,4 +1530,161 @@ export async function solicitarDesconto(
     body: JSON.stringify(payload),
   });
   return handleResponse<FestaDescontoPendente>(response);
+}
+
+// --- Atendimento / CRM inbox ---
+
+export async function listConversas(
+  token: string,
+  params?: {
+    status?: StatusConversa;
+    canal?: CanalAtendimento;
+    q?: string;
+    minhas?: boolean;
+  }
+): Promise<ConversaListItem[]> {
+  const search = new URLSearchParams();
+  if (params?.status) search.set("status", params.status);
+  if (params?.canal) search.set("canal", params.canal);
+  if (params?.q) search.set("q", params.q);
+  if (params?.minhas) search.set("minhas", "1");
+  const qs = search.toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/atendimento${qs ? `?${qs}` : ""}`,
+    { headers: authHeaders(token) }
+  );
+  return handleResponse<ConversaListItem[]>(response);
+}
+
+export async function getConversa(
+  id: string,
+  token: string
+): Promise<ConversaDetalhe> {
+  const response = await fetch(`${getBaseUrl()}/api/atendimento/${id}`, {
+    headers: authHeaders(token),
+  });
+  return handleResponse<ConversaDetalhe>(response);
+}
+
+export async function getAtendimentoMetricas(
+  token: string
+): Promise<AtendimentoMetricas> {
+  const response = await fetch(`${getBaseUrl()}/api/atendimento/metricas`, {
+    headers: authHeaders(token),
+  });
+  return handleResponse<AtendimentoMetricas>(response);
+}
+
+export async function listAtendimentoVendedores(
+  token: string
+): Promise<AtendimentoVendedor[]> {
+  const response = await fetch(`${getBaseUrl()}/api/atendimento/vendedores`, {
+    headers: authHeaders(token),
+  });
+  return handleResponse<AtendimentoVendedor[]>(response);
+}
+
+export async function createConversaManual(
+  payload: {
+    contatoExterno: string;
+    contatoNome?: string;
+    canal?: CanalAtendimento;
+    texto?: string;
+    clienteId?: string;
+  },
+  token: string
+): Promise<ConversaDetalhe> {
+  const response = await fetch(`${getBaseUrl()}/api/atendimento`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<ConversaDetalhe>(response);
+}
+
+export async function replyConversa(
+  id: string,
+  texto: string,
+  token: string
+): Promise<ConversaDetalhe> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/atendimento/${id}/mensagens`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify({ texto }),
+    }
+  );
+  return handleResponse<ConversaDetalhe>(response);
+}
+
+export async function takeoverConversa(
+  id: string,
+  token: string
+): Promise<ConversaDetalhe> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/atendimento/${id}/takeover`,
+    { method: "POST", headers: authHeaders(token) }
+  );
+  return handleResponse<ConversaDetalhe>(response);
+}
+
+export async function devolverConversaIa(
+  id: string,
+  token: string
+): Promise<ConversaDetalhe> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/atendimento/${id}/devolver-ia`,
+    { method: "POST", headers: authHeaders(token) }
+  );
+  return handleResponse<ConversaDetalhe>(response);
+}
+
+export async function atribuirConversa(
+  id: string,
+  vendedorId: string | null,
+  token: string
+): Promise<ConversaDetalhe> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/atendimento/${id}/atribuir`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify({ vendedorId }),
+    }
+  );
+  return handleResponse<ConversaDetalhe>(response);
+}
+
+export async function fecharConversa(
+  id: string,
+  token: string
+): Promise<ConversaDetalhe> {
+  const response = await fetch(`${getBaseUrl()}/api/atendimento/${id}/fechar`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+  return handleResponse<ConversaDetalhe>(response);
+}
+
+export async function simularInboundAtendimento(
+  payload: {
+    telefone: string;
+    texto: string;
+    nome?: string;
+    canal?: CanalAtendimento;
+  },
+  token: string
+): Promise<{ conversa: ConversaDetalhe; agent: unknown }> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/atendimento/simular-inbound`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(payload),
+    }
+  );
+  return handleResponse<{ conversa: ConversaDetalhe; agent: unknown }>(
+    response
+  );
 }

@@ -119,3 +119,16 @@ export interface SincronizarCatalogoResult {
   totalProdutos: number;
   inventario: InventarioItem[];
 }
+
+export interface EstoqueAvaliacaoItem {
+  nome: string;
+  necessario: number;
+  disponivel: number;
+  falta: number;
+}
+
+export interface EstoqueAvaliacao {
+  alertaCompraEstoque: boolean;
+  itensFaltaEstoque: string[];
+  detalhes: EstoqueAvaliacaoItem[];
+}

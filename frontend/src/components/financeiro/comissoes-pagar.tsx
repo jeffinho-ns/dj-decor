@@ -13,6 +13,7 @@ interface ComissaoPendente {
   percentual: number | string | null;
   tipoLabel?: string;
   tipo?: string;
+  diaReferencia?: string | null;
   vendedor?: { nome: string };
   beneficiario?: { nome: string };
   festa: {
@@ -52,7 +53,9 @@ export function ComissoesPagar({ token }: ComissoesPagarProps) {
         <div>
           <h2 className="font-display text-lg">Repasses a pagar</h2>
           <p className="text-xs text-muted-foreground">
-            Só aparecem itens do mês do evento (ou diárias já elegíveis).
+            Comissão: % da festa. Diárias: 1 pagamento por pessoa e tipo no
+            mesmo dia (não por festa). Montar e desmontar no mesmo dia = duas
+            diárias.
           </p>
         </div>
         <Button
@@ -104,6 +107,9 @@ export function ComissoesPagar({ token }: ComissoesPagarProps) {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {item.tipoLabel ?? item.tipo ?? "Repasse"}
+                    {item.diaReferencia
+                      ? ` · dia ${new Date(item.diaReferencia).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`
+                      : ""}
                     {" · "}
                     {item.festa.cliente.nome} — {item.festa.tema}
                   </p>

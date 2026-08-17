@@ -11,7 +11,7 @@ equipeRoutes.use(auth);
 
 equipeRoutes.get(
   "/montadores",
-  requireRoles(...gestaoRoles),
+  requireRoles(Role.ADMIN, Role.GERENTE, Role.VENDEDOR),
   (req, res, next) => equipeController.listMontadores(req, res, next)
 );
 

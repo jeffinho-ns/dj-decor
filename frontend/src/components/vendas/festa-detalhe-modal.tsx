@@ -186,6 +186,22 @@ export function FestaDetalheModal({
                 {current.vendedor?.nome ?? "—"}
               </span>
             </li>
+            {current.montadorEquipe || current.desmontadorEquipe ? (
+              <li className="flex items-start gap-2">
+                <UserRound className="mt-0.5 size-4 shrink-0 text-balloon-sky" />
+                <span>
+                  Monta{" "}
+                  <span className="font-medium text-foreground">
+                    {current.montadorEquipe?.nome ?? "—"}
+                  </span>
+                  {" · "}
+                  Desmonta{" "}
+                  <span className="font-medium text-foreground">
+                    {current.desmontadorEquipe?.nome ?? "—"}
+                  </span>
+                </span>
+              </li>
+            ) : null}
             <li className="flex items-center gap-2">
               <Wallet className="size-4 shrink-0 text-balloon-sun" />
               <span className="font-medium tabular-nums text-balloon-sun">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { CalendarDays } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { EquipeFestaFields } from "@/components/equipe/equipe-festa-fields";
 import { assignMontadorOs, listEquipeAgenda } from "@/lib/api";
 import { getClientToken } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import type { AgendaOs, Montador } from "@/types/equipe";
+import type { AgendaOs, EquipeFestaValue, Montador } from "@/types/equipe";
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -57,49 +58,17 @@ interface EquipePainelProps {
   defaultFim: string;
 }
 
-function MontadorSelect({
-  value,
-  options,
-  disabled,
-  onChange,
-  id,
-}: {
-  value: string;
-  options: { id: string; nome: string }[];
-  disabled?: boolean;
-  onChange: (montadorId: string) => void;
-  id?: string;
-}) {
-  return (
-    <select
-      id={id}
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      className="flex h-11 w-full rounded-2xl border-0 bg-[var(--neo-bg)] px-3 text-base font-medium shadow-[var(--shadow-neo-inset)] outline-none focus-visible:ring-3 focus-visible:ring-balloon-sky/30 sm:h-9 sm:text-sm"
-    >
-      {options.map((m) => (
-        <option key={m.id || "none"} value={m.id}>
-          {m.nome}
-        </option>
-      ))}
-    </select>
-  );
-}
-
 function AgendaCard({
   item,
-  montadorOptions,
+  pessoas,
   assigning,
-  onAssignMontador,
-  onAssignDesmontador,
+  onAssign,
   accentIndex,
 }: {
   item: AgendaOs;
-  montadorOptions: { id: string; nome: string }[];
+  pessoas: Montador[];
   assigning: boolean;
-  onAssignMontador: (montadorId: string) => void;
-  onAssignDesmontador: (desmontadorId: string) => void;
+  onAssign: (value: EquipeFestaValue) => void;
   accentIndex: number;
 }) {
   const accent = CARD_ACCENTS[accentIndex % CARD_ACCENTS.length];
@@ -140,33 +109,21 @@ function AgendaCard({
         </div>
       </dl>
 
-      <div className="mt-4 space-y-3">
-        <div className="space-y-2">
-          <Label htmlFor={`montador-${item.id}`} className="text-sm">
-            Montador (R$ 100/diária)
-          </Label>
-          <MontadorSelect
-            id={`montador-${item.id}`}
-            value={item.montadorId ?? ""}
-            options={montadorOptions}
-            disabled={assigning}
-            onChange={onAssignMontador}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor={`desmontador-${item.id}`} className="text-sm">
-            Desmontador (R$ 70/diária)
-          </Label>
-          <MontadorSelect
-            id={`desmontador-${item.id}`}
-            value={item.desmontadorId ?? ""}
-            options={montadorOptions.map((o) =>
-              o.id === "" ? { id: "", nome: "— Sem desmontador —" } : o
-            )}
-            disabled={assigning}
-            onChange={onAssignDesmontador}
-          />
-        </div>
+      <div className="mt-4">
+        <EquipeFestaFields
+          pessoas={pessoas}
+          compact
+          disabled={assigning}
+          value={{
+            montadorEquipeId: item.montadorId,
+            desmontadorEquipeId: item.desmontadorId ?? null,
+            montadorCarroProprio: item.montadorCarroProprio ?? true,
+            desmontadorCarroProprio: item.desmontadorCarroProprio ?? true,
+          }}
+          onChange={(value: EquipeFestaValue) => {
+            onAssign(value);
+          }}
+        />
       </div>
     </article>
   );
@@ -184,11 +141,6 @@ export function EquipePainel({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [assigningId, setAssigningId] = useState<string | null>(null);
-
-  const montadorOptions = useMemo(
-    () => [{ id: "", nome: "— Sem montador —" }, ...montadores],
-    [montadores]
-  );
 
   function carregar() {
     setError(null);
@@ -214,10 +166,7 @@ export function EquipePainel({
     });
   }
 
-  function atribuirEquipe(
-    osId: string,
-    payload: { montadorId?: string | null; desmontadorId?: string | null }
-  ) {
+  function atribuirEquipe(osId: string, value: EquipeFestaValue) {
     setError(null);
     setAssigningId(osId);
     startTransition(async () => {
@@ -226,7 +175,16 @@ export function EquipePainel({
         if (!token) {
           throw new Error("Sessão expirada. Faça login novamente.");
         }
-        const updated = await assignMontadorOs(osId, payload, token);
+        const updated = await assignMontadorOs(
+          osId,
+          {
+            montadorId: value.montadorEquipeId,
+            desmontadorId: value.desmontadorEquipeId,
+            montadorCarroProprio: value.montadorCarroProprio,
+            desmontadorCarroProprio: value.desmontadorCarroProprio,
+          },
+          token
+        );
         setAgenda((prev) =>
           prev.map((item) =>
             item.id === osId
@@ -234,6 +192,8 @@ export function EquipePainel({
                   ...item,
                   montadorId: updated.montadorId,
                   desmontadorId: updated.desmontadorId ?? null,
+                  montadorCarroProprio: updated.montadorCarroProprio,
+                  desmontadorCarroProprio: updated.desmontadorCarroProprio,
                   montador: updated.montador
                     ? { id: updated.montador.id, nome: updated.montador.nome }
                     : null,
@@ -317,18 +277,9 @@ export function EquipePainel({
               <AgendaCard
                 key={item.id}
                 item={item}
-                montadorOptions={montadorOptions}
+                pessoas={montadores}
                 assigning={pending && assigningId === item.id}
-                onAssignMontador={(montadorId) =>
-                  atribuirEquipe(item.id, {
-                    montadorId: montadorId || null,
-                  })
-                }
-                onAssignDesmontador={(desmontadorId) =>
-                  atribuirEquipe(item.id, {
-                    desmontadorId: desmontadorId || null,
-                  })
-                }
+                onAssign={(value) => atribuirEquipe(item.id, value)}
                 accentIndex={index}
               />
             ))}
@@ -346,15 +297,14 @@ export function EquipePainel({
               <TableHead>Status</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Endereço</TableHead>
-              <TableHead className="min-w-[10rem]">Montador</TableHead>
-              <TableHead className="min-w-[10rem]">Desmontador</TableHead>
+              <TableHead className="min-w-[22rem]">Equipe e carro</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {agenda.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={7}
                   className="py-10 text-center text-muted-foreground"
                 >
                   Nenhuma montagem neste período. Festas Pagas/Fechadas aparecem
@@ -389,32 +339,20 @@ export function EquipePainel({
                   <TableCell className="max-w-[14rem] truncate text-sm">
                     {item.festa.endereco}
                   </TableCell>
-                  <TableCell>
-                    <MontadorSelect
-                      value={item.montadorId ?? ""}
-                      options={montadorOptions}
+                  <TableCell className="align-top">
+                    <EquipeFestaFields
+                      pessoas={montadores}
+                      compact
                       disabled={pending && assigningId === item.id}
-                      onChange={(montadorId) =>
-                        atribuirEquipe(item.id, {
-                          montadorId: montadorId || null,
-                        })
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <MontadorSelect
-                      value={item.desmontadorId ?? ""}
-                      options={montadorOptions.map((o) =>
-                        o.id === ""
-                          ? { id: "", nome: "— Sem desmontador —" }
-                          : o
-                      )}
-                      disabled={pending && assigningId === item.id}
-                      onChange={(desmontadorId) =>
-                        atribuirEquipe(item.id, {
-                          desmontadorId: desmontadorId || null,
-                        })
-                      }
+                      value={{
+                        montadorEquipeId: item.montadorId,
+                        desmontadorEquipeId: item.desmontadorId ?? null,
+                        montadorCarroProprio:
+                          item.montadorCarroProprio ?? true,
+                        desmontadorCarroProprio:
+                          item.desmontadorCarroProprio ?? true,
+                      }}
+                      onChange={(value) => atribuirEquipe(item.id, value)}
                     />
                   </TableCell>
                 </TableRow>

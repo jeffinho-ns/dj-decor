@@ -1,4 +1,4 @@
-import { Prisma, Role, StatusFesta, StatusOS } from "@prisma/client";
+import { Prisma, StatusFesta, StatusOS } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
 
@@ -32,10 +32,10 @@ const agendaOsInclude = {
     },
   },
   montador: {
-    select: { id: true, nome: true },
+    select: { id: true, nome: true, role: true },
   },
   desmontador: {
-    select: { id: true, nome: true },
+    select: { id: true, nome: true, role: true },
   },
 } satisfies Prisma.OrdemServicoInclude;
 
@@ -50,8 +50,8 @@ export class EquipeService {
 
   async listMontadores() {
     return prisma.user.findMany({
-      where: { role: Role.MONTADOR, ativo: true },
-      select: { id: true, nome: true },
+      where: { ativo: true },
+      select: { id: true, nome: true, role: true },
       orderBy: { nome: "asc" },
     });
   }
@@ -70,7 +70,13 @@ export class EquipeService {
         ],
         ordemServico: null,
       },
-      select: { id: true },
+      select: {
+        id: true,
+        montadorEquipeId: true,
+        desmontadorEquipeId: true,
+        montadorCarroProprio: true,
+        desmontadorCarroProprio: true,
+      },
     });
 
     if (festas.length === 0) return;
@@ -79,6 +85,10 @@ export class EquipeService {
       data: festas.map((f) => ({
         festaId: f.id,
         status: StatusOS.ABERTA,
+        montadorId: f.montadorEquipeId,
+        desmontadorId: f.desmontadorEquipeId,
+        montadorCarroProprio: f.montadorCarroProprio,
+        desmontadorCarroProprio: f.desmontadorCarroProprio,
       })),
       skipDuplicates: true,
     });
