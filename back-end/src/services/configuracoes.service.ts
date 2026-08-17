@@ -1,3 +1,4 @@
+import { FrequenciaPagamentoEquipe } from "@prisma/client";
 import { z } from "zod";
 import { env } from "../config/env";
 import { prisma } from "../prisma/client";
@@ -10,6 +11,7 @@ const updateConfigSchema = z.object({
   diariaDesmontador: z.coerce.number().min(0).optional(),
   diariaMontadorCarroEmpresa: z.coerce.number().min(0).optional(),
   diariaDesmontadorCarroEmpresa: z.coerce.number().min(0).optional(),
+  frequenciaPagamentoEquipe: z.nativeEnum(FrequenciaPagamentoEquipe).optional(),
   clausulasContrato: z.string().max(20000).nullable().optional(),
   nomeEmpresa: z.string().min(2).max(120).optional(),
   sloganEmpresa: z.string().min(2).max(200).optional(),
@@ -85,6 +87,9 @@ export class ConfiguracoesService {
               diariaDesmontadorCarroEmpresa: data.diariaDesmontadorCarroEmpresa,
             }
           : {}),
+        ...(data.frequenciaPagamentoEquipe !== undefined
+          ? { frequenciaPagamentoEquipe: data.frequenciaPagamentoEquipe }
+          : {}),
         ...(data.clausulasContrato !== undefined
           ? { clausulasContrato: data.clausulasContrato }
           : {}),
@@ -135,6 +140,7 @@ export class ConfiguracoesService {
       diariaDesmontador: Number(cfg.diariaDesmontador),
       diariaMontadorCarroEmpresa: Number(cfg.diariaMontadorCarroEmpresa),
       diariaDesmontadorCarroEmpresa: Number(cfg.diariaDesmontadorCarroEmpresa),
+      frequenciaPagamentoEquipe: cfg.frequenciaPagamentoEquipe,
       comissaoMetaSemanal: Number(cfg.comissaoMetaSemanal),
     };
   }

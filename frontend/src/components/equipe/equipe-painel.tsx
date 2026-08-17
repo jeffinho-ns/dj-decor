@@ -38,6 +38,8 @@ const CARD_ACCENTS = [
 ];
 
 const FESTA_STATUS_LABEL: Record<string, string> = {
+  ORCAMENTO: "Orçamento",
+  AGUARDANDO_PAGAMENTO: "Aguardando pagamento",
   PAGO: "Pago",
   FECHADO: "Fechado",
   EM_MONTAGEM: "Em montagem",
@@ -45,6 +47,8 @@ const FESTA_STATUS_LABEL: Record<string, string> = {
 };
 
 const FESTA_STATUS_CLASS: Record<string, string> = {
+  ORCAMENTO: "bg-balloon-sun/12 text-balloon-sun",
+  AGUARDANDO_PAGAMENTO: "bg-balloon-pink/12 text-balloon-pink",
   PAGO: "bg-balloon-mint/12 text-balloon-mint",
   FECHADO: "bg-balloon-sky/12 text-balloon-sky",
   EM_MONTAGEM: "bg-balloon-lilac/12 text-balloon-lilac",
@@ -221,9 +225,8 @@ export function EquipePainel({
     <div className="rounded-2xl neo-inset px-4 py-10 text-center text-sm text-muted-foreground">
       <p className="font-medium text-foreground">Nenhuma montagem neste período</p>
       <p className="mt-2">
-        Aparecem aqui festas <span className="text-foreground">Pagas</span>,{" "}
-        <span className="text-foreground">Fechadas</span> ou em montagem.
-        Confira as datas ou avance o status em Vendas.
+        Aparecem todas as festas do período, mesmo se o cliente ainda não
+        pagou (pagamento no dia ou depois da desmontagem).
       </p>
     </div>
   );
@@ -307,8 +310,8 @@ export function EquipePainel({
                   colSpan={7}
                   className="py-10 text-center text-muted-foreground"
                 >
-                  Nenhuma montagem neste período. Festas Pagas/Fechadas aparecem
-                  aqui — confira as datas ou o status em Vendas.
+                  Nenhuma festa neste período. Confira as datas — entram
+                  orçamentos e festas ainda sem pagamento.
                 </TableCell>
               </TableRow>
             ) : (

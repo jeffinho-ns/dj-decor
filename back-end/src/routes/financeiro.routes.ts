@@ -19,4 +19,22 @@ financeiroRoutes.get(
   (req, res, next) => financeiroController.previsao(req, res, next)
 );
 
+financeiroRoutes.get(
+  "/equipe-diarias",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => financeiroController.equipeDiarias(req, res, next)
+);
+
+financeiroRoutes.post(
+  "/equipe-diarias/pagar",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => financeiroController.pagarEquipeDiarias(req, res, next)
+);
+
+financeiroRoutes.patch(
+  "/equipe-diarias/frequencia",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => financeiroController.frequenciaEquipe(req, res, next)
+);
+
 export { financeiroRoutes };

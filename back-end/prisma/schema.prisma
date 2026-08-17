@@ -143,6 +143,12 @@ enum StatusDesconto {
   RECUSADO
 }
 
+enum FrequenciaPagamentoEquipe {
+  SEMANAL
+  QUINZENAL
+  MENSAL
+}
+
 model User {
   id                  String   @id @default(cuid())
   nome                String   @unique
@@ -499,6 +505,8 @@ model ConfiguracaoNegocio {
   diariaDesmontador       Decimal  @default(130) @map("diaria_desmontador") @db.Decimal(10, 2)
   diariaMontadorCarroEmpresa     Decimal @default(130) @map("diaria_montador_carro_empresa") @db.Decimal(10, 2)
   diariaDesmontadorCarroEmpresa  Decimal @default(80) @map("diaria_desmontador_carro_empresa") @db.Decimal(10, 2)
+  /** Ritmo de pagamento das diárias (dá para mudar a qualquer momento). */
+  frequenciaPagamentoEquipe FrequenciaPagamentoEquipe @default(QUINZENAL) @map("frequencia_pagamento_equipe")
   clausulasContrato       String?  @map("clausulas_contrato") @db.Text
   nomeEmpresa             String   @default("DJ festas") @map("nome_empresa")
   sloganEmpresa           String   @default("Decoração de Festas · Locação de Materiais") @map("slogan_empresa")

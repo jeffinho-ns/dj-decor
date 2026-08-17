@@ -91,3 +91,44 @@ export interface FinanceiroResumo {
   rentabilidadePorTema: RentabilidadeTema[];
   rankingVendedores?: RankingVendedor[];
 }
+
+export type FrequenciaPagamentoEquipe = "SEMANAL" | "QUINZENAL" | "MENSAL";
+
+export interface EquipeDiariaFesta {
+  id: string;
+  tema: string;
+  clienteNome: string;
+}
+
+export interface EquipeDiariaDia {
+  ymd: string;
+  tipo: "DIARIA_MONTAGEM" | "DIARIA_DESMONTAGEM";
+  tipoLabel: string;
+  carroProprio: boolean;
+  valor: number;
+  status: "PENDENTE" | "PAGA";
+  comissaoId: string | null;
+  festas: EquipeDiariaFesta[];
+}
+
+export interface EquipeDiariaPessoa {
+  id: string;
+  nome: string;
+  dias: EquipeDiariaDia[];
+  total: number;
+  totalPendente: number;
+  totalPago: number;
+  diasPendentes: number;
+  diasPagos: number;
+}
+
+export interface EquipeDiariasPeriodo {
+  frequencia: FrequenciaPagamentoEquipe;
+  offset: number;
+  inicioYmd: string;
+  fimYmd: string;
+  label: string;
+  totalPendente: number;
+  totalPago: number;
+  pessoas: EquipeDiariaPessoa[];
+}

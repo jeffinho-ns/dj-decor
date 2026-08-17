@@ -51,11 +51,10 @@ export function ComissoesPagar({ token }: ComissoesPagarProps) {
     <section className="space-y-3 rounded-2xl neo-sm p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="font-display text-lg">Repasses a pagar</h2>
+          <h2 className="font-display text-lg">Comissões de venda a pagar</h2>
           <p className="text-xs text-muted-foreground">
-            Comissão: % da festa. Diárias: 1 pagamento por pessoa e tipo no
-            mesmo dia (não por festa). Montar e desmontar no mesmo dia = duas
-            diárias.
+            Vendedor, sócia e dona — % da festa, liberado no mês do evento.
+            Diárias da equipe ficam no bloco acima.
           </p>
         </div>
         <Button

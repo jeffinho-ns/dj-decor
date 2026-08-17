@@ -12,6 +12,7 @@ const CAMPOS_FINANCEIROS = new Set([
   "diariaDesmontador",
   "diariaMontadorCarroEmpresa",
   "diariaDesmontadorCarroEmpresa",
+  "frequenciaPagamentoEquipe",
 ]);
 
 export class ConfiguracoesController {

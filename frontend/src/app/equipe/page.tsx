@@ -48,7 +48,7 @@ export default async function EquipePage() {
     <DashboardShell
       user={user}
       title="Equipe"
-      description="Agenda de montagens. Pagamento é por dia de trabalho (carro próprio ou da empresa), não por festa."
+      description="Agenda de todas as festas do período — inclusive as que ainda vão pagar no dia ou depois da desmontagem."
     >
       {error ? (
         <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">

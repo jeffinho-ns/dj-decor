@@ -188,6 +188,36 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
               }
             />
           </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label>Pagamento da equipe (diárias)</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  ["SEMANAL", "Semana"],
+                  ["QUINZENAL", "15 dias"],
+                  ["MENSAL", "Mês"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={
+                    (config.frequenciaPagamentoEquipe ?? "QUINZENAL") === id
+                      ? "rounded-xl px-3 py-2 text-xs font-medium neo-inset"
+                      : "rounded-xl px-3 py-2 text-xs text-muted-foreground neo-sm"
+                  }
+                  onClick={() =>
+                    setConfig({ ...config, frequenciaPagamentoEquipe: id })
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Dá para mudar a qualquer momento também em Financeiro.
+            </p>
+          </div>
           <div className="space-y-1">
             <Label>Meta semanal vendedor (R$)</Label>
             <Input
@@ -237,6 +267,8 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
                   diariaDesmontadorCarroEmpresa: Number(
                     config.diariaDesmontadorCarroEmpresa ?? 80
                   ),
+                  frequenciaPagamentoEquipe:
+                    config.frequenciaPagamentoEquipe ?? "QUINZENAL",
                   clausulasContrato: config.clausulasContrato,
                 },
                 token

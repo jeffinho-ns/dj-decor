@@ -1,11 +1,22 @@
 import {
+  FrequenciaPagamentoEquipe,
   Prisma,
   StatusComissao,
   StatusFesta,
   StatusPagamento,
+  TipoRepasse,
 } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
+import {
+  inicioDiaBrasil,
+  periodoEquipe,
+  ymdBrasil,
+  ymdNoPeriodo,
+  ymdToUtcNoon,
+} from "../lib/periodo-equipe";
+import { configuracoesService } from "./configuracoes.service";
+import { comissoesService } from "./comissoes.service";
 
 const resumoQuerySchema = z.object({
   inicio: z.coerce.date().optional(),
@@ -14,6 +25,19 @@ const resumoQuerySchema = z.object({
 
 const previsaoQuerySchema = z.object({
   dias: z.coerce.number().int().min(1).max(90).default(30),
+});
+
+const equipeDiariasQuerySchema = z.object({
+  offset: z.coerce.number().int().min(-36).max(36).default(0),
+});
+
+const pagarEquipeSchema = z.object({
+  pessoaId: z.string().min(1).optional(),
+  offset: z.coerce.number().int().min(-36).max(36).default(0),
+});
+
+const frequenciaEquipeSchema = z.object({
+  frequencia: z.nativeEnum(FrequenciaPagamentoEquipe),
 });
 
 export type ResumoQueryInput = z.infer<typeof resumoQuerySchema>;
@@ -336,6 +360,292 @@ export class FinanceiroService {
       totalPrevisto,
       periodos: buckets,
     };
+  }
+
+  async listEquipeDiarias(rawQuery: unknown) {
+    const { offset } = equipeDiariasQuerySchema.parse(rawQuery);
+    const regras = await configuracoesService.getRegrasFinanceiras();
+    const frequencia = regras.frequenciaPagamentoEquipe;
+    const { inicioYmd, fimYmd, label } = periodoEquipe(frequencia, offset);
+
+    const padStart = ymdToUtcNoon(inicioYmd);
+    padStart.setUTCDate(padStart.getUTCDate() - 1);
+    const padEnd = ymdToUtcNoon(fimYmd);
+    padEnd.setUTCDate(padEnd.getUTCDate() + 1);
+
+    const festas = await prisma.festa.findMany({
+      where: {
+        status: {
+          in: [
+            StatusFesta.PAGO,
+            StatusFesta.FECHADO,
+            StatusFesta.EM_MONTAGEM,
+            StatusFesta.CONCLUIDO,
+          ],
+        },
+        OR: [
+          { horarioMontagem: { gte: padStart, lte: padEnd } },
+          { dataEvento: { gte: padStart, lte: padEnd } },
+        ],
+      },
+      include: {
+        cliente: { select: { id: true, nome: true } },
+        montadorEquipe: { select: { id: true, nome: true } },
+        desmontadorEquipe: { select: { id: true, nome: true } },
+        ordemServico: {
+          include: {
+            montador: { select: { id: true, nome: true } },
+            desmontador: { select: { id: true, nome: true } },
+          },
+        },
+      },
+    });
+
+    const diaInicio = ymdToUtcNoon(inicioYmd);
+    const diaFim = ymdToUtcNoon(fimYmd);
+    const comissoes = await prisma.comissao.findMany({
+      where: {
+        tipo: {
+          in: [TipoRepasse.DIARIA_MONTAGEM, TipoRepasse.DIARIA_DESMONTAGEM],
+        },
+        status: { not: StatusComissao.CANCELADA },
+        OR: [
+          { diaReferencia: { gte: diaInicio, lte: diaFim } },
+          {
+            diaReferencia: null,
+            festaId: { in: festas.map((f) => f.id) },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        beneficiarioId: true,
+        tipo: true,
+        status: true,
+        valor: true,
+        diaReferencia: true,
+        festa: {
+          select: { horarioMontagem: true, dataEvento: true },
+        },
+      },
+    });
+
+    type DiaKey = string;
+    type DiaAcc = {
+      ymd: string;
+      tipo: TipoRepasse;
+      pessoaId: string;
+      pessoaNome: string;
+      carroProprio: boolean;
+      valor: number;
+      festas: Array<{ id: string; tema: string; clienteNome: string }>;
+    };
+    const dias = new Map<DiaKey, DiaAcc>();
+
+    const pushDia = (params: {
+      ymd: string;
+      tipo: TipoRepasse;
+      pessoa: { id: string; nome: string } | null;
+      carroProprio: boolean;
+      festa: { id: string; tema: string; clienteNome: string };
+    }) => {
+      if (!params.pessoa) return;
+      if (!ymdNoPeriodo(params.ymd, inicioYmd, fimYmd)) return;
+      const key = `${params.pessoa.id}|${params.tipo}|${params.ymd}`;
+      const valor =
+        params.tipo === TipoRepasse.DIARIA_MONTAGEM
+          ? params.carroProprio
+            ? regras.diariaMontador
+            : regras.diariaMontadorCarroEmpresa
+          : params.carroProprio
+            ? regras.diariaDesmontador
+            : regras.diariaDesmontadorCarroEmpresa;
+      const existing = dias.get(key);
+      if (existing) {
+        if (!existing.festas.some((f) => f.id === params.festa.id)) {
+          existing.festas.push(params.festa);
+        }
+        return;
+      }
+      dias.set(key, {
+        ymd: params.ymd,
+        tipo: params.tipo,
+        pessoaId: params.pessoa.id,
+        pessoaNome: params.pessoa.nome,
+        carroProprio: params.carroProprio,
+        valor,
+        festas: [params.festa],
+      });
+    };
+
+    for (const festa of festas) {
+      const resumoFesta = {
+        id: festa.id,
+        tema: festa.tema,
+        clienteNome: festa.cliente.nome,
+      };
+      const montador =
+        festa.ordemServico?.montador ?? festa.montadorEquipe;
+      const desmontador =
+        festa.ordemServico?.desmontador ?? festa.desmontadorEquipe;
+      const montadorCarro =
+        festa.ordemServico?.montadorCarroProprio ?? festa.montadorCarroProprio;
+      const desmontadorCarro =
+        festa.ordemServico?.desmontadorCarroProprio ??
+        festa.desmontadorCarroProprio;
+
+      pushDia({
+        ymd: ymdBrasil(festa.horarioMontagem),
+        tipo: TipoRepasse.DIARIA_MONTAGEM,
+        pessoa: montador,
+        carroProprio: montadorCarro,
+        festa: resumoFesta,
+      });
+      pushDia({
+        ymd: ymdBrasil(festa.dataEvento),
+        tipo: TipoRepasse.DIARIA_DESMONTAGEM,
+        pessoa: desmontador,
+        carroProprio: desmontadorCarro,
+        festa: resumoFesta,
+      });
+    }
+
+    const comissaoByKey = new Map<
+      string,
+      (typeof comissoes)[number]
+    >();
+    for (const c of comissoes) {
+      const ymd = c.diaReferencia
+        ? ymdBrasil(c.diaReferencia)
+        : c.tipo === TipoRepasse.DIARIA_MONTAGEM
+          ? ymdBrasil(c.festa.horarioMontagem)
+          : ymdBrasil(c.festa.dataEvento);
+      if (!ymdNoPeriodo(ymd, inicioYmd, fimYmd)) continue;
+      const key = `${c.beneficiarioId}|${c.tipo}|${ymd}`;
+      const prev = comissaoByKey.get(key);
+      if (!prev || (prev.status !== StatusComissao.PAGA && c.status === StatusComissao.PAGA)) {
+        comissaoByKey.set(key, c);
+      }
+    }
+
+    type PessoaAcc = {
+      id: string;
+      nome: string;
+      dias: Array<{
+        ymd: string;
+        tipo: "DIARIA_MONTAGEM" | "DIARIA_DESMONTAGEM";
+        tipoLabel: string;
+        carroProprio: boolean;
+        valor: number;
+        status: "PENDENTE" | "PAGA";
+        comissaoId: string | null;
+        festas: Array<{ id: string; tema: string; clienteNome: string }>;
+      }>;
+      total: number;
+      totalPendente: number;
+      totalPago: number;
+      diasPendentes: number;
+      diasPagos: number;
+    };
+    const pessoas = new Map<string, PessoaAcc>();
+
+    const sortedDias = [...dias.values()].sort((a, b) =>
+      a.ymd === b.ymd
+        ? a.tipo.localeCompare(b.tipo)
+        : a.ymd.localeCompare(b.ymd)
+    );
+
+    for (const dia of sortedDias) {
+      const key = `${dia.pessoaId}|${dia.tipo}|${dia.ymd}`;
+      const comissao = comissaoByKey.get(key);
+      const status: "PENDENTE" | "PAGA" =
+        comissao?.status === StatusComissao.PAGA ? "PAGA" : "PENDENTE";
+      const valor = comissao ? Number(comissao.valor) : dia.valor;
+      let pessoa = pessoas.get(dia.pessoaId);
+      if (!pessoa) {
+        pessoa = {
+          id: dia.pessoaId,
+          nome: dia.pessoaNome,
+          dias: [],
+          total: 0,
+          totalPendente: 0,
+          totalPago: 0,
+          diasPendentes: 0,
+          diasPagos: 0,
+        };
+        pessoas.set(dia.pessoaId, pessoa);
+      }
+      pessoa.dias.push({
+        ymd: dia.ymd,
+        tipo: dia.tipo as "DIARIA_MONTAGEM" | "DIARIA_DESMONTAGEM",
+        tipoLabel:
+          dia.tipo === TipoRepasse.DIARIA_MONTAGEM
+            ? "Montagem"
+            : "Desmontagem",
+        carroProprio: dia.carroProprio,
+        valor,
+        status,
+        comissaoId: comissao?.id ?? null,
+        festas: dia.festas,
+      });
+      pessoa.total += valor;
+      if (status === "PAGA") {
+        pessoa.totalPago += valor;
+        pessoa.diasPagos += 1;
+      } else {
+        pessoa.totalPendente += valor;
+        pessoa.diasPendentes += 1;
+      }
+    }
+
+    const pessoasLista = [...pessoas.values()].sort((a, b) =>
+      a.nome.localeCompare(b.nome, "pt-BR")
+    );
+
+    return {
+      frequencia,
+      offset,
+      inicioYmd,
+      fimYmd,
+      label,
+      totalPendente: pessoasLista.reduce((acc, p) => acc + p.totalPendente, 0),
+      totalPago: pessoasLista.reduce((acc, p) => acc + p.totalPago, 0),
+      pessoas: pessoasLista,
+    };
+  }
+
+  async pagarEquipeDiarias(rawBody: unknown) {
+    const { pessoaId, offset } = pagarEquipeSchema.parse(rawBody);
+    const lista = await this.listEquipeDiarias({ offset });
+    const alvos = pessoaId
+      ? lista.pessoas.filter((p) => p.id === pessoaId)
+      : lista.pessoas;
+
+    let pagas = 0;
+    for (const pessoa of alvos) {
+      for (const dia of pessoa.dias) {
+        if (dia.status === "PAGA") continue;
+        const festaId = dia.festas[0]?.id;
+        if (!festaId) continue;
+        await comissoesService.pagarDiariaDoDia({
+          festaId,
+          beneficiarioId: pessoa.id,
+          tipo: dia.tipo as TipoRepasse,
+          valor: dia.valor,
+          diaReferencia: inicioDiaBrasil(ymdToUtcNoon(dia.ymd)),
+        });
+        pagas += 1;
+      }
+    }
+
+    const atualizado = await this.listEquipeDiarias({ offset });
+    return { pagas, ...atualizado };
+  }
+
+  async atualizarFrequenciaEquipe(rawBody: unknown) {
+    const { frequencia } = frequenciaEquipeSchema.parse(rawBody);
+    await configuracoesService.update({ frequenciaPagamentoEquipe: frequencia });
+    return this.listEquipeDiarias({ offset: 0 });
   }
 }
 

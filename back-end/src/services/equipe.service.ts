@@ -9,8 +9,10 @@ const agendaQuerySchema = z.object({
 
 export type AgendaQuery = z.infer<typeof agendaQuerySchema>;
 
-/** Festas que devem aparecer na alocação de equipe (já pagas / em operação). */
+/** Festas da agenda de equipe — todas menos canceladas (muitos pagam no dia ou depois). */
 const STATUS_EQUIPE: StatusFesta[] = [
+  StatusFesta.ORCAMENTO,
+  StatusFesta.AGUARDANDO_PAGAMENTO,
   StatusFesta.PAGO,
   StatusFesta.FECHADO,
   StatusFesta.EM_MONTAGEM,
@@ -57,8 +59,8 @@ export class EquipeService {
   }
 
   /**
-   * Garante OS para festas pagas/fechadas no período (sem OS ainda),
-   * para a gestão poder atribuir montador antes/ junto do fechamento.
+   * Garante OS para festas do período (sem OS ainda),
+   * para atribuir montador mesmo se o cliente ainda não pagou.
    */
   private async ensureOsNoPeriodo(inicio: Date, fim: Date) {
     const festas = await prisma.festa.findMany({

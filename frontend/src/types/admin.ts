@@ -22,6 +22,7 @@ export interface ConfiguracaoNegocio {
   diariaDesmontador?: number | string;
   diariaMontadorCarroEmpresa?: number | string;
   diariaDesmontadorCarroEmpresa?: number | string;
+  frequenciaPagamentoEquipe?: import("@/types/financeiro").FrequenciaPagamentoEquipe;
   clausulasContrato: string | null;
   nomeEmpresa: string;
   sloganEmpresa: string;

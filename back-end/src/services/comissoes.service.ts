@@ -402,6 +402,12 @@ export class ComissoesService {
       where: {
         status: StatusComissao.PENDENTE,
         elegivelEm: { lte: agora },
+        tipo: {
+          notIn: [
+            TipoRepasse.DIARIA_MONTAGEM,
+            TipoRepasse.DIARIA_DESMONTAGEM,
+          ],
+        },
       },
       include: {
         beneficiario: { select: { id: true, nome: true, ehSocia: true, ehDona: true } },
@@ -433,6 +439,48 @@ export class ComissoesService {
         elegivelEm: { lte: agora },
       },
       data: { status: StatusComissao.PAGA, pagoEm: new Date() },
+    });
+  }
+
+  /** Marca (ou cria) a diária do dia como paga — independente do mês do evento. */
+  async pagarDiariaDoDia(params: {
+    festaId: string;
+    beneficiarioId: string;
+    tipo: TipoRepasse;
+    valor: number;
+    diaReferencia: Date;
+  }) {
+    const existing = await prisma.comissao.findFirst({
+      where: {
+        beneficiarioId: params.beneficiarioId,
+        tipo: params.tipo,
+        diaReferencia: params.diaReferencia,
+        status: { not: StatusComissao.CANCELADA },
+      },
+    });
+    if (existing?.status === StatusComissao.PAGA) return existing;
+    if (existing) {
+      return prisma.comissao.update({
+        where: { id: existing.id },
+        data: {
+          status: StatusComissao.PAGA,
+          pagoEm: new Date(),
+          valor: params.valor,
+        },
+      });
+    }
+    return prisma.comissao.create({
+      data: {
+        festaId: params.festaId,
+        beneficiarioId: params.beneficiarioId,
+        tipo: params.tipo,
+        percentual: null,
+        valor: params.valor,
+        elegivelEm: params.diaReferencia,
+        diaReferencia: params.diaReferencia,
+        status: StatusComissao.PAGA,
+        pagoEm: new Date(),
+      },
     });
   }
 

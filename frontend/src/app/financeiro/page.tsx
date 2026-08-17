@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { FinanceiroPainel } from "@/components/financeiro/financeiro-painel";
 import { ComissoesPagar } from "@/components/financeiro/comissoes-pagar";
+import { EquipeDiariasPagar } from "@/components/financeiro/equipe-diarias-pagar";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
   getComissaoRanking,
@@ -56,7 +57,7 @@ export default async function FinanceiroPage() {
     <DashboardShell
       user={user}
       title="Financeiro"
-      description="Fluxo de caixa, rentabilidade por tema e comissões da equipe."
+      description="Fluxo de caixa, comissões e pagamento de montadores e desmontadores."
     >
       {error ? (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
@@ -70,6 +71,7 @@ export default async function FinanceiroPage() {
             previsao={previsao}
             comissaoRanking={comissaoRanking}
           />
+          <EquipeDiariasPagar token={token} />
           <ComissoesPagar token={token} />
         </div>
       ) : null}

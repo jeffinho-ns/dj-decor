@@ -57,6 +57,8 @@ import type {
   ComissaoExtrato,
   ComissaoStatus,
   PrevisaoCaixa,
+  EquipeDiariasPeriodo,
+  FrequenciaPagamentoEquipe,
 } from "@/types/financeiro";
 import type {
   CheckinPayload,
@@ -1416,6 +1418,79 @@ export async function getFinanceiroPrevisao(
         total: toNumber(row.total),
       };
     }),
+  };
+}
+
+/** Diárias da equipe no período (GET /api/financeiro/equipe-diarias). */
+export async function getEquipeDiarias(
+  token: string,
+  offset = 0
+): Promise<EquipeDiariasPeriodo> {
+  const qs = new URLSearchParams({ offset: String(offset) }).toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/financeiro/equipe-diarias?${qs}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  return normalizeEquipeDiarias(
+    await handleResponse<EquipeDiariasPeriodo>(response)
+  );
+}
+
+export async function pagarEquipeDiarias(
+  token: string,
+  payload: { pessoaId?: string; offset?: number }
+): Promise<EquipeDiariasPeriodo> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/financeiro/equipe-diarias/pagar`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(payload),
+    }
+  );
+  const raw = await handleResponse<EquipeDiariasPeriodo & { pagas?: number }>(
+    response
+  );
+  return normalizeEquipeDiarias(raw);
+}
+
+export async function setFrequenciaPagamentoEquipe(
+  token: string,
+  frequencia: FrequenciaPagamentoEquipe
+): Promise<EquipeDiariasPeriodo> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/financeiro/equipe-diarias/frequencia`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify({ frequencia }),
+    }
+  );
+  return normalizeEquipeDiarias(
+    await handleResponse<EquipeDiariasPeriodo>(response)
+  );
+}
+
+function normalizeEquipeDiarias(raw: EquipeDiariasPeriodo): EquipeDiariasPeriodo {
+  return {
+    ...raw,
+    totalPendente: toNumber(raw.totalPendente),
+    totalPago: toNumber(raw.totalPago),
+    pessoas: (raw.pessoas ?? []).map((p) => ({
+      ...p,
+      total: toNumber(p.total),
+      totalPendente: toNumber(p.totalPendente),
+      totalPago: toNumber(p.totalPago),
+      diasPendentes: toNumber(p.diasPendentes),
+      diasPagos: toNumber(p.diasPagos),
+      dias: (p.dias ?? []).map((d) => ({
+        ...d,
+        valor: toNumber(d.valor),
+      })),
+    })),
   };
 }
 
