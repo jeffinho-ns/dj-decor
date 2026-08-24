@@ -45,6 +45,7 @@ routes.get("/health", (_req, res) => {
 });
 
 routes.use("/auth", authRoutes);
+routes.use("/webhooks", webhooksRoutes);
 routes.use("/users", usersRoutes);
 routes.use("/configuracoes", configuracoesRoutes);
 routes.use("/catalogo", catalogoRoutes);
@@ -63,6 +64,5 @@ routes.use("/qr", qrRoutes);
 routes.use(pagamentosRoutes);
 routes.use(contratosRoutes);
 routes.use("/whatsapp", whatsappRoutes);
-routes.use("/webhooks", webhooksRoutes);
 
 export { routes };
