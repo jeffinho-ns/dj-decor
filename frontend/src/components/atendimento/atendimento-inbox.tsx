@@ -13,12 +13,14 @@ import {
   Phone,
   RefreshCw,
   Send,
+  StickyNote,
   UserRound,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NotasInternasEditor } from "@/components/atendimento/notas-internas-editor";
 import {
   atribuirConversa,
   createConversaManual,
@@ -31,6 +33,7 @@ import {
   replyConversa,
   simularInboundAtendimento,
   takeoverConversa,
+  updateConversaNotas,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type {
@@ -83,6 +86,7 @@ export function AtendimentoInbox({ token, viewerId }: AtendimentoInboxProps) {
 
   const [novaTel, setNovaTel] = useState("");
   const [novaNome, setNovaNome] = useState("");
+  const [savingNotas, setSavingNotas] = useState(false);
 
   const carregarLista = useCallback(async () => {
     setError(null);
@@ -241,7 +245,15 @@ export function AtendimentoInbox({ token, viewerId }: AtendimentoInboxProps) {
           <MetricCard
             label={metricas.agentEnabled ? "IA ligada" : "IA off"}
             value={metricas.fechadasHoje}
-            hint="fechadas hoje"
+            hint={
+              metricas.agentEnabled
+                ? metricas.agentProvider === "groq"
+                  ? "Groq · fechadas hoje"
+                  : metricas.agentProvider === "openai"
+                    ? "OpenAI · fechadas hoje"
+                    : "fechadas hoje"
+                : "fechadas hoje"
+            }
           />
         </div>
       ) : null}
@@ -323,6 +335,14 @@ export function AtendimentoInbox({ token, viewerId }: AtendimentoInboxProps) {
                             c.contatoExterno ||
                             c.externalThreadId}
                         </span>
+                        {c.notasInternas ? (
+                          <StickyNote
+                            className={cn(
+                              "ml-auto size-3 shrink-0",
+                              active ? "text-white/80" : "text-balloon-sun"
+                            )}
+                          />
+                        ) : null}
                       </span>
                       <span
                         className={cn(
@@ -475,6 +495,41 @@ export function AtendimentoInbox({ token, viewerId }: AtendimentoInboxProps) {
                   </Button>
                 </div>
               </header>
+
+              <div className="border-b border-border/40 py-3">
+                <NotasInternasEditor
+                  key={detalhe.id}
+                  value={detalhe.festa?.notasInternas ?? detalhe.notasInternas}
+                  pending={savingNotas}
+                  hint={
+                    detalhe.festa
+                      ? "A equipe de montagem vê isto na agenda da festa."
+                      : "Fica só nesta conversa até vincular uma festa."
+                  }
+                  onSave={async (notasInternas) => {
+                    setSavingNotas(true);
+                    setError(null);
+                    try {
+                      const updated = await updateConversaNotas(
+                        detalhe.id,
+                        notasInternas,
+                        token
+                      );
+                      setDetalhe(updated);
+                      await carregarLista();
+                    } catch (err) {
+                      setError(
+                        err instanceof Error
+                          ? err.message
+                          : "Falha ao salvar notas"
+                      );
+                      throw err;
+                    } finally {
+                      setSavingNotas(false);
+                    }
+                  }}
+                />
+              </div>
 
               <div className="flex-1 space-y-2 overflow-y-auto py-3">
                 {detalhe.mensagens.map((m) => {

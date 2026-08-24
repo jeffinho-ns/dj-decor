@@ -208,6 +208,25 @@ export const AGENT_TOOL_DEFINITIONS = [
   {
     type: "function" as const,
     function: {
+      name: "registrar_nota_interna",
+      description:
+        "Registra alteração da decoração pedida pelo cliente (ex.: trocar mesa quadrada por redonda, cilindros de madeira por acrílico). A equipe de montagem vê na agenda. Use sempre que o cliente pedir troca de peça ou ajuste da montagem.",
+      parameters: {
+        type: "object",
+        properties: {
+          nota: {
+            type: "string",
+            description:
+              "Texto curto da alteração, ex.: 'Trocar mesa quadrada pela redonda'",
+          },
+        },
+        required: ["nota"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "escalar_humano",
       description:
         "Pausa a IA e coloca a conversa aguardando um humano (dúvida complexa, desconto, reclamação).",
@@ -515,6 +534,20 @@ export class AtendimentoToolsService {
           vendedorId,
           vendedorNome: atualizada.vendedor?.nome ?? null,
           motivo: String(args.motivo ?? ""),
+        };
+      }
+
+      case "registrar_nota_interna": {
+        const nota = String(args.nota ?? "").trim();
+        if (!nota) return { ok: false, error: "Nota vazia" };
+        const atualizada = await atendimentoService.appendNotaInterna(
+          conversaId,
+          nota
+        );
+        return {
+          ok: true,
+          notasInternas: atualizada.notasInternas,
+          festaId: atualizada.festaId,
         };
       }
 

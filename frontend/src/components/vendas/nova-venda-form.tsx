@@ -88,6 +88,7 @@ const novaVendaSchema = z.object({
   }),
   endereco: z.string().min(5, "Informe o endereço"),
   observacoes: z.string().max(2000).optional(),
+  notasInternas: z.string().max(4000).optional(),
   valor: z
     .string()
     .min(1, "Informe o valor")
@@ -191,6 +192,7 @@ export function NovaVendaForm({
       tamanhoDecoracao: "M",
       endereco: "",
       observacoes: "",
+      notasInternas: "",
       valor: "",
     },
   });
@@ -656,6 +658,7 @@ export function NovaVendaForm({
           kitCatalogo: kitId || null,
           pegueEMonte: pegueAtivo,
           observacoes: observacoes || null,
+          notasInternas: data.notasInternas?.trim() || null,
           endereco: enderecoFinal,
           valor: Number(data.valor.replace(",", ".")),
           ...(precisaEquipe
@@ -763,6 +766,7 @@ export function NovaVendaForm({
       tamanhoDecoracao: "M",
       endereco: "",
       observacoes: "",
+      notasInternas: "",
       valor: "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1363,6 +1367,20 @@ export function NovaVendaForm({
               className="flex min-h-[5.5rem] w-full rounded-xl neo-inset px-3 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-balloon-sun/30 md:py-2 md:text-sm"
               {...register("observacoes")}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notasInternas">Notas internas da montagem</Label>
+            <textarea
+              id="notasInternas"
+              rows={3}
+              placeholder="Ex.: trocar mesa quadrada pela redonda; cilindros de madeira por acrílico"
+              className="flex min-h-[5.5rem] w-full rounded-xl neo-inset px-3 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-balloon-sun/30 md:py-2 md:text-sm"
+              {...register("notasInternas")}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              A equipe vê isto na agenda. Não vai para o cliente.
+            </p>
           </div>
         </div>
 

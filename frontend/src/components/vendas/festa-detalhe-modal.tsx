@@ -19,9 +19,11 @@ import { CompraEstoqueBadge } from "@/components/vendas/compra-estoque-badge";
 import { DescontoBadge } from "@/components/vendas/desconto-badge";
 import { FestaItensEditor } from "@/components/vendas/festa-itens-editor";
 import { FestaGaleriaEditor } from "@/components/vendas/festa-galeria-editor";
+import { NotasInternasEditor } from "@/components/atendimento/notas-internas-editor";
 import { RiscoBadge } from "@/components/vendas/risco-badge";
 import { formatCurrency } from "@/lib/format";
 import { nomeDoKit } from "@/lib/catalogo-kits";
+import { updateFesta } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Festa, StatusFesta } from "@/types/festa";
 
@@ -248,6 +250,28 @@ export function FestaDetalheModal({
               Obs.: {current.observacoes}
             </p>
           ) : null}
+
+          {canEdit && token ? (
+            <NotasInternasEditor
+              key={current.id}
+              value={current.notasInternas}
+              hint="A equipe vê estas notas na agenda de montagem."
+              onSave={async (notasInternas) => {
+                const updated = await updateFesta(
+                  current.id,
+                  { notasInternas },
+                  token
+                );
+                handleUpdated(updated);
+              }}
+            />
+          ) : (
+            <NotasInternasEditor
+              value={current.notasInternas}
+              readOnly
+              onSave={async () => undefined}
+            />
+          )}
 
           {canEdit && token ? (
             <>

@@ -53,6 +53,7 @@ const createFestaSchema = z
   kitCatalogo: z.string().min(1).nullable().optional(),
   pegueEMonte: z.boolean().optional().default(false),
   observacoes: z.string().max(2000).nullable().optional(),
+  notasInternas: z.string().max(4000).nullable().optional(),
   endereco: z.string().min(5, "Endereço é obrigatório"),
   valor: z.coerce.number().positive("Valor deve ser positivo"),
   status: z.nativeEnum(StatusFesta).optional().default(StatusFesta.ORCAMENTO),
@@ -87,6 +88,7 @@ const updateFestaSchema = z.object({
   kitCatalogo: z.string().min(1).nullable().optional(),
   pegueEMonte: z.boolean().optional(),
   observacoes: z.string().max(2000).nullable().optional(),
+  notasInternas: z.string().max(4000).nullable().optional(),
   endereco: z.string().min(5).optional(),
   valor: z.coerce.number().positive().optional(),
   status: z.nativeEnum(StatusFesta).optional(),
@@ -248,6 +250,7 @@ export class FestasService {
         kitCatalogo: data.kitCatalogo ?? null,
         pegueEMonte: data.pegueEMonte,
         observacoes,
+        notasInternas: data.notasInternas?.trim() || null,
         endereco: data.endereco,
         clienteId: cliente.id,
         vendedorId,
@@ -352,6 +355,9 @@ export class FestasService {
           ? { pegueEMonte: data.pegueEMonte }
           : {}),
         observacoes,
+        ...(data.notasInternas !== undefined
+          ? { notasInternas: data.notasInternas?.trim() || null }
+          : {}),
         ...(data.endereco !== undefined ? { endereco: data.endereco } : {}),
         ...(data.valor !== undefined ? { valor: data.valor } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),
@@ -374,6 +380,13 @@ export class FestasService {
     });
 
     await osService.syncEquipeFromFesta(id);
+
+    if (data.notasInternas !== undefined) {
+      await prisma.conversa.updateMany({
+        where: { festaId: id },
+        data: { notasInternas: updated.notasInternas },
+      });
+    }
 
     if (itensMudaram || valorMudou) {
       try {

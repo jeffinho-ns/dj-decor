@@ -154,6 +154,11 @@ function FestaCardMobile({
             Obs.: {festa.observacoes}
           </p>
         ) : null}
+        {festa.notasInternas ? (
+          <p className="text-xs text-balloon-sun">
+            Montagem: {festa.notasInternas}
+          </p>
+        ) : null}
       </div>
     </article>
   );
@@ -234,6 +239,11 @@ export function FestasTable({ festas, onSelectFesta }: FestasTableProps) {
                   {festa.observacoes ? (
                     <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/70">
                       Obs.: {festa.observacoes}
+                    </p>
+                  ) : null}
+                  {festa.notasInternas ? (
+                    <p className="mt-0.5 line-clamp-2 text-xs text-balloon-sun">
+                      Montagem: {festa.notasInternas}
                     </p>
                   ) : null}
                 </TableCell>

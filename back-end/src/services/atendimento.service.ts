@@ -40,6 +40,10 @@ const assignSchema = z.object({
   vendedorId: z.string().min(1).nullable(),
 });
 
+const notasInternasSchema = z.object({
+  notasInternas: z.string().max(4000).nullable(),
+});
+
 const conversaInclude = {
   cliente: { select: { id: true, nome: true, telefone: true } },
   vendedor: { select: { id: true, nome: true, role: true } },
@@ -50,6 +54,7 @@ const conversaInclude = {
       status: true,
       valor: true,
       dataEvento: true,
+      notasInternas: true,
     },
   },
   _count: { select: { mensagens: true } },
@@ -480,17 +485,92 @@ export class AtendimentoService {
   }
 
   async vincularFesta(conversaId: string, festaId: string) {
-    await this.getById(conversaId);
+    const conversa = await this.getById(conversaId);
     const festa = await prisma.festa.findUnique({ where: { id: festaId } });
     if (!festa) throw new Error(`Festa não encontrada: ${festaId}`);
+    const notasInternas = mergeNotas(
+      conversa.notasInternas,
+      festa.notasInternas
+    );
+    await prisma.$transaction([
+      prisma.conversa.update({
+        where: { id: conversaId },
+        data: {
+          festaId,
+          clienteId: festa.clienteId,
+          vendedorId: festa.vendedorId,
+          notasInternas,
+        },
+      }),
+      prisma.festa.update({
+        where: { id: festaId },
+        data: { notasInternas },
+      }),
+    ]);
+    return this.getById(conversaId);
+  }
+
+  async updateNotasInternas(
+    conversaId: string,
+    raw: unknown,
+    autorId: string
+  ) {
+    const data = notasInternasSchema.parse(raw);
+    await this.getById(conversaId);
+    const notasInternas = data.notasInternas?.trim() || null;
+    return this.persistNotasInternas(conversaId, notasInternas, autorId);
+  }
+
+  async appendNotaInterna(
+    conversaId: string,
+    linha: string,
+    autorId?: string | null
+  ) {
+    const texto = linha.trim();
+    if (!texto) throw new Error("Nota vazia");
+    const conversa = await this.getById(conversaId);
+    const atual = mergeNotas(
+      conversa.festa?.notasInternas ?? null,
+      conversa.notasInternas
+    );
+    const notasInternas = atual ? `${atual}\n${texto}` : texto;
+    return this.persistNotasInternas(
+      conversaId,
+      notasInternas,
+      autorId ?? null
+    );
+  }
+
+  private async persistNotasInternas(
+    conversaId: string,
+    notasInternas: string | null,
+    autorId: string | null
+  ) {
+    const conversa = await prisma.conversa.findUnique({
+      where: { id: conversaId },
+      select: { id: true, festaId: true },
+    });
+    if (!conversa) throw new ConversaNotFoundError(conversaId);
+
     await prisma.conversa.update({
       where: { id: conversaId },
-      data: {
-        festaId,
-        clienteId: festa.clienteId,
-        vendedorId: festa.vendedorId,
-      },
+      data: { notasInternas },
     });
+
+    if (conversa.festaId) {
+      await prisma.festa.update({
+        where: { id: conversa.festaId },
+        data: { notasInternas },
+      });
+    }
+
+    await this.registrarEvento(
+      conversaId,
+      TipoAtendimentoEvento.NOTA_INTERNA,
+      { notasInternas },
+      autorId
+    );
+
     return this.getById(conversaId);
   }
 
@@ -582,6 +662,19 @@ export class AtendimentoService {
     ]);
     return { abertas, ai, humanas, fechadasHoje };
   }
+}
+
+function mergeNotas(
+  a: string | null | undefined,
+  b: string | null | undefined
+): string | null {
+  const x = a?.trim() ?? "";
+  const y = b?.trim() ?? "";
+  if (!x) return y || null;
+  if (!y) return x || null;
+  if (x.includes(y)) return x;
+  if (y.includes(x)) return y;
+  return `${x}\n\n${y}`;
 }
 
 function startOfDay(d: Date) {

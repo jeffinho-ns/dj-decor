@@ -18,6 +18,7 @@ Regras:
 - Saldo restante deve ser quitado até a véspera do evento (PIX, espécie ou cartão).
 - Se o cliente já fez festa conosco, transfira para o vendedor anterior com transferir_para_vendedor.
 - Em dúvida de preço especial, reclamação ou pedido fora do catálogo: use escalar_humano.
+- Se o cliente pedir troca de peça ou ajuste da montagem (mesa, cilindros, cores, etc.), use registrar_nota_interna e confirme que anotou para a equipe.
 - Respostas curtas (WhatsApp), com emojis com moderação.
 - Não invente disponibilidade de estoque físico detalhada; use checar_agenda para o dia.
 `;
@@ -36,7 +37,11 @@ interface ChatMessage {
 
 export class AtendimentoAgentService {
   isEnabled(): boolean {
-    return Boolean(env.OPENAI_API_KEY);
+    return Boolean(this.resolveProvider());
+  }
+
+  providerName(): "groq" | "openai" | null {
+    return this.resolveProvider()?.name ?? null;
   }
 
   /**
@@ -48,7 +53,7 @@ export class AtendimentoAgentService {
     reason?: string;
   }> {
     if (!this.isEnabled()) {
-      return { ran: false, reason: "OPENAI_API_KEY não configurada" };
+      return { ran: false, reason: "GROQ_API_KEY / OPENAI_API_KEY não configurada" };
     }
 
     const conversa = await atendimentoService.getById(conversaId);
@@ -107,7 +112,12 @@ export class AtendimentoAgentService {
       `Contato: ${conversa.contatoNome ?? "—"} / ${conversa.contatoExterno ?? conversa.externalThreadId}`,
       `ClienteId: ${conversa.clienteId ?? "não vinculado"}`,
       `FestaId vinculada: ${conversa.festaId ?? "nenhuma"}`,
-    ].join("\n");
+      conversa.notasInternas
+        ? `Notas internas da montagem:\n${conversa.notasInternas}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const messages: ChatMessage[] = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -190,6 +200,31 @@ export class AtendimentoAgentService {
     return admin.id;
   }
 
+  private resolveProvider(): {
+    name: "groq" | "openai";
+    url: string;
+    apiKey: string;
+    model: string;
+  } | null {
+    if (env.GROQ_API_KEY) {
+      return {
+        name: "groq",
+        url: "https://api.groq.com/openai/v1/chat/completions",
+        apiKey: env.GROQ_API_KEY,
+        model: env.GROQ_MODEL || "openai/gpt-oss-120b",
+      };
+    }
+    if (env.OPENAI_API_KEY) {
+      return {
+        name: "openai",
+        url: "https://api.openai.com/v1/chat/completions",
+        apiKey: env.OPENAI_API_KEY,
+        model: env.OPENAI_MODEL || "gpt-5.2",
+      };
+    }
+    return null;
+  }
+
   private async chat(messages: ChatMessage[]): Promise<{
     choices?: Array<{
       message?: {
@@ -202,24 +237,32 @@ export class AtendimentoAgentService {
       };
     }>;
   }> {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const provider = this.resolveProvider();
+    if (!provider) {
+      throw new Error("Nenhum provedor de IA configurado");
+    }
+
+    const response = await fetch(provider.url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${provider.apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: env.OPENAI_MODEL || "gpt-5.2",
+        model: provider.model,
         messages,
         tools: AGENT_TOOL_DEFINITIONS,
         tool_choice: "auto",
-        temperature: 0.4,
+        max_tokens: 1024,
+        ...(provider.name === "openai" ? { temperature: 0.4 } : {}),
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`OpenAI HTTP ${response.status}: ${errText.slice(0, 300)}`);
+      throw new Error(
+        `${provider.name} HTTP ${response.status}: ${errText.slice(0, 300)}`
+      );
     }
 
     return (await response.json()) as {

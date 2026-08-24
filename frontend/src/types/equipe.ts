@@ -21,6 +21,7 @@ export interface AgendaOsFesta {
   tema: string;
   endereco: string;
   status: StatusFesta;
+  notasInternas?: string | null;
   cliente: Cliente;
 }
 

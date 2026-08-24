@@ -41,6 +41,7 @@ export interface Festa {
   kitCatalogo?: string | null;
   pegueEMonte?: boolean;
   observacoes?: string | null;
+  notasInternas?: string | null;
   endereco: string;
   criadoEm: string;
   clienteId: string;
@@ -97,6 +98,7 @@ export interface CreateFestaPayload {
   kitCatalogo?: string | null;
   pegueEMonte?: boolean;
   observacoes?: string | null;
+  notasInternas?: string | null;
   endereco: string;
   valor: number;
   montadorEquipeId?: string | null;
@@ -114,6 +116,7 @@ export interface UpdateFestaPayload {
   kitCatalogo?: string | null;
   pegueEMonte?: boolean;
   observacoes?: string | null;
+  notasInternas?: string | null;
   endereco?: string;
   valor?: number;
   nomeCliente?: string;

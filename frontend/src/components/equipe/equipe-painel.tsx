@@ -111,6 +111,16 @@ function AgendaCard({
           <dt className="text-muted-foreground">Endereço</dt>
           <dd className="mt-0.5 text-foreground">{item.festa.endereco}</dd>
         </div>
+        {item.festa.notasInternas ? (
+          <div className="rounded-xl border border-balloon-sun/30 bg-balloon-sun/10 px-2.5 py-2">
+            <dt className="text-[11px] font-semibold uppercase tracking-wider text-balloon-sun">
+              Alterações da montagem
+            </dt>
+            <dd className="mt-0.5 whitespace-pre-wrap text-foreground">
+              {item.festa.notasInternas}
+            </dd>
+          </div>
+        ) : null}
       </dl>
 
       <div className="mt-4">
@@ -324,7 +334,12 @@ export function EquipePainel({
                     {formatDateTime(item.festa.dataEvento)}
                   </TableCell>
                   <TableCell className={CARD_ACCENTS[index % CARD_ACCENTS.length].tema}>
-                    {item.festa.tema}
+                    <p>{item.festa.tema}</p>
+                    {item.festa.notasInternas ? (
+                      <p className="mt-1 whitespace-pre-wrap text-xs font-normal text-balloon-sun">
+                        {item.festa.notasInternas}
+                      </p>
+                    ) : null}
                   </TableCell>
                   <TableCell>
                     <span

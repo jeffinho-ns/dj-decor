@@ -73,4 +73,10 @@ atendimentoRoutes.post(
   (req, res, next) => atendimentoController.vincularFesta(req, res, next)
 );
 
+atendimentoRoutes.patch(
+  "/:id/notas",
+  requireRoles(...ROLES),
+  (req, res, next) => atendimentoController.updateNotas(req, res, next)
+);
+
 export { atendimentoRoutes };

@@ -26,7 +26,10 @@ const envSchema = z.object({
   ESTOQUE_CURA_HORAS: z.coerce.number().min(0).default(12),
   /** Horas sem retorno QR para gerar alerta de peça sumida. */
   QR_ALERTA_HORAS: z.coerce.number().min(1).default(36),
-  /** OpenAI — agente de atendimento (opcional; sem chave a IA fica desligada). */
+  /** Groq (faixa gratuita, API compatível com OpenAI). Preferido se ambas as chaves existirem. */
+  GROQ_API_KEY: z.union([z.string().min(1), z.literal("")]).optional(),
+  GROQ_MODEL: z.string().default("openai/gpt-oss-120b"),
+  /** OpenAI — fallback se Groq não estiver configurado. */
   OPENAI_API_KEY: z.union([z.string().min(1), z.literal("")]).optional(),
   OPENAI_MODEL: z.string().default("gpt-5.2"),
   /** Meta Cloud API — WhatsApp / Instagram Messaging. */
@@ -40,6 +43,7 @@ const envSchema = z.object({
 type Env = z.infer<typeof envSchema> & {
   WHATSAPP_IA_WEBHOOK_URL?: string;
   OPENAI_API_KEY?: string;
+  GROQ_API_KEY?: string;
   META_ACCESS_TOKEN?: string;
   META_PHONE_NUMBER_ID?: string;
   META_APP_SECRET?: string;
@@ -72,6 +76,7 @@ function loadEnv(): Env {
     ...data,
     WHATSAPP_IA_WEBHOOK_URL: optionalUrl(data.WHATSAPP_IA_WEBHOOK_URL),
     OPENAI_API_KEY: optionalStr(data.OPENAI_API_KEY),
+    GROQ_API_KEY: optionalStr(data.GROQ_API_KEY),
     META_ACCESS_TOKEN: optionalStr(data.META_ACCESS_TOKEN),
     META_PHONE_NUMBER_ID: optionalStr(data.META_PHONE_NUMBER_ID),
     META_APP_SECRET: optionalStr(data.META_APP_SECRET),

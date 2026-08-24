@@ -1742,6 +1742,19 @@ export async function fecharConversa(
   return handleResponse<ConversaDetalhe>(response);
 }
 
+export async function updateConversaNotas(
+  id: string,
+  notasInternas: string | null,
+  token: string
+): Promise<ConversaDetalhe> {
+  const response = await fetch(`${getBaseUrl()}/api/atendimento/${id}/notas`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ notasInternas }),
+  });
+  return handleResponse<ConversaDetalhe>(response);
+}
+
 export async function simularInboundAtendimento(
   payload: {
     telefone: string;

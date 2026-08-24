@@ -26,7 +26,9 @@ export interface ConversaListItem {
     status: string;
     valor: string | number;
     dataEvento: string;
+    notasInternas?: string | null;
   } | null;
+  notasInternas?: string | null;
   _count: { mensagens: number };
 }
 
@@ -63,6 +65,7 @@ export interface AtendimentoMetricas {
   humanas: number;
   fechadasHoje: number;
   agentEnabled: boolean;
+  agentProvider?: "groq" | "openai" | null;
 }
 
 export interface AtendimentoVendedor {

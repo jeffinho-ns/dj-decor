@@ -39,6 +39,7 @@ export class AtendimentoController {
       res.status(200).json({
         ...data,
         agentEnabled: atendimentoAgentService.isEnabled(),
+        agentProvider: atendimentoAgentService.providerName(),
       });
     } catch (error) {
       next(error);
@@ -216,6 +217,32 @@ export class AtendimentoController {
         return;
       }
       const conversa = await atendimentoService.vincularFesta(id, festaId);
+      res.status(200).json(conversa);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  async updateNotas(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: "Não autorizado" });
+        return;
+      }
+      const id = getParamId(req.params.id);
+      if (!id) {
+        res.status(400).json({ error: "ID é obrigatório" });
+        return;
+      }
+      const conversa = await atendimentoService.updateNotasInternas(
+        id,
+        req.body,
+        req.user.id
+      );
       res.status(200).json(conversa);
     } catch (error) {
       this.handleError(error, res, next);

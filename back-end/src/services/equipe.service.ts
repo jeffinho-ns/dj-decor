@@ -28,6 +28,7 @@ const agendaOsInclude = {
       tema: true,
       endereco: true,
       status: true,
+      notasInternas: true,
       cliente: {
         select: { id: true, nome: true, telefone: true },
       },
