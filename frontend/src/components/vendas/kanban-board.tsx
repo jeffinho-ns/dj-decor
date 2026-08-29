@@ -13,6 +13,7 @@ import { CompraEstoqueBadge } from "@/components/vendas/compra-estoque-badge";
 import { FestaContratoPanel } from "@/components/vendas/festa-contrato-panel";
 import { FestaDetalheModal } from "@/components/vendas/festa-detalhe-modal";
 import { FestaItensEditor } from "@/components/vendas/festa-itens-editor";
+import { FestaBolasResumo } from "@/components/vendas/festa-bolas-resumo";
 import { PagamentoForm } from "@/components/vendas/pagamento-form";
 import { RiscoBadge } from "@/components/vendas/risco-badge";
 import { FestasTable } from "@/components/vendas/festas-table";
@@ -214,6 +215,15 @@ function FestaCard({
               onUpdated={onFestaUpdate}
             />
           </div>
+          {festa.pedidoBolas ? (
+            <div className="mb-4 border-b border-border/50 pb-3">
+              <FestaBolasResumo
+                pedido={festa.pedidoBolas}
+                token={token}
+                temaFesta={festa.tema}
+              />
+            </div>
+          ) : null}
           {loadingPagamentos ? (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Loader2 className="size-3 animate-spin" />

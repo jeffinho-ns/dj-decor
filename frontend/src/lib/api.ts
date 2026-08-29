@@ -397,7 +397,7 @@ export async function confirmarPagamento(
 
 export async function anexarComprovantePagamento(
   pagamentoId: string,
-  comprovanteMidiaId: string,
+  comprovanteMidiaId: string | null,
   token: string
 ): Promise<Pagamento> {
   const response = await fetch(

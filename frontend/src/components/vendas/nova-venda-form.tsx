@@ -62,6 +62,7 @@ import type {
 import type { CatalogoBola } from "@/types/bolas";
 import type { EstoqueAvaliacao, ProdutoSugestao } from "@/types/estoque";
 import type { EquipeFestaValue, Montador } from "@/types/equipe";
+import type { NovaVendaModo } from "@/components/vendas/nova-venda-entrada";
 
 const selectClassName =
   "flex h-11 w-full rounded-xl neo-inset px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-balloon-sky/30 md:h-9 md:text-sm";
@@ -124,6 +125,8 @@ interface NovaVendaFormProps {
   enderecoEmpresaInicial?: string | null;
   catalogoBolas?: CatalogoBola[];
   markupBolasPercentual?: number;
+  /** decoracao = fluxo completo; bolas = venda só de bolas. */
+  modo?: NovaVendaModo;
 }
 
 export function NovaVendaForm({
@@ -133,7 +136,9 @@ export function NovaVendaForm({
   enderecoEmpresaInicial,
   catalogoBolas = [],
   markupBolasPercentual = 10,
+  modo = "decoracao",
 }: NovaVendaFormProps) {
+  const soBolas = modo === "bolas";
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [extraInput, setExtraInput] = useState("");
@@ -151,6 +156,8 @@ export function NovaVendaForm({
   const [bolasQty, setBolasQty] = useState<Record<string, number>>({});
   const [bolasCores, setBolasCores] = useState("");
   const [bolasMidiaIds, setBolasMidiaIds] = useState<string[]>([]);
+  const [temaMidiaIds, setTemaMidiaIds] = useState<string[]>([]);
+  const [temaUploadBusy, setTemaUploadBusy] = useState(false);
   const [bolasUploadBusy, setBolasUploadBusy] = useState(false);
   const [valorManual, setValorManual] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
@@ -409,11 +416,21 @@ export function NovaVendaForm({
 
   useEffect(() => {
     if (valorManual) return;
+    if (soBolas) {
+      if (bolasOrcamento.valorCliente > 0) {
+        setValue("valor", String(bolasOrcamento.valorCliente), {
+          shouldValidate: true,
+        });
+      }
+      return;
+    }
     if (!kitSelecionado && addonIds.length === 0 && extrasManuais.length === 0 && taxaEntrega <= 0)
       return;
     if (orcamento.total <= 0) return;
     setValue("valor", String(orcamento.total), { shouldValidate: true });
   }, [
+    soBolas,
+    bolasOrcamento.valorCliente,
     orcamento.total,
     kitSelecionado,
     addonIds.length,
@@ -628,8 +645,8 @@ export function NovaVendaForm({
       return;
     }
 
-    const pegueAtivo = Boolean(kitSelecionado && pegueEMonte);
-    const precisaEquipe = !pegueAtivo || montadorLevaBusca;
+    const pegueAtivo = Boolean(!soBolas && kitSelecionado && pegueEMonte);
+    const precisaEquipe = !soBolas && (!pegueAtivo || montadorLevaBusca);
     if (
       precisaEquipe &&
       (!equipe.montadorEquipeId || !equipe.desmontadorEquipeId)
@@ -638,9 +655,14 @@ export function NovaVendaForm({
       return;
     }
 
-    if (estoqueAvaliacao && estoqueAvaliacao.detalhes.length > 0) {
-      const faltaConferir = estoqueAvaliacao.detalhes.some(
-        (item) => !itensConferidos.has(item.nome)
+    if (soBolas && bolasOrcamento.itensPayload.length === 0) {
+      setSubmitError("Selecione ao menos um item de bolas");
+      return;
+    }
+
+    if (!soBolas && orcamento.itens.length > 0) {
+      const faltaConferir = orcamento.itens.some(
+        (item) => !itensConferidos.has(item)
       );
       if (faltaConferir) {
         setSubmitError(
@@ -651,7 +673,6 @@ export function NovaVendaForm({
     }
 
     try {
-      const pegueAtivo = Boolean(kitSelecionado && pegueEMonte);
       const horaMontagem = pegueAtivo ? data.horaEvento : data.horaMontagem;
       const enderecoFinal =
         pegueAtivo && !montadorLevaBusca && enderecoEmpresa
@@ -681,14 +702,16 @@ export function NovaVendaForm({
           tema: data.tema,
           dataEvento: combineDateAndTime(data.dataEvento, data.horaEvento),
           horarioMontagem: combineDateAndTime(data.dataEvento, horaMontagem),
-          tamanhoDecoracao: data.tamanhoDecoracao,
-          itensExtras: orcamento.itens,
-          kitCatalogo: kitId || null,
+          tamanhoDecoracao: soBolas ? "P" : data.tamanhoDecoracao,
+          itensExtras: soBolas ? [] : orcamento.itens,
+          kitCatalogo: soBolas ? "SO_BOLAS" : kitId || null,
           pegueEMonte: pegueAtivo,
           observacoes: observacoes || null,
           notasInternas: data.notasInternas?.trim() || null,
           endereco: enderecoFinal,
-          valor: Number(data.valor.replace(",", ".")),
+          valor: soBolas
+            ? bolasOrcamento.valorCliente
+            : Number(data.valor.replace(",", ".")),
           ...(precisaEquipe
             ? {
                 montadorEquipeId: equipe.montadorEquipeId,
@@ -704,7 +727,10 @@ export function NovaVendaForm({
                 bolasMidiaIds:
                   bolasMidiaIds.length > 0 ? bolasMidiaIds : undefined,
               }
-            : {}),
+            : bolasMidiaIds.length > 0
+              ? { bolasMidiaIds }
+              : {}),
+          ...(temaMidiaIds.length > 0 ? { temaMidiaIds } : {}),
         },
         token
       );
@@ -787,6 +813,10 @@ export function NovaVendaForm({
     setPegueEMonte(false);
     setMontadorLevaBusca(false);
     setAddonIds([]);
+    setBolasQty({});
+    setBolasCores("");
+    setBolasMidiaIds([]);
+    setTemaMidiaIds([]);
     setValorManual(false);
     setSugestoes([]);
     setSugestoesError(null);
@@ -899,6 +929,13 @@ export function NovaVendaForm({
               token={token}
               pagamentos={pagamentos}
               valorFesta={Number(festaCriada.valor)}
+              valorBolasCliente={
+                festaCriada.kitCatalogo === "SO_BOLAS"
+                  ? 0
+                  : festaCriada.pedidoBolas
+                    ? Number(festaCriada.pedidoBolas.valorCliente)
+                    : 0
+              }
               viewerRole={viewerRole}
               onPagamentosChange={setPagamentos}
             />
@@ -923,10 +960,10 @@ export function NovaVendaForm({
   return (
     <div className="mx-auto max-w-3xl rounded-2xl neo-sm p-4 sm:p-6 md:p-8">
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-        Novo orçamento
+        {soBolas ? "Venda só de bolas" : "Novo orçamento"}
       </p>
       <h2 className="mt-1 font-display text-2xl text-foreground">
-        Dados da festa
+        {soBolas ? "Bolas ornamentadas" : "Dados da festa"}
       </h2>
 
       <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-6 pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom,0px)+6.5rem)] md:pb-0">
@@ -985,6 +1022,106 @@ export function NovaVendaForm({
 
         <Separator className="bg-border/60" />
 
+        <div className="space-y-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-balloon-pink">
+            Referências do primeiro contato
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Tire foto no celular ou escolha da galeria — tema da festa e
+            referência das bolas.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="temaFotos">Fotos do tema</Label>
+              <Input
+                id="temaFotos"
+                type="file"
+                accept="image/*"
+                multiple
+                capture="environment"
+                className="min-h-11"
+                disabled={temaUploadBusy}
+                onChange={async (event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  if (!files.length) return;
+                  setTemaUploadBusy(true);
+                  try {
+                    for (const file of files) {
+                      const midia = await uploadMidia(
+                        { file, tipo: "REFERENCIA_FESTA" },
+                        token
+                      );
+                      setTemaMidiaIds((prev) => [...prev, midia.id]);
+                    }
+                  } catch (err) {
+                    setSubmitError(
+                      err instanceof Error
+                        ? err.message
+                        : "Falha no upload das fotos do tema"
+                    );
+                  } finally {
+                    setTemaUploadBusy(false);
+                    event.target.value = "";
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                {temaUploadBusy
+                  ? "Enviando..."
+                  : temaMidiaIds.length > 0
+                    ? `${temaMidiaIds.length} foto(s) do tema`
+                    : "Referência visual da decoração"}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bolasFotos">Fotos das bolas</Label>
+              <Input
+                id="bolasFotos"
+                type="file"
+                accept="image/*"
+                multiple
+                capture="environment"
+                className="min-h-11"
+                disabled={bolasUploadBusy}
+                onChange={async (event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  if (!files.length) return;
+                  setBolasUploadBusy(true);
+                  try {
+                    for (const file of files) {
+                      const midia = await uploadMidia(
+                        { file, tipo: "REFERENCIA_BOLAS" },
+                        token
+                      );
+                      setBolasMidiaIds((prev) => [...prev, midia.id]);
+                    }
+                  } catch (err) {
+                    setSubmitError(
+                      err instanceof Error
+                        ? err.message
+                        : "Falha no upload das fotos de bolas"
+                    );
+                  } finally {
+                    setBolasUploadBusy(false);
+                    event.target.value = "";
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                {bolasUploadBusy
+                  ? "Enviando..."
+                  : bolasMidiaIds.length > 0
+                    ? `${bolasMidiaIds.length} foto(s) para o profissional`
+                    : "O que o cliente quer nas bolas"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <Separator className="bg-border/60" />
+
+        {!soBolas ? (
+        <>
         <div className="space-y-4">
           <p className="text-xs font-medium uppercase tracking-wider text-balloon-sky">
             Kit do catálogo
@@ -1183,12 +1320,14 @@ export function NovaVendaForm({
             </div>
           </>
         ) : null}
+        </>
+        ) : null}
 
         <Separator className="bg-border/60" />
 
         <div className="space-y-4">
           <p className="text-xs font-medium uppercase tracking-wider text-balloon-sun">
-            Decoração e agenda
+            {soBolas ? "Agenda do serviço" : "Decoração e agenda"}
           </p>
           <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
@@ -1253,6 +1392,7 @@ export function NovaVendaForm({
               ) : null}
             </div>
 
+            {!soBolas ? (
             <div className="space-y-2">
               <Label htmlFor="tamanhoDecoracao">Tamanho</Label>
               <select
@@ -1273,6 +1413,7 @@ export function NovaVendaForm({
                 </p>
               ) : null}
             </div>
+            ) : null}
 
             <div className="space-y-2">
               <Label htmlFor="horaEvento">
@@ -1420,17 +1561,17 @@ export function NovaVendaForm({
           </div>
         </div>
 
-        {catalogoBolas.length > 0 ? (
+        {(soBolas || catalogoBolas.length > 0) && catalogoBolas.length > 0 ? (
           <>
             <Separator className="bg-border/60" />
             <div className="space-y-4">
               <p className="text-xs font-medium uppercase tracking-wider text-balloon-lilac">
-                Bolas ornamentadas (prestador)
+                {soBolas ? "Itens de bolas" : "Bolas ornamentadas (prestador)"}
               </p>
               <p className="text-xs text-muted-foreground">
-                Opcional. Preço ao cliente = tabela do profissional +{" "}
-                {markupBolasPercentual}%. Valor da decoração acima não inclui
-                bolas.
+                {soBolas
+                  ? `Preço ao cliente = tabela + ${markupBolasPercentual}% (taxa da DJ Decor).`
+                  : `Opcional. Preço ao cliente = tabela do profissional + ${markupBolasPercentual}%. Valor da decoração acima não inclui bolas.`}
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {catalogoBolas.map((item) => {
@@ -1494,60 +1635,25 @@ export function NovaVendaForm({
                 })}
               </div>
               {bolasOrcamento.itensPayload.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="bolasCores">Cores / estilo das bolas</Label>
-                    <Input
-                      id="bolasCores"
-                      value={bolasCores}
-                      onChange={(e) => setBolasCores(e.target.value)}
-                      placeholder="Rosa e dourado, orgânico..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bolasFotos">
-                      Fotos do tema / referência das bolas
-                    </Label>
-                    <Input
-                      id="bolasFotos"
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      capture="environment"
-                      className="min-h-11"
-                      disabled={bolasUploadBusy}
-                      onChange={async (event) => {
-                        const files = Array.from(event.target.files ?? []);
-                        if (!files.length) return;
-                        setBolasUploadBusy(true);
-                        try {
-                          for (const file of files) {
-                            const midia = await uploadMidia(
-                              { file, tipo: "REFERENCIA_BOLAS" },
-                              token
-                            );
-                            setBolasMidiaIds((prev) => [...prev, midia.id]);
-                          }
-                        } catch (err) {
-                          setSubmitError(
-                            err instanceof Error
-                              ? err.message
-                              : "Falha no upload das fotos de bolas"
-                          );
-                        } finally {
-                          setBolasUploadBusy(false);
-                          event.target.value = "";
-                        }
-                      }}
-                    />
+                <div className="space-y-2">
+                  <Label htmlFor="bolasCores">Cores / estilo das bolas</Label>
+                  <Input
+                    id="bolasCores"
+                    value={bolasCores}
+                    onChange={(e) => setBolasCores(e.target.value)}
+                    placeholder="Rosa e dourado, orgânico..."
+                  />
+                  {bolasMidiaIds.length > 0 ? (
                     <p className="text-xs text-muted-foreground">
-                      {bolasUploadBusy
-                        ? "Enviando..."
-                        : bolasMidiaIds.length > 0
-                          ? `${bolasMidiaIds.length} foto(s) pronta(s) para o profissional`
-                          : "Tire foto no celular ou escolha da galeria"}
+                      {bolasMidiaIds.length} foto(s) de referência já anexadas no
+                      primeiro contato.
                     </p>
-                  </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Sem fotos ainda — volte em &quot;Referências do primeiro
+                      contato&quot; no topo.
+                    </p>
+                  )}
                 </div>
               ) : null}
             </div>
@@ -1561,6 +1667,7 @@ export function NovaVendaForm({
             Resumo do orçamento
           </p>
           <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+            {!soBolas ? (
             <li>
               Kit:{" "}
               <span className="text-foreground">
@@ -1568,6 +1675,12 @@ export function NovaVendaForm({
                 {kitSelecionado && pegueEMonte ? " · Pegue e monte" : ""}
               </span>
             </li>
+            ) : (
+            <li>
+              Tipo:{" "}
+              <span className="text-foreground">Só bolas ornamentadas</span>
+            </li>
+            )}
             {pegueEMonte ? (
               <li>
                 Retirada:{" "}
@@ -1596,6 +1709,7 @@ export function NovaVendaForm({
                 </span>
               </li>
             ) : null}
+            {!soBolas ? (
             <li>
               Decoração:{" "}
               <span className="tabular-nums text-foreground">
@@ -1629,6 +1743,7 @@ export function NovaVendaForm({
                 </>
               ) : null}
             </li>
+            ) : null}
             {orcamento.valorTaxa > 0 ? (
               <li className="text-xs text-muted-foreground">
                 {ITEM_TAXA_PEGUE_ENTREGA}
@@ -1704,38 +1819,44 @@ export function NovaVendaForm({
               Checklist de estoque
             </p>
             <p className="text-xs text-muted-foreground">
-              Confira cada item da festa no estoque antes de salvar. Marque
-              para confirmar que viu a quantidade.
+              Lista completa do que vai na decoração — marque para a equipe
+              separar corretamente.
             </p>
             {estoqueCarregando ? (
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-3.5 animate-spin" />
-                Conferindo estoque…
+                Conferindo disponibilidade…
               </p>
-            ) : estoqueAvaliacao && estoqueAvaliacao.detalhes.length > 0 ? (
-              <ul className="space-y-2">
-                {estoqueAvaliacao.detalhes.map((item) => {
-                  const ok = item.falta === 0;
-                  return (
-                    <li key={item.nome}>
-                      <label className="flex items-start gap-2 rounded-xl neo-sm px-3 py-2 text-sm">
-                        <input
-                          type="checkbox"
-                          className="mt-1"
-                          checked={itensConferidos.has(item.nome)}
-                          onChange={(e) => {
-                            setItensConferidos((prev) => {
-                              const next = new Set(prev);
-                              if (e.target.checked) next.add(item.nome);
-                              else next.delete(item.nome);
-                              return next;
-                            });
-                          }}
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="font-medium text-foreground">
-                            {item.nome}
-                          </span>
+            ) : null}
+            <ul className="space-y-2">
+              {orcamento.itens.map((linha) => {
+                const stock = estoqueAvaliacao?.detalhes.find(
+                  (d) =>
+                    d.nome.toLowerCase() === linha.toLowerCase() ||
+                    linha.toLowerCase().includes(d.nome.toLowerCase())
+                );
+                const ok = stock ? stock.falta === 0 : undefined;
+                return (
+                  <li key={linha}>
+                    <label className="flex items-start gap-2 rounded-xl neo-sm px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-1 size-4"
+                        checked={itensConferidos.has(linha)}
+                        onChange={(e) => {
+                          setItensConferidos((prev) => {
+                            const next = new Set(prev);
+                            if (e.target.checked) next.add(linha);
+                            else next.delete(linha);
+                            return next;
+                          });
+                        }}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="font-medium text-foreground">
+                          {linha}
+                        </span>
+                        {stock ? (
                           <span
                             className={
                               ok
@@ -1743,25 +1864,26 @@ export function NovaVendaForm({
                                 : "mt-0.5 block text-xs text-destructive"
                             }
                           >
-                            Precisa {item.necessario} · tem {item.disponivel}
+                            Precisa {stock.necessario} · tem {stock.disponivel}
                             {ok
                               ? " · ok"
-                              : ` · faltam ${item.falta} (comprar)`}
+                              : ` · faltam ${stock.falta} (comprar)`}
                           </span>
-                        </span>
-                        {ok ? (
-                          <Check className="mt-0.5 size-4 shrink-0 text-balloon-mint" />
                         ) : null}
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
+                      </span>
+                      {ok ? (
+                        <Check className="mt-0.5 size-4 shrink-0 text-balloon-mint" />
+                      ) : null}
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+            {!estoqueCarregando && !estoqueAvaliacao ? (
               <p className="text-xs text-muted-foreground">
-                Informe a data da festa para conferir o estoque.
+                Informe a data da festa para ver disponibilidade no estoque.
               </p>
-            )}
+            ) : null}
             {estoqueAvaliacao?.alertaCompraEstoque ? (
               <p className="text-xs text-destructive">
                 Tem item em falta — a venda ainda pode ser salva, mas o alerta
@@ -1771,7 +1893,7 @@ export function NovaVendaForm({
           </div>
         ) : null}
 
-        {!(kitSelecionado && pegueEMonte && !montadorLevaBusca) ? (
+        {!soBolas && !(kitSelecionado && pegueEMonte && !montadorLevaBusca) ? (
           <div className="space-y-3 rounded-2xl neo-inset p-4">
             <p className="text-xs font-medium uppercase tracking-wider text-balloon-sky">
               Equipe de montagem e desmontagem

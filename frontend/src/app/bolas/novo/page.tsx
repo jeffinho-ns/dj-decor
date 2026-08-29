@@ -15,8 +15,8 @@ export default async function NovoServicoBolasPage() {
   return (
     <DashboardShell
       user={user}
-      title="Novo serviço"
-      description="Cadastre um trabalho externo de bolas (fora da DJ Decor)."
+      title="Novo serviço / venda"
+      description="Cadastre venda DJ Decor (só bolas) ou serviço externo."
     >
       <NovoServicoBolasForm
         token={token}

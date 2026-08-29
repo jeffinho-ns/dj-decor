@@ -238,10 +238,10 @@ export class PagamentosService {
     return pagamentoAtualizado;
   }
 
-  /** Anexa ou troca o comprovante de um pagamento (pendente ou confirmado). */
+  /** Anexa, troca ou remove o comprovante de um pagamento (pendente ou confirmado). */
   async anexarComprovante(pagamentoId: string, rawInput: unknown) {
     const data = z
-      .object({ comprovanteMidiaId: z.string().min(1) })
+      .object({ comprovanteMidiaId: z.string().min(1).nullable() })
       .parse(rawInput ?? {});
 
     const pagamento = await prisma.pagamento.findUnique({
@@ -252,12 +252,14 @@ export class PagamentosService {
       throw new PagamentoNotFoundError(pagamentoId);
     }
 
-    const midia = await prisma.midia.findUnique({
-      where: { id: data.comprovanteMidiaId },
-      select: { id: true },
-    });
-    if (!midia) {
-      throw new MidiaNotFoundForPagamentoError(data.comprovanteMidiaId);
+    if (data.comprovanteMidiaId) {
+      const midia = await prisma.midia.findUnique({
+        where: { id: data.comprovanteMidiaId },
+        select: { id: true },
+      });
+      if (!midia) {
+        throw new MidiaNotFoundForPagamentoError(data.comprovanteMidiaId);
+      }
     }
 
     return prisma.pagamento.update({

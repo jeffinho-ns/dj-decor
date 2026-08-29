@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { NovaVendaForm } from "@/components/vendas/nova-venda-form";
+import { NovaVendaEntrada } from "@/components/vendas/nova-venda-entrada";
 import { getBolasMarkup, getConfiguracoes, listCatalogoBolas } from "@/lib/api";
 import { requireSession } from "@/lib/session";
 
@@ -17,7 +17,7 @@ export default async function NovaVendaPage({
     redirect("/montagem");
   }
   if (user.role === "BOLISTA") {
-    redirect("/bolas");
+    redirect("/bolas/novo");
   }
 
   let catalogoBolas: Awaited<ReturnType<typeof listCatalogoBolas>> = [];
@@ -45,9 +45,9 @@ export default async function NovaVendaPage({
     <DashboardShell
       user={user}
       title="Nova Venda"
-      description="Registre um novo orçamento de decoração."
+      description="Escolha decoração ou só bolas e registre o atendimento."
     >
-      <NovaVendaForm
+      <NovaVendaEntrada
         token={token}
         initialClienteId={params.clienteId ?? null}
         viewerRole={user.role}

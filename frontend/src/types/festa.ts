@@ -114,6 +114,7 @@ export interface CreateFestaPayload {
   }[];
   bolasCores?: string | null;
   bolasMidiaIds?: string[];
+  temaMidiaIds?: string[];
 }
 
 export interface UpdateFestaPayload {

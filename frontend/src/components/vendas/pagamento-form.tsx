@@ -63,8 +63,7 @@ export function PagamentoForm({
   viewerRole,
   onPagamentosChange,
 }: PagamentoFormProps) {
-  const canViewComprovante =
-    viewerRole === "ADMIN" || viewerRole === "GERENTE";
+  const canViewComprovante = true;
 
   const totalDevido = Number(valorFesta) + Number(valorBolasCliente || 0);
   const totalConfirmado = pagamentos
@@ -250,6 +249,29 @@ export function PagamentoForm({
     }
   }
 
+  async function removerComprovante(pagamentoId: string) {
+    setError(null);
+    setAnexandoId(pagamentoId);
+    try {
+      const atualizado = await anexarComprovantePagamento(
+        pagamentoId,
+        null,
+        token
+      );
+      onPagamentosChange(
+        pagamentos.map((p) => (p.id === atualizado.id ? atualizado : p))
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível remover o comprovante"
+      );
+    } finally {
+      setAnexandoId(null);
+    }
+  }
+
   const saldoRows = [
     {
       label: "Decoração",
@@ -429,6 +451,35 @@ export function PagamentoForm({
                       )}
                       Ver comprovante
                     </Button>
+                  ) : null}
+
+                  {pagamento.comprovanteMidiaId &&
+                  pagamento.status !== "ESTORNADO" ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-10 w-full"
+                        disabled={anexandoId === pagamento.id}
+                        onClick={() => iniciarAnexo(pagamento.id)}
+                      >
+                        {anexandoId === pagamento.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Upload className="size-4" />
+                        )}
+                        Trocar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-10 w-full text-destructive"
+                        disabled={anexandoId === pagamento.id}
+                        onClick={() => void removerComprovante(pagamento.id)}
+                      >
+                        Excluir
+                      </Button>
+                    </div>
                   ) : null}
 
                   {!pagamento.comprovanteMidiaId &&

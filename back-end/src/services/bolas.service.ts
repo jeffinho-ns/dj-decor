@@ -38,6 +38,7 @@ const createPedidoSchema = z.object({
   itens: z.array(itemInputSchema).min(1),
   status: z.nativeEnum(StatusPedidoBolas).optional(),
   bolistaId: z.string().min(1).optional(),
+  midiaIds: z.array(z.string().min(1)).optional(),
 });
 
 const updatePedidoSchema = z.object({
@@ -291,7 +292,7 @@ export class BolasService {
       if (!festa) throw new Error("Festa não encontrada");
     }
 
-    return prisma.pedidoBolas.create({
+    const pedido = await prisma.pedidoBolas.create({
       data: {
         festaId: data.festaId ?? null,
         dataEvento: data.dataEvento,
@@ -322,6 +323,17 @@ export class BolasService {
       },
       include: pedidoInclude,
     });
+
+    const midiaIds = data.midiaIds ?? [];
+    if (midiaIds.length > 0) {
+      await prisma.midia.updateMany({
+        where: { id: { in: midiaIds } },
+        data: { pedidoBolasId: pedido.id },
+      });
+      return this.getPedido(pedido.id);
+    }
+
+    return pedido;
   }
 
   /** Cria ou substitui pedido vinculado a uma festa (usado na nova venda). */

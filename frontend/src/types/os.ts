@@ -105,6 +105,23 @@ export interface PortalGaleriaItem {
   filename: string | null;
 }
 
+export interface PortalPagamentoItem {
+  id: string;
+  valor: number;
+  tipo: string;
+  status: string;
+  criadoEm: string;
+  confirmadoEm: string | null;
+}
+
+export interface PortalFinanceiro {
+  valorTotal: number;
+  valorPago: number;
+  valorFalta: number;
+  quitado: boolean;
+  lancamentos: PortalPagamentoItem[];
+}
+
 export interface PortalFestaStatus {
   tema: string;
   status: string;
@@ -122,6 +139,7 @@ export interface PortalFestaStatus {
   podeAssinar?: boolean;
   assinaturaClienteEm?: string | null;
   avaliacaoNota?: number | null;
+  financeiro?: PortalFinanceiro;
 }
 
 export interface PortalLinkResponse {

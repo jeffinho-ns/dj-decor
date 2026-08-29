@@ -102,6 +102,7 @@ export interface CreatePedidoBolasPayload {
     quantidade?: number;
     valorTabelaUnit?: number;
   }[];
+  midiaIds?: string[];
 }
 
 export interface BolasFinanceiroResumo {
@@ -138,8 +139,16 @@ export interface PedidoBolasResumoFesta {
   taxaEmpresa: string | number;
   status: StatusPedidoBolas;
   statusRepasse?: StatusRepasseBolas;
+  cores?: string | null;
+  tema?: string;
   itens?: PedidoBolasItem[];
   bolista?: { id: string; nome: string };
+  midias?: Array<{
+    id: string;
+    tipo: string;
+    mimeType: string;
+    filename?: string | null;
+  }>;
 }
 
 export interface BolasComprasPedido {

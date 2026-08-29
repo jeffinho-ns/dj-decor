@@ -75,7 +75,7 @@ festasRoutes.patch(
 );
 festasRoutes.post(
   "/",
-  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN, Role.BOLISTA),
   (req, res, next) => festasController.create(req, res, next)
 );
 festasRoutes.put(

@@ -29,6 +29,23 @@ export interface PortalGaleriaItem {
 }
 
 /** Status público da festa — sem telefone do cliente. */
+export interface PortalPagamentoItem {
+  id: string;
+  valor: number;
+  tipo: string;
+  status: string;
+  criadoEm: string;
+  confirmadoEm: string | null;
+}
+
+export interface PortalFinanceiro {
+  valorTotal: number;
+  valorPago: number;
+  valorFalta: number;
+  quitado: boolean;
+  lancamentos: PortalPagamentoItem[];
+}
+
 export interface PortalFestaStatus {
   tema: string;
   status: string;
@@ -46,6 +63,7 @@ export interface PortalFestaStatus {
   podeAssinar: boolean;
   assinaturaClienteEm: string | null;
   avaliacaoNota: number | null;
+  financeiro: PortalFinanceiro;
 }
 
 export interface PortalLinkResponse {
@@ -225,11 +243,21 @@ export class PortalService {
             montagemLocalConcluida: true,
           },
         },
+        valor: true,
         pagamentos: {
-          where: { status: "CONFIRMADO" },
-          orderBy: { confirmadoEm: "desc" },
-          take: 1,
-          select: { confirmadoEm: true },
+          where: { status: { in: ["CONFIRMADO", "PENDENTE"] } },
+          orderBy: { criadoEm: "asc" },
+          select: {
+            id: true,
+            valor: true,
+            tipo: true,
+            status: true,
+            criadoEm: true,
+            confirmadoEm: true,
+          },
+        },
+        pedidoBolas: {
+          select: { valorCliente: true },
         },
         midias: {
           where: { tipo: { in: GALERIA_TIPOS } },
@@ -250,7 +278,20 @@ export class PortalService {
 
   async getFestaStatusByToken(token: string): Promise<PortalFestaStatus> {
     const festa = await this.getFestaByToken(token);
-    const pagamentoConfirmadoEm = festa.pagamentos[0]?.confirmadoEm ?? null;
+    const confirmados = festa.pagamentos.filter((p) => p.status === "CONFIRMADO");
+    const pagamentoConfirmadoEm =
+      confirmados.length > 0
+        ? confirmados[confirmados.length - 1]?.confirmadoEm ?? null
+        : null;
+
+    const valorDecoracao = Number(festa.valor);
+    const valorBolas = festa.pedidoBolas
+      ? Number(festa.pedidoBolas.valorCliente)
+      : 0;
+    const valorTotal = valorDecoracao + valorBolas;
+    const valorPago = confirmados.reduce((s, p) => s + Number(p.valor), 0);
+    const valorFalta = Math.max(0, valorTotal - valorPago);
+    const quitado = valorFalta <= 0.009;
 
     return {
       tema: festa.tema,
@@ -277,6 +318,20 @@ export class PortalService {
         festa.status !== StatusFesta.ORCAMENTO,
       assinaturaClienteEm: festa.assinaturaClienteEm?.toISOString() ?? null,
       avaliacaoNota: festa.avaliacaoNota,
+      financeiro: {
+        valorTotal,
+        valorPago,
+        valorFalta,
+        quitado,
+        lancamentos: festa.pagamentos.map((p) => ({
+          id: p.id,
+          valor: Number(p.valor),
+          tipo: p.tipo,
+          status: p.status,
+          criadoEm: p.criadoEm.toISOString(),
+          confirmadoEm: p.confirmadoEm?.toISOString() ?? null,
+        })),
+      },
     };
   }
 

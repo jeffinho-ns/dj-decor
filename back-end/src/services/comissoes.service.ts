@@ -98,9 +98,15 @@ export class ComissoesService {
         quitadoEm: true,
         vendaEm: true,
         observacoes: true,
+        kitCatalogo: true,
       },
     });
     if (!festa) return [];
+
+    // Venda só de bolas: sem split de comissão de decoração
+    if (festa.kitCatalogo === "SO_BOLAS") {
+      return [];
+    }
 
     const confirmados = await tx.pagamento.aggregate({
       where: { festaId, status: StatusPagamento.CONFIRMADO },

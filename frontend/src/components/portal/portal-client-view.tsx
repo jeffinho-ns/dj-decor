@@ -14,6 +14,7 @@ import {
   Share2,
   Sparkles,
   Star,
+  Wallet,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
   resolvePortalLegacyLink,
   uploadPortalMidia,
 } from "@/lib/api";
+import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { PortalFestaStatus, PortalTimelineStep } from "@/types/os";
 
@@ -415,6 +417,95 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
           </div>
         )}
       </section>
+
+      {data.financeiro ? (
+        <section className="neo relative mt-8 space-y-3 rounded-2xl p-5">
+          <h2 className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Wallet className="size-4 text-balloon-sun" />
+            Pagamentos
+          </h2>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="neo-sm rounded-xl px-2 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Total
+              </p>
+              <p className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
+                {formatCurrency(data.financeiro.valorTotal)}
+              </p>
+            </div>
+            <div className="neo-sm rounded-xl px-2 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Pago
+              </p>
+              <p className="mt-0.5 text-sm font-semibold tabular-nums text-balloon-mint">
+                {formatCurrency(data.financeiro.valorPago)}
+              </p>
+            </div>
+            <div className="neo-sm rounded-xl px-2 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Falta
+              </p>
+              <p
+                className={cn(
+                  "mt-0.5 text-sm font-semibold tabular-nums",
+                  data.financeiro.quitado
+                    ? "text-balloon-mint"
+                    : "text-balloon-sun"
+                )}
+              >
+                {data.financeiro.quitado
+                  ? "Quitado"
+                  : formatCurrency(data.financeiro.valorFalta)}
+              </p>
+            </div>
+          </div>
+
+          {data.financeiro.lancamentos.length > 0 ? (
+            <ul className="space-y-2">
+              {data.financeiro.lancamentos.map((lanc) => {
+                const confirmado = lanc.status === "CONFIRMADO";
+                return (
+                  <li
+                    key={lanc.id}
+                    className="flex items-start justify-between gap-3 rounded-xl neo-sm px-3 py-2.5 text-sm"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium tabular-nums text-foreground">
+                        {formatCurrency(lanc.valor)}
+                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                          · {lanc.tipo}
+                        </span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(
+                          parseISO(lanc.confirmadoEm ?? lanc.criadoEm),
+                          "dd/MM/yyyy HH:mm",
+                          { locale: ptBR }
+                        )}
+                      </p>
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        confirmado
+                          ? "bg-balloon-mint/15 text-balloon-mint"
+                          : "bg-balloon-sun/15 text-balloon-sun"
+                      )}
+                    >
+                      {confirmado ? "Confirmado" : "Pendente"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Ainda não há pagamentos registrados. O saldo aparece aqui a cada
+              depósito.
+            </p>
+          )}
+        </section>
+      ) : null}
 
       <section className="relative mt-8">
         <h2 className="mb-4 text-sm font-medium text-foreground">Andamento</h2>

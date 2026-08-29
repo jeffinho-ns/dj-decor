@@ -1,4 +1,4 @@
-import { StatusFesta, StatusPagamento, TamanhoDecoracao } from "@prisma/client";
+import { StatusFesta, StatusPagamento, TamanhoDecoracao, TipoMidia } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
 import { pdfAdapter } from "../integrations/pdf";
@@ -27,6 +27,12 @@ const festaInclude = {
     include: {
       itens: true,
       bolista: { select: { id: true, nome: true } },
+      midias: {
+        where: { tipo: TipoMidia.REFERENCIA_BOLAS },
+        select: { id: true, tipo: true, mimeType: true, filename: true },
+        orderBy: { criadoEm: "desc" },
+        take: 12,
+      },
     },
   },
 } as const;
@@ -78,6 +84,7 @@ const createFestaSchema = z
     .optional(),
   bolasCores: z.string().max(1000).nullable().optional(),
   bolasMidiaIds: z.array(z.string().min(1)).optional(),
+  temaMidiaIds: z.array(z.string().min(1)).optional(),
 })
   .superRefine((data, ctx) => {
     if (!data.clienteId) {
@@ -209,6 +216,14 @@ export class FestasService {
     const data = createFestaSchema.parse(rawInput);
     const vendedorId = data.vendedorId ?? fallbackVendedorId;
 
+    if (data.kitCatalogo === "SO_BOLAS") {
+      if (!data.bolasItens || data.bolasItens.length === 0) {
+        throw new FestaValidationError(
+          "Venda só de bolas exige ao menos um item do catálogo de bolas"
+        );
+      }
+    }
+
     await this.ensureVendedorExists(vendedorId);
     await this.assertUsuarioEquipe(data.montadorEquipeId);
     await this.assertUsuarioEquipe(data.desmontadorEquipeId);
@@ -285,6 +300,14 @@ export class FestasService {
       include: festaInclude,
     });
 
+    const temaMidiaIds = data.temaMidiaIds ?? [];
+    if (temaMidiaIds.length > 0) {
+      await prisma.midia.updateMany({
+        where: { id: { in: temaMidiaIds } },
+        data: { festaId: festa.id },
+      });
+    }
+
     if (data.bolasItens && data.bolasItens.length > 0) {
       await bolasService.upsertParaFesta(
         festa.id,
@@ -303,6 +326,15 @@ export class FestasService {
         vendedorId
       );
       return this.getById(festa.id);
+    }
+
+    // Fotos de bolas sem item de catálogo: ficam na festa até haver pedido
+    const bolasMidiaIds = data.bolasMidiaIds ?? [];
+    if (bolasMidiaIds.length > 0) {
+      await prisma.midia.updateMany({
+        where: { id: { in: bolasMidiaIds } },
+        data: { festaId: festa.id },
+      });
     }
 
     return festa;

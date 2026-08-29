@@ -19,6 +19,7 @@ import { CompraEstoqueBadge } from "@/components/vendas/compra-estoque-badge";
 import { DescontoBadge } from "@/components/vendas/desconto-badge";
 import { FestaItensEditor } from "@/components/vendas/festa-itens-editor";
 import { FestaGaleriaEditor } from "@/components/vendas/festa-galeria-editor";
+import { FestaBolasResumo } from "@/components/vendas/festa-bolas-resumo";
 import { NotasInternasEditor } from "@/components/atendimento/notas-internas-editor";
 import { RiscoBadge } from "@/components/vendas/risco-badge";
 import { formatCurrency } from "@/lib/format";
@@ -208,6 +209,12 @@ export function FestaDetalheModal({
               <Wallet className="size-4 shrink-0 text-balloon-sun" />
               <span className="font-medium tabular-nums text-balloon-sun">
                 {formatCurrency(current.valor)}
+                {current.pedidoBolas ? (
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                    + bolas{" "}
+                    {formatCurrency(Number(current.pedidoBolas.valorCliente))}
+                  </span>
+                ) : null}
               </span>
             </li>
             <li className="flex items-start gap-2">
@@ -272,6 +279,14 @@ export function FestaDetalheModal({
               onSave={async () => undefined}
             />
           )}
+
+          {current.pedidoBolas ? (
+            <FestaBolasResumo
+              pedido={current.pedidoBolas}
+              token={token}
+              temaFesta={current.tema}
+            />
+          ) : null}
 
           {canEdit && token ? (
             <>

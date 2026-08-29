@@ -100,6 +100,12 @@ function FestaCardMobile({
           {festa.pedidoBolas ? (
             <p className="mt-0.5 text-xs text-balloon-pink">
               Com bolas · {formatCurrency(festa.pedidoBolas.valorCliente)}
+              {festa.pedidoBolas.cores
+                ? ` · ${festa.pedidoBolas.cores}`
+                : ""}
+              {festa.pedidoBolas.itens && festa.pedidoBolas.itens.length > 0
+                ? ` · ${festa.pedidoBolas.itens.map((i) => i.nome).join(", ")}`
+                : ""}
             </p>
           ) : null}
           {festa.kitCatalogo || festa.pegueEMonte ? (
@@ -129,8 +135,18 @@ function FestaCardMobile({
               Valor
             </p>
             <p className="mt-0.5 tabular-nums text-balloon-sun">
-              {formatCurrency(festa.valor)}
+              {formatCurrency(
+                Number(festa.valor) +
+                  (festa.pedidoBolas
+                    ? Number(festa.pedidoBolas.valorCliente)
+                    : 0)
+              )}
             </p>
+            {festa.pedidoBolas ? (
+              <p className="text-[10px] text-muted-foreground">
+                decor {formatCurrency(festa.valor)} + bolas
+              </p>
+            ) : null}
           </div>
           <div>
             <p className="font-medium uppercase tracking-wider text-muted-foreground">
