@@ -11,7 +11,7 @@ import { roleLabel } from "@/lib/auth";
 import type { Role } from "@/types/auth";
 import type { UserAdmin } from "@/types/admin";
 
-const ROLES: Role[] = ["ADMIN", "GERENTE", "VENDEDOR", "MONTADOR"];
+const ROLES: Role[] = ["ADMIN", "GERENTE", "VENDEDOR", "MONTADOR", "BOLISTA"];
 
 interface UsuariosPainelProps {
   token: string;

@@ -302,6 +302,12 @@ export function CalendarioAgenda({
                     <p className="truncate text-sm text-balloon-pink">
                       {festa.tema}
                     </p>
+                    {festa.pedidoBolas ? (
+                      <p className="mt-0.5 truncate text-xs text-balloon-pink/90">
+                        Com bolas ·{" "}
+                        {formatCurrency(festa.pedidoBolas.valorCliente)}
+                      </p>
+                    ) : null}
                     {festa.kitCatalogo || festa.pegueEMonte ? (
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {nomeDoKit(festa.kitCatalogo) ?? "Kit personalizado"}

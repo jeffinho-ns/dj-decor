@@ -59,6 +59,7 @@ import type {
   TamanhoDecoracao,
   TipoPagamento,
 } from "@/types/festa";
+import type { CatalogoBola } from "@/types/bolas";
 import type { EstoqueAvaliacao, ProdutoSugestao } from "@/types/estoque";
 import type { EquipeFestaValue, Montador } from "@/types/equipe";
 
@@ -121,6 +122,8 @@ interface NovaVendaFormProps {
   viewerRole?: Role;
   /** Endereço do depósito (config). Se omitido, o form busca via API. */
   enderecoEmpresaInicial?: string | null;
+  catalogoBolas?: CatalogoBola[];
+  markupBolasPercentual?: number;
 }
 
 export function NovaVendaForm({
@@ -128,6 +131,8 @@ export function NovaVendaForm({
   initialClienteId,
   viewerRole,
   enderecoEmpresaInicial,
+  catalogoBolas = [],
+  markupBolasPercentual = 10,
 }: NovaVendaFormProps) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -143,6 +148,10 @@ export function NovaVendaForm({
   const [festaCriada, setFestaCriada] = useState<Festa | null>(null);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [addonIds, setAddonIds] = useState<string[]>([]);
+  const [bolasQty, setBolasQty] = useState<Record<string, number>>({});
+  const [bolasCores, setBolasCores] = useState("");
+  const [bolasMidiaIds, setBolasMidiaIds] = useState<string[]>([]);
+  const [bolasUploadBusy, setBolasUploadBusy] = useState(false);
   const [valorManual, setValorManual] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [sugestoes, setSugestoes] = useState<ProdutoSugestao[]>([]);
@@ -221,6 +230,25 @@ export function NovaVendaForm({
       }),
     [kitSelecionado, pegueEMonte, addonIds, extrasManuais, taxaEntrega]
   );
+
+  const bolasOrcamento = useMemo(() => {
+    let valorTabela = 0;
+    const nomes: string[] = [];
+    const itensPayload: {
+      catalogoBolaId: string;
+      quantidade: number;
+    }[] = [];
+    for (const item of catalogoBolas) {
+      const qty = bolasQty[item.id] ?? 0;
+      if (qty <= 0) continue;
+      valorTabela += Number(item.valorTabela) * qty;
+      nomes.push(`${qty}× ${item.nome}`);
+      itensPayload.push({ catalogoBolaId: item.id, quantidade: qty });
+    }
+    const valorCliente =
+      Math.round(valorTabela * (1 + markupBolasPercentual / 100) * 100) / 100;
+    return { valorTabela, valorCliente, nomes, itensPayload };
+  }, [catalogoBolas, bolasQty, markupBolasPercentual]);
 
   useEffect(() => {
     if (enderecoEmpresaInicial?.trim()) {
@@ -667,6 +695,14 @@ export function NovaVendaForm({
                 desmontadorEquipeId: equipe.desmontadorEquipeId,
                 montadorCarroProprio: equipe.montadorCarroProprio,
                 desmontadorCarroProprio: equipe.desmontadorCarroProprio,
+              }
+            : {}),
+          ...(bolasOrcamento.itensPayload.length > 0
+            ? {
+                bolasItens: bolasOrcamento.itensPayload,
+                bolasCores: bolasCores.trim() || null,
+                bolasMidiaIds:
+                  bolasMidiaIds.length > 0 ? bolasMidiaIds : undefined,
               }
             : {}),
         },
@@ -1384,6 +1420,140 @@ export function NovaVendaForm({
           </div>
         </div>
 
+        {catalogoBolas.length > 0 ? (
+          <>
+            <Separator className="bg-border/60" />
+            <div className="space-y-4">
+              <p className="text-xs font-medium uppercase tracking-wider text-balloon-lilac">
+                Bolas ornamentadas (prestador)
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Opcional. Preço ao cliente = tabela do profissional +{" "}
+                {markupBolasPercentual}%. Valor da decoração acima não inclui
+                bolas.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {catalogoBolas.map((item) => {
+                  const qty = bolasQty[item.id] ?? 0;
+                  const clienteUnit =
+                    Math.round(
+                      Number(item.valorTabela) *
+                        (1 + markupBolasPercentual / 100) *
+                        100
+                    ) / 100;
+                  return (
+                    <label
+                      key={item.id}
+                      className={cn(
+                        "flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm",
+                        qty > 0
+                          ? "border-balloon-pink/50 bg-balloon-pink/8"
+                          : "border-border/60"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={qty > 0}
+                          onChange={() =>
+                            setBolasQty((prev) => {
+                              const next = { ...prev };
+                              if (next[item.id]) delete next[item.id];
+                              else next[item.id] = 1;
+                              return next;
+                            })
+                          }
+                        />
+                        <span>
+                          {item.nome}
+                          <span className="block text-xs text-muted-foreground">
+                            {formatCurrency(clienteUnit)}
+                          </span>
+                        </span>
+                      </span>
+                      {qty > 0 ? (
+                        <Input
+                          type="number"
+                          min={1}
+                          className="h-8 w-16"
+                          value={qty}
+                          onChange={(e) =>
+                            setBolasQty((prev) => ({
+                              ...prev,
+                              [item.id]: Math.max(
+                                1,
+                                Number(e.target.value) || 1
+                              ),
+                            }))
+                          }
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : null}
+                    </label>
+                  );
+                })}
+              </div>
+              {bolasOrcamento.itensPayload.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="bolasCores">Cores / estilo das bolas</Label>
+                    <Input
+                      id="bolasCores"
+                      value={bolasCores}
+                      onChange={(e) => setBolasCores(e.target.value)}
+                      placeholder="Rosa e dourado, orgânico..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bolasFotos">
+                      Fotos do tema / referência das bolas
+                    </Label>
+                    <Input
+                      id="bolasFotos"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      capture="environment"
+                      className="min-h-11"
+                      disabled={bolasUploadBusy}
+                      onChange={async (event) => {
+                        const files = Array.from(event.target.files ?? []);
+                        if (!files.length) return;
+                        setBolasUploadBusy(true);
+                        try {
+                          for (const file of files) {
+                            const midia = await uploadMidia(
+                              { file, tipo: "REFERENCIA_BOLAS" },
+                              token
+                            );
+                            setBolasMidiaIds((prev) => [...prev, midia.id]);
+                          }
+                        } catch (err) {
+                          setSubmitError(
+                            err instanceof Error
+                              ? err.message
+                              : "Falha no upload das fotos de bolas"
+                          );
+                        } finally {
+                          setBolasUploadBusy(false);
+                          event.target.value = "";
+                        }
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {bolasUploadBusy
+                        ? "Enviando..."
+                        : bolasMidiaIds.length > 0
+                          ? `${bolasMidiaIds.length} foto(s) pronta(s) para o profissional`
+                          : "Tire foto no celular ou escolha da galeria"}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+
         <Separator className="bg-border/60" />
 
         <div className="rounded-2xl neo-inset p-4">
@@ -1427,7 +1597,7 @@ export function NovaVendaForm({
               </li>
             ) : null}
             <li>
-              Base:{" "}
+              Decoração:{" "}
               <span className="tabular-nums text-foreground">
                 {formatCurrency(orcamento.valorBase)}
               </span>
@@ -1470,10 +1640,31 @@ export function NovaVendaForm({
                 {formatCurrency(orcamento.total || Number(valorWatch) || 0)}
               </span>
             </li>
+            {bolasOrcamento.valorCliente > 0 ? (
+              <li>
+                Bolas:{" "}
+                <span className="tabular-nums text-foreground">
+                  {formatCurrency(bolasOrcamento.valorCliente)}
+                </span>
+                <span className="text-xs">
+                  {" "}
+                  ({bolasOrcamento.nomes.join(", ")})
+                </span>
+              </li>
+            ) : null}
+            <li className="pt-1 text-base font-medium text-foreground">
+              Total cliente:{" "}
+              <span className="tabular-nums text-balloon-sun">
+                {formatCurrency(
+                  (Number(valorWatch) || orcamento.total || 0) +
+                    bolasOrcamento.valorCliente
+                )}
+              </span>
+            </li>
           </ul>
 
-          <div className="space-y-2">
-            <Label htmlFor="valor">Valor final (R$)</Label>
+          <div className="mt-4 space-y-2">
+            <Label htmlFor="valor">Valor decoração (R$)</Label>
             <Input
               id="valor"
               type="number"
@@ -1497,7 +1688,8 @@ export function NovaVendaForm({
                   });
                 }}
               >
-                Voltar ao total sugerido ({formatCurrency(orcamento.total)})
+                Voltar ao total sugerido da decoração (
+                {formatCurrency(orcamento.total)})
               </button>
             ) : null}
             {errors.valor ? (

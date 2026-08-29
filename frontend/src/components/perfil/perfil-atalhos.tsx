@@ -47,6 +47,32 @@ function atalhosParaRole(role: Role): Atalho[] {
     ];
   }
 
+  if (role === "BOLISTA") {
+    return [
+      {
+        href: "/bolas",
+        label: "Agenda bolas",
+        description: "Seus serviços e festas",
+        icon: CalendarDays,
+        tone: "text-balloon-pink",
+      },
+      {
+        href: "/bolas/novo",
+        label: "Novo serviço",
+        description: "Trabalho externo",
+        icon: ShoppingBag,
+        tone: "text-balloon-sky",
+      },
+      {
+        href: "/bolas/financeiro",
+        label: "Financeiro",
+        description: "A receber e repasses",
+        icon: Wallet,
+        tone: "text-balloon-sun",
+      },
+    ];
+  }
+
   if (role === "VENDEDOR") {
     return [
       {

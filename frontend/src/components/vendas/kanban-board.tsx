@@ -163,6 +163,7 @@ function FestaCard({
         </div>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {festa.tema}
+          {festa.pedidoBolas ? " · com bolas" : ""}
         </p>
         <div className="mt-2 flex items-center justify-between gap-2 text-xs md:text-[11px]">
           <span className="text-muted-foreground">
@@ -225,6 +226,11 @@ function FestaCard({
                 token={token}
                 pagamentos={pagamentos}
                 valorFesta={Number(festa.valor)}
+                valorBolasCliente={
+                  festa.pedidoBolas
+                    ? Number(festa.pedidoBolas.valorCliente)
+                    : 0
+                }
                 viewerRole={viewerRole}
                 onPagamentosChange={onPagamentosChange}
               />

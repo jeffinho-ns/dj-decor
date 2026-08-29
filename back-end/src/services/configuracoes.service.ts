@@ -12,6 +12,7 @@ const updateConfigSchema = z.object({
   diariaMontadorCarroEmpresa: z.coerce.number().min(0).optional(),
   diariaDesmontadorCarroEmpresa: z.coerce.number().min(0).optional(),
   frequenciaPagamentoEquipe: z.nativeEnum(FrequenciaPagamentoEquipe).optional(),
+  markupBolasPercentual: z.coerce.number().min(0).max(100).optional(),
   clausulasContrato: z.string().max(20000).nullable().optional(),
   nomeEmpresa: z.string().min(2).max(120).optional(),
   sloganEmpresa: z.string().min(2).max(200).optional(),
@@ -90,6 +91,9 @@ export class ConfiguracoesService {
         ...(data.frequenciaPagamentoEquipe !== undefined
           ? { frequenciaPagamentoEquipe: data.frequenciaPagamentoEquipe }
           : {}),
+        ...(data.markupBolasPercentual !== undefined
+          ? { markupBolasPercentual: data.markupBolasPercentual }
+          : {}),
         ...(data.clausulasContrato !== undefined
           ? { clausulasContrato: data.clausulasContrato }
           : {}),
@@ -141,6 +145,7 @@ export class ConfiguracoesService {
       diariaMontadorCarroEmpresa: Number(cfg.diariaMontadorCarroEmpresa),
       diariaDesmontadorCarroEmpresa: Number(cfg.diariaDesmontadorCarroEmpresa),
       frequenciaPagamentoEquipe: cfg.frequenciaPagamentoEquipe,
+      markupBolasPercentual: Number(cfg.markupBolasPercentual ?? 10),
       comissaoMetaSemanal: Number(cfg.comissaoMetaSemanal),
     };
   }

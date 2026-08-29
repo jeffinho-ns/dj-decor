@@ -45,8 +45,10 @@ interface PagamentoFormProps {
   festaId: string;
   token: string;
   pagamentos: Pagamento[];
-  /** Valor total da festa (contrato). */
+  /** Valor da decoração (base de comissão). */
   valorFesta: number;
+  /** Valor das bolas cobrado do cliente (opcional). */
+  valorBolasCliente?: number;
   /** ADMIN / GERENTE (sócia) podem abrir o comprovante. */
   viewerRole?: Role;
   onPagamentosChange: (pagamentos: Pagamento[]) => void;
@@ -57,19 +59,21 @@ export function PagamentoForm({
   token,
   pagamentos,
   valorFesta,
+  valorBolasCliente = 0,
   viewerRole,
   onPagamentosChange,
 }: PagamentoFormProps) {
   const canViewComprovante =
     viewerRole === "ADMIN" || viewerRole === "GERENTE";
 
+  const totalDevido = Number(valorFesta) + Number(valorBolasCliente || 0);
   const totalConfirmado = pagamentos
     .filter((p) => p.status === "CONFIRMADO")
     .reduce((acc, p) => acc + Number(p.valor), 0);
   const totalPendente = pagamentos
     .filter((p) => p.status === "PENDENTE")
     .reduce((acc, p) => acc + Number(p.valor), 0);
-  const falta = Math.max(0, Number(valorFesta) - totalConfirmado);
+  const falta = Math.max(0, totalDevido - totalConfirmado);
   const quitado = falta <= 0.009;
 
   const [valor, setValor] = useState(falta > 0 ? String(falta.toFixed(2)) : "");
@@ -248,8 +252,22 @@ export function PagamentoForm({
 
   const saldoRows = [
     {
-      label: "Total",
+      label: "Decoração",
       value: formatCurrency(valorFesta),
+      className: "text-foreground",
+    },
+    ...(valorBolasCliente > 0
+      ? [
+          {
+            label: "Bolas",
+            value: formatCurrency(valorBolasCliente),
+            className: "text-foreground",
+          },
+        ]
+      : []),
+    {
+      label: "Total",
+      value: formatCurrency(totalDevido),
       className: "text-foreground",
     },
     {

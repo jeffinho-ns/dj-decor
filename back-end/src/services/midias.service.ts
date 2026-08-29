@@ -15,6 +15,7 @@ export const ALLOWED_MIME_TYPES = [
 const uploadMetaSchema = z.object({
   tipo: z.nativeEnum(TipoMidia),
   festaId: z.string().min(1).nullable().optional(),
+  pedidoBolasId: z.string().min(1).nullable().optional(),
 });
 
 export type UploadMidiaMeta = z.infer<typeof uploadMetaSchema>;
@@ -75,6 +76,18 @@ export class MidiasService {
       }
     }
 
+    if (meta.pedidoBolasId) {
+      const pedido = await prisma.pedidoBolas.findUnique({
+        where: { id: meta.pedidoBolasId },
+        select: { id: true },
+      });
+      if (!pedido) {
+        throw new MidiaValidationError(
+          `Pedido de bolas não encontrado: ${meta.pedidoBolasId}`
+        );
+      }
+    }
+
     const midia = await prisma.midia.create({
       data: {
         data: new Uint8Array(file.buffer),
@@ -83,6 +96,7 @@ export class MidiasService {
         tipo: meta.tipo,
         filename: file.originalname || null,
         festaId: meta.festaId ?? null,
+        pedidoBolasId: meta.pedidoBolasId ?? null,
         uploadedById: uploadedById ?? null,
       },
       select: {
@@ -92,6 +106,7 @@ export class MidiasService {
         tipo: true,
         filename: true,
         festaId: true,
+        pedidoBolasId: true,
         uploadedById: true,
         criadoEm: true,
       },

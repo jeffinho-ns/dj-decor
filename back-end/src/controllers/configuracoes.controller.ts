@@ -13,6 +13,7 @@ const CAMPOS_FINANCEIROS = new Set([
   "diariaMontadorCarroEmpresa",
   "diariaDesmontadorCarroEmpresa",
   "frequenciaPagamentoEquipe",
+  "markupBolasPercentual",
 ]);
 
 export class ConfiguracoesController {

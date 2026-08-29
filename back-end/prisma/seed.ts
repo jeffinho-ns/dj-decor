@@ -34,6 +34,7 @@ const seedUsers: SeedUser[] = [
   { nome: "Rodrigo", role: Role.VENDEDOR },
   { nome: "Carlos", role: Role.MONTADOR },
   { nome: "Bruno", role: Role.MONTADOR },
+  { nome: "Rafael", role: Role.BOLISTA },
 ];
 
 const nomesEquipe = seedUsers.map((u) => u.nome);
@@ -272,6 +273,7 @@ async function seedConfigECatalogoVendas() {
       diariaDesmontador: 130,
       diariaMontadorCarroEmpresa: 130,
       diariaDesmontadorCarroEmpresa: 80,
+      markupBolasPercentual: 10,
     },
     create: {
       id: "default",
@@ -282,6 +284,7 @@ async function seedConfigECatalogoVendas() {
       diariaDesmontador: 130,
       diariaMontadorCarroEmpresa: 130,
       diariaDesmontadorCarroEmpresa: 80,
+      markupBolasPercentual: 10,
       nomeEmpresa: "DJ festas",
       sloganEmpresa: "Decoração de Festas · Locação de Materiais",
     },
@@ -481,6 +484,69 @@ async function seedConfigECatalogoVendas() {
     });
   }
   console.log(`[seed] ${addons.length} add-ons de venda prontos`);
+
+  const bolista = await prisma.user.findUnique({ where: { nome: "Rafael" } });
+  const catalogoBolasSeed = [
+    {
+      nome: "Arco de bolas ornamentado",
+      descricao: "Arco completo com balões gas e ar — cores a combinar.",
+      valorTabela: 300,
+      ordem: 1,
+    },
+    {
+      nome: "Coluna de bolas",
+      descricao: "Coluna decorativa unitária.",
+      valorTabela: 120,
+      ordem: 2,
+    },
+    {
+      nome: "Painel de bolas",
+      descricao: "Painel orgânico / backdrop de balões.",
+      valorTabela: 450,
+      ordem: 3,
+    },
+    {
+      nome: "Números / letras com bolas",
+      descricao: "Número ou letra em balões.",
+      valorTabela: 80,
+      ordem: 4,
+    },
+    {
+      nome: "Centro de mesa com balões",
+      descricao: "Arranjo para mesa (unidade).",
+      valorTabela: 45,
+      ordem: 5,
+    },
+  ];
+
+  for (const item of catalogoBolasSeed) {
+    const existing = await prisma.catalogoBola.findFirst({
+      where: { nome: item.nome },
+    });
+    if (existing) {
+      await prisma.catalogoBola.update({
+        where: { id: existing.id },
+        data: {
+          descricao: item.descricao,
+          valorTabela: item.valorTabela,
+          ordem: item.ordem,
+          ativo: true,
+        },
+      });
+    } else {
+      await prisma.catalogoBola.create({
+        data: {
+          nome: item.nome,
+          descricao: item.descricao,
+          valorTabela: item.valorTabela,
+          ordem: item.ordem,
+          ativo: true,
+          criadoPorId: bolista?.id ?? null,
+        },
+      });
+    }
+  }
+  console.log(`[seed] ${catalogoBolasSeed.length} itens de catálogo de bolas prontos`);
 
   const semToken = await prisma.festa.findMany({
     where: { portalToken: null },

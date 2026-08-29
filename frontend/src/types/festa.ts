@@ -59,6 +59,7 @@ export interface Festa {
   desmontadorCarroProprio?: boolean;
   montadorEquipe?: { id: string; nome: string; role?: string } | null;
   desmontadorEquipe?: { id: string; nome: string; role?: string } | null;
+  pedidoBolas?: import("./bolas").PedidoBolasResumoFesta | null;
 }
 
 export interface Pagamento {
@@ -105,6 +106,14 @@ export interface CreateFestaPayload {
   desmontadorEquipeId?: string | null;
   montadorCarroProprio?: boolean;
   desmontadorCarroProprio?: boolean;
+  bolasItens?: {
+    catalogoBolaId?: string | null;
+    nome?: string;
+    quantidade?: number;
+    valorTabelaUnit?: number;
+  }[];
+  bolasCores?: string | null;
+  bolasMidiaIds?: string[];
 }
 
 export interface UpdateFestaPayload {

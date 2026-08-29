@@ -7,7 +7,8 @@ export type TipoMidia =
   | "CONTRATO"
   | "LOGO_EMPRESA"
   | "CATALOGO_ITEM"
-  | "ASSINATURA_CLIENTE";
+  | "ASSINATURA_CLIENTE"
+  | "REFERENCIA_BOLAS";
 
 export interface Midia {
   id: string;
@@ -17,5 +18,6 @@ export interface Midia {
   filename: string | null;
   criadoEm: string;
   festaId: string | null;
+  pedidoBolasId?: string | null;
   uploadedById: string | null;
 }

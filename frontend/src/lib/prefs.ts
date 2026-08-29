@@ -3,7 +3,7 @@ import type { Role } from "@/types/auth";
 export const PREFS_STORAGE_KEY = "dj-prefs";
 export const HOME_COOKIE = "dj_home";
 
-export type HomePath = "/dashboard" | "/montagem" | "/vendas";
+export type HomePath = "/dashboard" | "/montagem" | "/vendas" | "/bolas";
 
 export interface DevicePrefs {
   homePath: HomePath;
@@ -11,6 +11,7 @@ export interface DevicePrefs {
 
 const DEFAULT_HOME: Record<Role, HomePath> = {
   MONTADOR: "/montagem",
+  BOLISTA: "/bolas",
   VENDEDOR: "/dashboard",
   GERENTE: "/dashboard",
   ADMIN: "/dashboard",
@@ -18,15 +19,17 @@ const DEFAULT_HOME: Record<Role, HomePath> = {
 
 const ALLOWED_BY_ROLE: Record<Role, HomePath[]> = {
   MONTADOR: ["/montagem", "/dashboard"],
+  BOLISTA: ["/bolas"],
   VENDEDOR: ["/dashboard", "/vendas"],
-  GERENTE: ["/dashboard", "/vendas", "/montagem"],
-  ADMIN: ["/dashboard", "/vendas", "/montagem"],
+  GERENTE: ["/dashboard", "/vendas", "/montagem", "/bolas"],
+  ADMIN: ["/dashboard", "/vendas", "/montagem", "/bolas"],
 };
 
 const HOME_LABELS: Record<HomePath, string> = {
   "/dashboard": "Agenda",
   "/montagem": "Montagem",
   "/vendas": "Vendas",
+  "/bolas": "Bolas",
 };
 
 export function defaultHomeForRole(role: Role): HomePath {
@@ -64,7 +67,8 @@ export function readPrefs(): DevicePrefs | null {
     if (
       parsed.homePath === "/dashboard" ||
       parsed.homePath === "/montagem" ||
-      parsed.homePath === "/vendas"
+      parsed.homePath === "/vendas" ||
+      parsed.homePath === "/bolas"
     ) {
       return { homePath: parsed.homePath };
     }

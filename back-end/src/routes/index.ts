@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authRoutes } from "./auth.routes";
 import { atendimentoRoutes } from "./atendimento.routes";
+import { bolasRoutes } from "./bolas.routes";
 import { catalogoRoutes } from "./catalogo.routes";
 import { clientesRoutes } from "./clientes.routes";
 import { comissoesRoutes } from "./comissoes.routes";
@@ -40,6 +41,7 @@ routes.get("/health", (_req, res) => {
       "configuracoes",
       "catalogo",
       "webhooks/meta",
+      "bolas",
     ],
   });
 });
@@ -49,6 +51,7 @@ routes.use("/webhooks", webhooksRoutes);
 routes.use("/users", usersRoutes);
 routes.use("/configuracoes", configuracoesRoutes);
 routes.use("/catalogo", catalogoRoutes);
+routes.use("/bolas", bolasRoutes);
 routes.use("/festas", festasRoutes);
 routes.use("/clientes", clientesRoutes);
 routes.use("/atendimento", atendimentoRoutes);

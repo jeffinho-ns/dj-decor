@@ -36,6 +36,7 @@ const ROLE_LABELS: Record<Role, string> = {
   GERENTE: "Gerente",
   VENDEDOR: "Vendedor",
   MONTADOR: "Montador",
+  BOLISTA: "Profissional de bolas",
 };
 
 /** Sócias e dona — labels de perfil financeiro. */

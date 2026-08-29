@@ -22,6 +22,7 @@ import {
   Wallet,
   Coins,
   X,
+  Balloon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -61,6 +62,7 @@ const GESTAO_ITEMS: NavItem[] = [
   { href: "/equipe", label: "Equipe", icon: Users },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
   { href: "/financeiro", label: "Financeiro", icon: Wallet },
+  { href: "/bolas", label: "Bolas", icon: Balloon },
   { href: "/perfil", label: "Perfil", icon: UserRound },
   { href: "/configuracoes", label: "Configurações", shortLabel: "Ajustes", icon: Settings },
 ];
@@ -79,6 +81,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { href: "/usuarios", label: "Usuários", icon: UserCog },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
   { href: "/financeiro", label: "Financeiro", icon: Wallet },
+  { href: "/bolas", label: "Bolas", icon: Balloon },
   { href: "/perfil", label: "Perfil", icon: UserRound },
   { href: "/configuracoes", label: "Configurações", shortLabel: "Ajustes", icon: Settings },
 ];
@@ -86,6 +89,16 @@ const ADMIN_ITEMS: NavItem[] = [
 const MONTADOR_ITEMS: NavItem[] = [
   { href: "/montagem", label: "Montagem", icon: Hammer },
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/perfil", label: "Perfil", icon: UserRound },
+  { href: "/configuracoes", label: "Configurações", shortLabel: "Ajustes", icon: Settings },
+];
+
+const BOLISTA_ITEMS: NavItem[] = [
+  { href: "/bolas", label: "Agenda", icon: CalendarDays },
+  { href: "/bolas/novo", label: "Novo", shortLabel: "Novo", icon: PlusCircle },
+  { href: "/bolas/compras", label: "Compras", shortLabel: "Compras", icon: Package },
+  { href: "/bolas/catalogo", label: "Catálogo", shortLabel: "Catálogo", icon: Balloon },
+  { href: "/bolas/financeiro", label: "Financeiro", shortLabel: "$$", icon: Wallet },
   { href: "/perfil", label: "Perfil", icon: UserRound },
   { href: "/configuracoes", label: "Configurações", shortLabel: "Ajustes", icon: Settings },
 ];
@@ -102,6 +115,7 @@ const PRIMARY_HREFS_GESTAO = new Set([
   "/vendas",
   "/financeiro",
   "/equipe",
+  "/bolas",
 ]);
 
 const PRIMARY_HREFS_ADMIN = new Set([
@@ -109,12 +123,21 @@ const PRIMARY_HREFS_ADMIN = new Set([
   "/vendas",
   "/financeiro",
   "/equipe",
+  "/bolas",
+]);
+
+const PRIMARY_HREFS_BOLISTA = new Set([
+  "/bolas",
+  "/bolas/novo",
+  "/bolas/compras",
+  "/bolas/financeiro",
 ]);
 
 function getItemsForRole(user: User): NavItem[] {
   const isAdmin = user.role === "ADMIN";
   const isGestao = isAdmin || user.role === "GERENTE";
 
+  if (user.role === "BOLISTA") return BOLISTA_ITEMS;
   if (user.role === "MONTADOR") return MONTADOR_ITEMS;
   if (isAdmin) return ADMIN_ITEMS;
   if (isGestao) return GESTAO_ITEMS;
@@ -123,6 +146,7 @@ function getItemsForRole(user: User): NavItem[] {
 
 function primaryHrefsForRole(role: User["role"]): Set<string> | "all" {
   if (role === "MONTADOR") return "all";
+  if (role === "BOLISTA") return PRIMARY_HREFS_BOLISTA;
   if (role === "ADMIN") return PRIMARY_HREFS_ADMIN;
   if (role === "GERENTE") return PRIMARY_HREFS_GESTAO;
   return PRIMARY_HREFS_DEFAULT;

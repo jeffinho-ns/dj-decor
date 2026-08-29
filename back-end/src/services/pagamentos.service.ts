@@ -3,6 +3,7 @@ import { z } from "zod";
 import { dispatchWhatsAppSafe } from "../integrations/whatsapp";
 import { prisma } from "../prisma/client";
 import { comissoesService } from "./comissoes.service";
+import { bolasService } from "./bolas.service";
 
 const createPagamentoSchema = z.object({
   valor: z.coerce.number().positive("Valor deve ser positivo"),
@@ -99,7 +100,12 @@ export class PagamentosService {
   async confirmar(pagamentoId: string, rawInput: unknown) {
     const data = this.parseConfirmar(rawInput);
 
-    const { pagamento: pagamentoAtualizado, festa } = await prisma.$transaction(
+    const {
+      pagamento: pagamentoAtualizado,
+      festa,
+      totalPago,
+      valorFesta,
+    } = await prisma.$transaction(
       async (tx) => {
         const pagamento = await tx.pagamento.findUnique({
           where: { id: pagamentoId },
@@ -192,8 +198,19 @@ export class PagamentosService {
           await comissoesService.gerarSplitFesta(tx, pagamento.festa.id);
         }
 
-        return { pagamento: pagamentoAtualizado, festa: pagamento.festa };
+        return {
+          pagamento: pagamentoAtualizado,
+          festa: pagamento.festa,
+          totalPago,
+          valorFesta,
+        };
       }
+    );
+
+    await bolasService.syncPagamentoClientePorFesta(
+      festa.id,
+      totalPago,
+      valorFesta
     );
 
     dispatchWhatsAppSafe({

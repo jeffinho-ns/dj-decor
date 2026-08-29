@@ -19,6 +19,7 @@ import {
   UserCog,
   Wallet,
   Coins,
+  Balloon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ const GESTAO_NAV = [
   { href: "/equipe", label: "Equipe", icon: Users },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
   { href: "/financeiro", label: "Financeiro", icon: Wallet },
+  { href: "/bolas", label: "Bolas", icon: Balloon },
   { href: "/perfil", label: "Perfil", icon: UserRound },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
@@ -69,6 +71,7 @@ const ADMIN_NAV = [
   { href: "/usuarios", label: "Usuários", icon: UserCog },
   { href: "/aprovacoes", label: "Aprovações", icon: CheckCircle2 },
   { href: "/financeiro", label: "Financeiro", icon: Wallet },
+  { href: "/bolas", label: "Bolas", icon: Balloon },
   { href: "/perfil", label: "Perfil", icon: UserRound },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
@@ -76,6 +79,16 @@ const ADMIN_NAV = [
 const MONTADOR_NAV = [
   { href: "/montagem", label: "Montagem", icon: Hammer },
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/perfil", label: "Perfil", icon: UserRound },
+  { href: "/configuracoes", label: "Configurações", icon: Settings },
+] as const;
+
+const BOLISTA_NAV = [
+  { href: "/bolas", label: "Agenda", icon: CalendarDays },
+  { href: "/bolas/novo", label: "Novo serviço", icon: PlusCircle },
+  { href: "/bolas/compras", label: "Compras", icon: Package },
+  { href: "/bolas/catalogo", label: "Catálogo", icon: Balloon },
+  { href: "/bolas/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/perfil", label: "Perfil", icon: UserRound },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
@@ -128,6 +141,21 @@ export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/atendimento") {
     return pathname === "/atendimento" || pathname.startsWith("/atendimento/");
   }
+  if (href === "/bolas") {
+    return pathname === "/bolas";
+  }
+  if (href === "/bolas/novo") {
+    return pathname === "/bolas/novo" || pathname.startsWith("/bolas/novo/");
+  }
+  if (href === "/bolas/catalogo") {
+    return pathname.startsWith("/bolas/catalogo");
+  }
+  if (href === "/bolas/financeiro") {
+    return pathname.startsWith("/bolas/financeiro");
+  }
+  if (href === "/bolas/compras") {
+    return pathname.startsWith("/bolas/compras");
+  }
   if (href === "/configuracoes") {
     return (
       pathname === "/configuracoes" || pathname.startsWith("/configuracoes/")
@@ -141,13 +169,16 @@ export function Sidebar({ user }: SidebarProps) {
   const isAdmin = user.role === "ADMIN";
   const isGestao = user.role === "ADMIN" || user.role === "GERENTE";
   const isMontador = user.role === "MONTADOR";
-  const navItems = isMontador
-    ? MONTADOR_NAV
-    : isAdmin
-      ? ADMIN_NAV
-      : isGestao
-        ? GESTAO_NAV
-        : DEFAULT_NAV;
+  const isBolista = user.role === "BOLISTA";
+  const navItems = isBolista
+    ? BOLISTA_NAV
+    : isMontador
+      ? MONTADOR_NAV
+      : isAdmin
+        ? ADMIN_NAV
+        : isGestao
+          ? GESTAO_NAV
+          : DEFAULT_NAV;
 
   return (
     <aside className="m-3 flex h-[calc(100%-1.5rem)] w-64 flex-col rounded-3xl neo text-sidebar-foreground">

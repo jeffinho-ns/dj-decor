@@ -47,6 +47,14 @@ import type {
   StatusConversa,
 } from "@/types/atendimento";
 import type {
+  BolasComprasPedido,
+  BolasFinanceiroResumo,
+  CatalogoBola,
+  CreatePedidoBolasPayload,
+  PedidoBolas,
+  PedidoBolasCompra,
+} from "@/types/bolas";
+import type {
   AgendaOs,
   AssignMontadorPayload,
   Montador,
@@ -1775,4 +1783,197 @@ export async function simularInboundAtendimento(
   return handleResponse<{ conversa: ConversaDetalhe; agent: unknown }>(
     response
   );
+}
+
+export async function listCatalogoBolas(
+  token: string,
+  all = false
+): Promise<CatalogoBola[]> {
+  const qs = all ? "?all=1" : "";
+  const response = await fetch(`${getBaseUrl()}/api/bolas/catalogo${qs}`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<CatalogoBola[]>(response);
+}
+
+export async function getBolasMarkup(
+  token: string
+): Promise<{ markupPercentual: number }> {
+  const response = await fetch(`${getBaseUrl()}/api/bolas/markup`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse(response);
+}
+
+export async function upsertCatalogoBola(
+  payload: {
+    id?: string;
+    nome: string;
+    descricao?: string | null;
+    valorTabela: number;
+    ativo?: boolean;
+    ordem?: number;
+  },
+  token: string
+): Promise<CatalogoBola> {
+  const response = await fetch(`${getBaseUrl()}/api/bolas/catalogo`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<CatalogoBola>(response);
+}
+
+export async function setCatalogoBolaAtivo(
+  id: string,
+  ativo: boolean,
+  token: string
+): Promise<CatalogoBola> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/bolas/catalogo/${id}/ativo`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify({ ativo }),
+    }
+  );
+  return handleResponse<CatalogoBola>(response);
+}
+
+export async function listPedidosBolas(
+  token: string,
+  options?: { from?: string; to?: string }
+): Promise<PedidoBolas[]> {
+  const params = new URLSearchParams();
+  if (options?.from) params.set("from", options.from);
+  if (options?.to) params.set("to", options.to);
+  const qs = params.toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/bolas/pedidos${qs ? `?${qs}` : ""}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  return handleResponse<PedidoBolas[]>(response);
+}
+
+export async function getPedidoBolas(
+  id: string,
+  token: string
+): Promise<PedidoBolas> {
+  const response = await fetch(`${getBaseUrl()}/api/bolas/pedidos/${id}`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<PedidoBolas>(response);
+}
+
+export async function createPedidoBolas(
+  payload: CreatePedidoBolasPayload,
+  token: string
+): Promise<PedidoBolas> {
+  const response = await fetch(`${getBaseUrl()}/api/bolas/pedidos`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<PedidoBolas>(response);
+}
+
+export async function updatePedidoBolas(
+  id: string,
+  payload: Record<string, unknown>,
+  token: string
+): Promise<PedidoBolas> {
+  const response = await fetch(`${getBaseUrl()}/api/bolas/pedidos/${id}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<PedidoBolas>(response);
+}
+
+export async function marcarRepasseBolas(
+  id: string,
+  payload: { pago?: boolean; obs?: string | null },
+  token: string
+): Promise<PedidoBolas> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/bolas/pedidos/${id}/repasse`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(payload),
+    }
+  );
+  return handleResponse<PedidoBolas>(response);
+}
+
+export async function getBolasFinanceiro(
+  token: string
+): Promise<BolasFinanceiroResumo> {
+  const response = await fetch(`${getBaseUrl()}/api/bolas/financeiro`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<BolasFinanceiroResumo>(response);
+}
+
+export async function listBolasCompras(
+  token: string,
+  dias = 14
+): Promise<BolasComprasPedido[]> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/bolas/compras?dias=${dias}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  return handleResponse<BolasComprasPedido[]>(response);
+}
+
+export async function addPedidoBolasCompra(
+  pedidoId: string,
+  payload: { descricao: string; quantidade?: string | null },
+  token: string
+): Promise<PedidoBolasCompra> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/bolas/pedidos/${pedidoId}/compras`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify(payload),
+    }
+  );
+  return handleResponse<PedidoBolasCompra>(response);
+}
+
+export async function setPedidoBolasCompraComprado(
+  compraId: string,
+  comprado: boolean,
+  token: string
+): Promise<PedidoBolasCompra> {
+  const response = await fetch(`${getBaseUrl()}/api/bolas/compras/${compraId}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ comprado }),
+  });
+  return handleResponse<PedidoBolasCompra>(response);
+}
+
+export async function removePedidoBolasCompra(
+  compraId: string,
+  token: string
+): Promise<void> {
+  const response = await fetch(`${getBaseUrl()}/api/bolas/compras/${compraId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!response.ok && response.status !== 204) {
+    await handleResponse(response);
+  }
 }

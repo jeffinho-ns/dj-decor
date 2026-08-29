@@ -97,6 +97,11 @@ function FestaCardMobile({
             Decoração
           </p>
           <p className="text-foreground">{festa.tema}</p>
+          {festa.pedidoBolas ? (
+            <p className="mt-0.5 text-xs text-balloon-pink">
+              Com bolas · {formatCurrency(festa.pedidoBolas.valorCliente)}
+            </p>
+          ) : null}
           {festa.kitCatalogo || festa.pegueEMonte ? (
             <p className="mt-0.5 text-xs text-balloon-sky">
               {nomeDoKit(festa.kitCatalogo) ?? "Kit personalizado"}
@@ -225,6 +230,11 @@ export function FestasTable({ festas, onSelectFesta }: FestasTableProps) {
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   <p>{festa.tema}</p>
+                  {festa.pedidoBolas ? (
+                    <p className="mt-0.5 text-xs text-balloon-pink">
+                      Com bolas · {formatCurrency(festa.pedidoBolas.valorCliente)}
+                    </p>
+                  ) : null}
                   {festa.kitCatalogo || festa.pegueEMonte ? (
                     <p className="mt-0.5 text-xs text-balloon-sky">
                       {nomeDoKit(festa.kitCatalogo) ?? "Kit personalizado"}

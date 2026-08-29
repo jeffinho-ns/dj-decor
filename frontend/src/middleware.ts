@@ -9,6 +9,7 @@ const PROTECTED_PREFIXES = [
   "/clientes",
   "/calendario",
   "/montagem",
+  "/bolas",
   "/perfil",
   "/configuracoes",
   "/estoque",
@@ -25,9 +26,17 @@ const MONTADOR_BLOCKED_PREFIXES = ["/follow-ups", "/atendimento"];
 const GESTAO_ONLY_PREFIXES = ["/estoque", "/equipe", "/aprovacoes"];
 const GESTAO_FINANCEIRO_PREFIXES = ["/financeiro"];
 const ADMIN_ONLY_PREFIXES: string[] = [];
+const BOLISTA_AREA_PREFIXES = ["/bolas"];
+const BOLISTA_ALLOWED_PREFIXES = ["/bolas", "/perfil", "/configuracoes"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
+function isBolistaArea(pathname: string): boolean {
+  return BOLISTA_AREA_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 }
@@ -62,6 +71,12 @@ function isAdminArea(pathname: string): boolean {
   );
 }
 
+function isBolistaAllowed(pathname: string): boolean {
+  return BOLISTA_ALLOWED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
 /** Lê o claim `role` do JWT sem verificar assinatura (só para roteamento). */
 function roleFromToken(token: string): string | null {
   try {
@@ -77,7 +92,9 @@ function roleFromToken(token: string): string | null {
 }
 
 function homeForRole(role: string | null): string {
-  return role === "MONTADOR" ? "/montagem" : "/dashboard";
+  if (role === "MONTADOR") return "/montagem";
+  if (role === "BOLISTA") return "/bolas";
+  return "/dashboard";
 }
 
 export function middleware(request: NextRequest) {
@@ -93,6 +110,20 @@ export function middleware(request: NextRequest) {
   }
 
   if (pathname === "/login" && token) {
+    return NextResponse.redirect(new URL(homeForRole(role), request.url));
+  }
+
+  if (token && role === "BOLISTA" && isProtected(pathname) && !isBolistaAllowed(pathname)) {
+    return NextResponse.redirect(new URL("/bolas", request.url));
+  }
+
+  if (
+    token &&
+    isBolistaArea(pathname) &&
+    role !== "BOLISTA" &&
+    role !== "ADMIN" &&
+    role !== "GERENTE"
+  ) {
     return NextResponse.redirect(new URL(homeForRole(role), request.url));
   }
 
@@ -141,6 +172,8 @@ export const config = {
     "/calendario/:path*",
     "/montagem",
     "/montagem/:path*",
+    "/bolas",
+    "/bolas/:path*",
     "/perfil",
     "/perfil/:path*",
     "/configuracoes",

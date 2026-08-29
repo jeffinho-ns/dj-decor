@@ -12,6 +12,7 @@ enum Role {
   GERENTE
   VENDEDOR
   MONTADOR
+  BOLISTA
 }
 
 enum StatusFesta {
@@ -69,6 +70,7 @@ enum TipoMidia {
   LOGO_EMPRESA
   CATALOGO_ITEM
   ASSINATURA_CLIENTE
+  REFERENCIA_BOLAS
 }
 
 enum TipoCatalogoAddon {
@@ -150,6 +152,21 @@ enum FrequenciaPagamentoEquipe {
   MENSAL
 }
 
+enum StatusPedidoBolas {
+  RASCUNHO
+  CONFIRMADO
+  EM_MONTAGEM
+  MONTADO
+  DESMONTADO
+  CONCLUIDO
+  CANCELADO
+}
+
+enum StatusRepasseBolas {
+  PENDENTE
+  PAGO
+}
+
 model User {
   id                  String   @id @default(cuid())
   nome                String   @unique
@@ -180,6 +197,8 @@ model User {
   followUpsRegistrados      FollowUpContato[]
   conversasAtribuidas       Conversa[]           @relation("ConversaVendedor")
   eventosAtendimento        AtendimentoEvento[]  @relation("AtendimentoEventoAutor")
+  pedidosBolas              PedidoBolas[]      @relation("PedidoBolasBolista")
+  catalogoBolasCriados      CatalogoBola[]     @relation("CatalogoBolaCriadoPor")
 
   @@map("users")
 }
@@ -196,6 +215,7 @@ model Cliente {
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
   festas       Festa[]
   conversas    Conversa[]
+  pedidoBolas       PedidoBolas?
 
   @@index([telefone])
   @@map("clientes")
@@ -428,6 +448,9 @@ model Midia {
   festaId String? @map("festa_id")
   festa   Festa?  @relation(fields: [festaId], references: [id], onDelete: SetNull)
 
+  pedidoBolasId String?      @map("pedido_bolas_id")
+  pedidoBolas   PedidoBolas? @relation(fields: [pedidoBolasId], references: [id], onDelete: SetNull)
+
   uploadedById String? @map("uploaded_by_id")
   uploadedBy   User?   @relation("MidiaUploadedBy", fields: [uploadedById], references: [id])
 
@@ -438,6 +461,7 @@ model Midia {
   configuracaoLogo     ConfiguracaoNegocio? @relation("ConfigLogo")
 
   @@index([festaId])
+  @@index([pedidoBolasId])
   @@index([tipo])
   @@map("midias")
 }
@@ -510,6 +534,8 @@ model ConfiguracaoNegocio {
   diariaDesmontadorCarroEmpresa  Decimal @default(80) @map("diaria_desmontador_carro_empresa") @db.Decimal(10, 2)
   /** Ritmo de pagamento das diárias (dá para mudar a qualquer momento). */
   frequenciaPagamentoEquipe FrequenciaPagamentoEquipe @default(QUINZENAL) @map("frequencia_pagamento_equipe")
+  /** % em cima da tabela do profissional de bolas (cliente paga tabela × (1 + markup/100)). */
+  markupBolasPercentual   Decimal  @default(10) @map("markup_bolas_percentual") @db.Decimal(5, 2)
   clausulasContrato       String?  @map("clausulas_contrato") @db.Text
   nomeEmpresa             String   @default("DJ festas") @map("nome_empresa")
   sloganEmpresa           String   @default("Decoração de Festas · Locação de Materiais") @map("slogan_empresa")
@@ -648,4 +674,97 @@ model AtendimentoEvento {
 
   @@index([conversaId, criadoEm])
   @@map("atendimento_eventos")
+}
+
+/** Catálogo/tabela de preços do profissional de bolas (prestador). */
+model CatalogoBola {
+  id          String   @id @default(cuid())
+  nome        String
+  descricao   String?  @db.Text
+  valorTabela Decimal  @map("valor_tabela") @db.Decimal(10, 2)
+  ativo       Boolean  @default(true)
+  ordem       Int      @default(0)
+  criadoEm    DateTime @default(now()) @map("criado_em")
+
+  criadoPorId String? @map("criado_por_id")
+  criadoPor   User?   @relation("CatalogoBolaCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  itensPedido PedidoBolasItem[]
+
+  @@map("catalogo_bolas")
+}
+
+/** Pedido de bolas ligado a uma festa DJ Decor ou avulso (serviço externo). */
+model PedidoBolas {
+  id                   String              @id @default(cuid())
+  dataEvento           DateTime            @map("data_evento")
+  horarioMontagem      DateTime            @map("horario_montagem")
+  horarioDesmontagem   DateTime?           @map("horario_desmontagem")
+  tema                 String
+  endereco             String
+  clienteNome          String              @map("cliente_nome")
+  clienteTelefone      String              @map("cliente_telefone")
+  observacoes          String?             @db.Text
+  cores                String?             @db.Text
+  instrucoes           String?             @db.Text
+  valorTabela          Decimal             @map("valor_tabela") @db.Decimal(10, 2)
+  valorCliente         Decimal             @map("valor_cliente") @db.Decimal(10, 2)
+  taxaEmpresa          Decimal             @map("taxa_empresa") @db.Decimal(10, 2)
+  markupPercentual     Decimal             @map("markup_percentual") @db.Decimal(5, 2)
+  status               StatusPedidoBolas   @default(CONFIRMADO)
+  montagemConcluida    Boolean             @default(false) @map("montagem_concluida")
+  desmontagemConcluida Boolean             @default(false) @map("desmontagem_concluida")
+  statusPagamentoCliente StatusPagamento   @default(PENDENTE) @map("status_pagamento_cliente")
+  statusRepasse        StatusRepasseBolas  @default(PENDENTE) @map("status_repasse")
+  repassadoEm          DateTime?           @map("repassado_em")
+  repasseObs           String?             @map("repasse_obs") @db.Text
+  criadoEm             DateTime            @default(now()) @map("criado_em")
+  atualizadoEm         DateTime            @updatedAt @map("atualizado_em")
+
+  festaId String? @unique @map("festa_id")
+  festa   Festa?  @relation(fields: [festaId], references: [id], onDelete: SetNull)
+
+  bolistaId String @map("bolista_id")
+  bolista   User   @relation("PedidoBolasBolista", fields: [bolistaId], references: [id])
+
+  itens   PedidoBolasItem[]
+  compras PedidoBolasCompra[]
+  midias  Midia[]
+
+  @@index([bolistaId, dataEvento])
+  @@index([status])
+  @@index([statusRepasse])
+  @@map("pedidos_bolas")
+}
+
+model PedidoBolasItem {
+  id               String  @id @default(cuid())
+  nome             String
+  quantidade       Int     @default(1)
+  valorTabelaUnit  Decimal @map("valor_tabela_unit") @db.Decimal(10, 2)
+  valorClienteUnit Decimal @map("valor_cliente_unit") @db.Decimal(10, 2)
+
+  pedidoId String      @map("pedido_id")
+  pedido   PedidoBolas @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  catalogoBolaId String?       @map("catalogo_bola_id")
+  catalogoBola   CatalogoBola? @relation(fields: [catalogoBolaId], references: [id], onDelete: SetNull)
+
+  @@index([pedidoId])
+  @@map("pedido_bolas_itens")
+}
+
+/** Itens de compra do profissional (lista de mercado por pedido). */
+model PedidoBolasCompra {
+  id         String   @id @default(cuid())
+  descricao  String
+  quantidade String?
+  comprado   Boolean  @default(false)
+  criadoEm   DateTime @default(now()) @map("criado_em")
+
+  pedidoId String      @map("pedido_id")
+  pedido   PedidoBolas @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  @@index([pedidoId, comprado])
+  @@map("pedido_bolas_compras")
 }

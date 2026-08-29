@@ -35,7 +35,13 @@ midiasRoutes.use(auth);
 
 midiasRoutes.post(
   "/",
-  requireRoles(Role.ADMIN, Role.GERENTE, Role.VENDEDOR, Role.MONTADOR),
+  requireRoles(
+    Role.ADMIN,
+    Role.GERENTE,
+    Role.VENDEDOR,
+    Role.MONTADOR,
+    Role.BOLISTA
+  ),
   handleMulter,
   (req, res, next) => midiasController.upload(req, res, next)
 );
@@ -48,7 +54,13 @@ midiasRoutes.get(
 
 midiasRoutes.get(
   "/:id",
-  requireRoles(Role.ADMIN, Role.GERENTE, Role.VENDEDOR, Role.MONTADOR),
+  requireRoles(
+    Role.ADMIN,
+    Role.GERENTE,
+    Role.VENDEDOR,
+    Role.MONTADOR,
+    Role.BOLISTA
+  ),
   (req, res, next) => midiasController.getById(req, res, next)
 );
 

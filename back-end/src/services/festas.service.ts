@@ -8,6 +8,7 @@ import { osService } from "./os.service";
 import { clientesService } from "./clientes.service";
 import { riscoService } from "./risco.service";
 import { comissoesService } from "./comissoes.service";
+import { bolasService } from "./bolas.service";
 
 const equipeUserSelect = {
   id: true,
@@ -22,6 +23,12 @@ const festaInclude = {
   },
   montadorEquipe: { select: equipeUserSelect },
   desmontadorEquipe: { select: equipeUserSelect },
+  pedidoBolas: {
+    include: {
+      itens: true,
+      bolista: { select: { id: true, nome: true } },
+    },
+  },
 } as const;
 
 const equipeFieldsSchema = {
@@ -59,7 +66,19 @@ const createFestaSchema = z
   status: z.nativeEnum(StatusFesta).optional().default(StatusFesta.ORCAMENTO),
   vendedorId: z.string().optional(),
   ...equipeFieldsSchema,
-  })
+  bolasItens: z
+    .array(
+      z.object({
+        catalogoBolaId: z.string().min(1).nullable().optional(),
+        nome: z.string().min(1).optional(),
+        quantidade: z.coerce.number().int().positive().default(1),
+        valorTabelaUnit: z.coerce.number().positive().optional(),
+      })
+    )
+    .optional(),
+  bolasCores: z.string().max(1000).nullable().optional(),
+  bolasMidiaIds: z.array(z.string().min(1)).optional(),
+})
   .superRefine((data, ctx) => {
     if (!data.clienteId) {
       if (!data.nomeCliente?.trim()) {
@@ -238,7 +257,7 @@ export class FestasService {
         ? `${observacoesBase}\n\n${observacaoEstoque}`
         : observacaoEstoque ?? observacoesBase;
 
-    return prisma.festa.create({
+    const festa = await prisma.festa.create({
       data: {
         dataEvento: data.dataEvento,
         horarioMontagem: data.horarioMontagem,
@@ -265,6 +284,28 @@ export class FestasService {
       },
       include: festaInclude,
     });
+
+    if (data.bolasItens && data.bolasItens.length > 0) {
+      await bolasService.upsertParaFesta(
+        festa.id,
+        data.bolasItens,
+        {
+          dataEvento: data.dataEvento,
+          horarioMontagem: data.horarioMontagem,
+          tema: data.tema,
+          endereco: data.endereco,
+          clienteNome: cliente.nome,
+          clienteTelefone: cliente.telefone,
+          observacoes: data.observacoes ?? null,
+          cores: data.bolasCores ?? null,
+          midiaIds: data.bolasMidiaIds ?? [],
+        },
+        vendedorId
+      );
+      return this.getById(festa.id);
+    }
+
+    return festa;
   }
 
   async update(id: string, rawInput: unknown) {

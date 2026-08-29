@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { NovaVendaForm } from "@/components/vendas/nova-venda-form";
-import { getConfiguracoes } from "@/lib/api";
+import { getBolasMarkup, getConfiguracoes, listCatalogoBolas } from "@/lib/api";
 import { requireSession } from "@/lib/session";
 
 export default async function NovaVendaPage({
@@ -15,6 +15,22 @@ export default async function NovaVendaPage({
 
   if (user.role === "MONTADOR") {
     redirect("/montagem");
+  }
+  if (user.role === "BOLISTA") {
+    redirect("/bolas");
+  }
+
+  let catalogoBolas: Awaited<ReturnType<typeof listCatalogoBolas>> = [];
+  let markupBolasPercentual = 10;
+  try {
+    const [catalogo, markup] = await Promise.all([
+      listCatalogoBolas(token),
+      getBolasMarkup(token),
+    ]);
+    catalogoBolas = catalogo;
+    markupBolasPercentual = markup.markupPercentual;
+  } catch {
+    // catálogo de bolas opcional se API ainda não migrada
   }
 
   let enderecoEmpresa: string | null = null;
@@ -36,6 +52,8 @@ export default async function NovaVendaPage({
         initialClienteId={params.clienteId ?? null}
         viewerRole={user.role}
         enderecoEmpresaInicial={enderecoEmpresa}
+        catalogoBolas={catalogoBolas}
+        markupBolasPercentual={markupBolasPercentual}
       />
     </DashboardShell>
   );
