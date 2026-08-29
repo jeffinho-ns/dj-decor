@@ -27,7 +27,7 @@ routes.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
     service: "dj-decor-api",
-    version: "1.3.0",
+    version: "1.4.0",
     routes: [
       "festas",
       "clientes",

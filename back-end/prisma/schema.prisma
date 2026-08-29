@@ -215,7 +215,6 @@ model Cliente {
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
   festas       Festa[]
   conversas    Conversa[]
-  pedidoBolas       PedidoBolas?
 
   @@index([telefone])
   @@map("clientes")
@@ -283,6 +282,7 @@ model Festa {
   followUps         FollowUpContato[]
   mensagensCanal    MensagemCanal[]
   conversas         Conversa[]
+  pedidoBolas       PedidoBolas?
 
   @@map("festas")
 }

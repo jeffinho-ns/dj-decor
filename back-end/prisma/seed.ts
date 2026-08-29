@@ -34,7 +34,7 @@ const seedUsers: SeedUser[] = [
   { nome: "Rodrigo", role: Role.VENDEDOR },
   { nome: "Carlos", role: Role.MONTADOR },
   { nome: "Bruno", role: Role.MONTADOR },
-  { nome: "Rafael", role: Role.BOLISTA },
+  { nome: "Marcelo", role: Role.BOLISTA },
 ];
 
 const nomesEquipe = seedUsers.map((u) => u.nome);
@@ -81,6 +81,15 @@ async function seedUsuarios() {
 
   if (removed.count > 0) {
     console.log(`[seed] removidos ${removed.count} usuário(s) fora da equipe (sem festas)`);
+  }
+
+  const marcelo = await prisma.user.findUnique({ where: { nome: "Marcelo" } });
+  if (marcelo && marcelo.role !== Role.BOLISTA) {
+    await prisma.user.update({
+      where: { id: marcelo.id },
+      data: { role: Role.BOLISTA, ativo: true, senha: await bcrypt.hash(SENHA_TEMPORARIA, SALT_ROUNDS) },
+    });
+    console.log("[seed] Marcelo atualizado para BOLISTA");
   }
 }
 
@@ -485,7 +494,7 @@ async function seedConfigECatalogoVendas() {
   }
   console.log(`[seed] ${addons.length} add-ons de venda prontos`);
 
-  const bolista = await prisma.user.findUnique({ where: { nome: "Rafael" } });
+  const bolista = await prisma.user.findUnique({ where: { nome: "Marcelo" } });
   const catalogoBolasSeed = [
     {
       nome: "Arco de bolas ornamentado",
