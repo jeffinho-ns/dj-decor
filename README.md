@@ -272,7 +272,8 @@ Se `OS_ID` vier vazio, rode `npm run prisma:seed` e confira que a festa demo tem
 2. Web Service apontando para este repositório:
    - **Root Directory:** `back-end`
    - **Build:** `npm install --include=dev && npx prisma generate && npm run build`
-   - **Start:** `npx prisma migrate deploy && npx prisma db seed && npm start`
+   - **Start:** `npx prisma migrate deploy && npm start`
+   - **Seed (somente setup inicial ou dev):** `npx prisma db seed` — não roda no start de produção para preservar senhas alteradas no Perfil.
    - **Environment:**
      - `DATABASE_URL`
      - `FRONTEND_URL` = `https://dj-decor.vercel.app`

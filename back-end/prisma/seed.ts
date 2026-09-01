@@ -50,8 +50,6 @@ async function seedUsuarios() {
       where: { nome: seedUser.nome },
       update: {
         role: seedUser.role,
-        senha: senhaHash,
-        email: null,
         ativo: true,
         ehSocia,
         ehDona,
@@ -87,7 +85,7 @@ async function seedUsuarios() {
   if (marcelo && marcelo.role !== Role.BOLISTA) {
     await prisma.user.update({
       where: { id: marcelo.id },
-      data: { role: Role.BOLISTA, ativo: true, senha: await bcrypt.hash(SENHA_TEMPORARIA, SALT_ROUNDS) },
+      data: { role: Role.BOLISTA, ativo: true },
     });
     console.log("[seed] Marcelo atualizado para BOLISTA");
   }
