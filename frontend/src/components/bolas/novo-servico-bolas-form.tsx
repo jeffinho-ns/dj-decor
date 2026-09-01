@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { QtyInput, resolveDraftQty } from "@/components/ui/qty-input";
 import { Label } from "@/components/ui/label";
 import { createFesta, createPedidoBolas, uploadMidia } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
@@ -41,6 +42,7 @@ export function NovoServicoBolasForm({
   const [cores, setCores] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [selected, setSelected] = useState<Record<string, number>>({});
+  const [selectedDraft, setSelectedDraft] = useState<Record<string, string>>({});
   const [bolasMidiaIds, setBolasMidiaIds] = useState<string[]>([]);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,21 +51,31 @@ export function NovoServicoBolasForm({
   const totais = useMemo(() => {
     let tabela = 0;
     for (const item of catalogo) {
-      const qty = selected[item.id] ?? 0;
+      const qty = resolveDraftQty(selected[item.id] ?? 0, selectedDraft[item.id]);
       if (qty > 0) tabela += Number(item.valorTabela) * qty;
     }
     const cliente =
       Math.round(tabela * (1 + markupPercentual / 100) * 100) / 100;
     return { tabela, cliente };
-  }, [catalogo, selected, markupPercentual]);
+  }, [catalogo, selected, selectedDraft, markupPercentual]);
 
   function toggleItem(id: string) {
-    setSelected((prev) => {
-      const next = { ...prev };
-      if (next[id]) delete next[id];
-      else next[id] = 1;
-      return next;
-    });
+    const qty = selected[id] ?? 0;
+    if (qty > 0) {
+      setSelected((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setSelectedDraft((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+    setSelected((prev) => ({ ...prev, [id]: 1 }));
+    setSelectedDraft((prev) => ({ ...prev, [id]: "1" }));
   }
 
   async function onSubmit(event: React.FormEvent) {
@@ -355,18 +367,32 @@ export function NovoServicoBolasForm({
                 </span>
               </span>
               {qty > 0 ? (
-                <Input
-                  type="number"
-                  min={1}
-                  className="h-8 w-16"
+                <QtyInput
                   value={qty}
-                  onChange={(e) =>
-                    setSelected((prev) => ({
-                      ...prev,
-                      [item.id]: Math.max(1, Number(e.target.value) || 1),
-                    }))
+                  draft={selectedDraft[item.id]}
+                  onDraftChange={(draft) =>
+                    setSelectedDraft((prev) => ({ ...prev, [item.id]: draft }))
                   }
-                  onClick={(e) => e.stopPropagation()}
+                  onCommit={(nextQty) => {
+                    if (nextQty === null) {
+                      setSelected((prev) => {
+                        const next = { ...prev };
+                        delete next[item.id];
+                        return next;
+                      });
+                      setSelectedDraft((prev) => {
+                        const next = { ...prev };
+                        delete next[item.id];
+                        return next;
+                      });
+                      return;
+                    }
+                    setSelected((prev) => ({ ...prev, [item.id]: nextQty }));
+                    setSelectedDraft((prev) => ({
+                      ...prev,
+                      [item.id]: String(nextQty),
+                    }));
+                  }}
                 />
               ) : null}
             </label>

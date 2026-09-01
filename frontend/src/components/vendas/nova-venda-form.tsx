@@ -19,6 +19,7 @@ import {
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { QtyInput, resolveDraftQty } from "@/components/ui/qty-input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { FestaContratoPanel } from "@/components/vendas/festa-contrato-panel";
@@ -154,6 +155,7 @@ export function NovaVendaForm({
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [addonIds, setAddonIds] = useState<string[]>([]);
   const [bolasQty, setBolasQty] = useState<Record<string, number>>({});
+  const [bolasQtyDraft, setBolasQtyDraft] = useState<Record<string, string>>({});
   const [bolasCores, setBolasCores] = useState("");
   const [bolasMidiaIds, setBolasMidiaIds] = useState<string[]>([]);
   const [temaMidiaIds, setTemaMidiaIds] = useState<string[]>([]);
@@ -246,7 +248,10 @@ export function NovaVendaForm({
       quantidade: number;
     }[] = [];
     for (const item of catalogoBolas) {
-      const qty = bolasQty[item.id] ?? 0;
+      const qty = resolveDraftQty(
+        bolasQty[item.id] ?? 0,
+        bolasQtyDraft[item.id]
+      );
       if (qty <= 0) continue;
       valorTabela += Number(item.valorTabela) * qty;
       nomes.push(`${qty}× ${item.nome}`);
@@ -255,7 +260,7 @@ export function NovaVendaForm({
     const valorCliente =
       Math.round(valorTabela * (1 + markupBolasPercentual / 100) * 100) / 100;
     return { valorTabela, valorCliente, nomes, itensPayload };
-  }, [catalogoBolas, bolasQty, markupBolasPercentual]);
+  }, [catalogoBolas, bolasQty, bolasQtyDraft, markupBolasPercentual]);
 
   useEffect(() => {
     if (enderecoEmpresaInicial?.trim()) {
@@ -814,6 +819,7 @@ export function NovaVendaForm({
     setMontadorLevaBusca(false);
     setAddonIds([]);
     setBolasQty({});
+    setBolasQtyDraft({});
     setBolasCores("");
     setBolasMidiaIds([]);
     setTemaMidiaIds([]);
@@ -1596,14 +1602,26 @@ export function NovaVendaForm({
                         <input
                           type="checkbox"
                           checked={qty > 0}
-                          onChange={() =>
-                            setBolasQty((prev) => {
-                              const next = { ...prev };
-                              if (next[item.id]) delete next[item.id];
-                              else next[item.id] = 1;
-                              return next;
-                            })
-                          }
+                          onChange={() => {
+                            if (qty > 0) {
+                              setBolasQty((prev) => {
+                                const next = { ...prev };
+                                delete next[item.id];
+                                return next;
+                              });
+                              setBolasQtyDraft((prev) => {
+                                const next = { ...prev };
+                                delete next[item.id];
+                                return next;
+                              });
+                              return;
+                            }
+                            setBolasQty((prev) => ({ ...prev, [item.id]: 1 }));
+                            setBolasQtyDraft((prev) => ({
+                              ...prev,
+                              [item.id]: "1",
+                            }));
+                          }}
                         />
                         <span>
                           {item.nome}
@@ -1613,21 +1631,38 @@ export function NovaVendaForm({
                         </span>
                       </span>
                       {qty > 0 ? (
-                        <Input
-                          type="number"
-                          min={1}
-                          className="h-8 w-16"
+                        <QtyInput
                           value={qty}
-                          onChange={(e) =>
-                            setBolasQty((prev) => ({
+                          draft={bolasQtyDraft[item.id]}
+                          onDraftChange={(draft) =>
+                            setBolasQtyDraft((prev) => ({
                               ...prev,
-                              [item.id]: Math.max(
-                                1,
-                                Number(e.target.value) || 1
-                              ),
+                              [item.id]: draft,
                             }))
                           }
-                          onClick={(e) => e.stopPropagation()}
+                          onCommit={(nextQty) => {
+                            if (nextQty === null) {
+                              setBolasQty((prev) => {
+                                const next = { ...prev };
+                                delete next[item.id];
+                                return next;
+                              });
+                              setBolasQtyDraft((prev) => {
+                                const next = { ...prev };
+                                delete next[item.id];
+                                return next;
+                              });
+                              return;
+                            }
+                            setBolasQty((prev) => ({
+                              ...prev,
+                              [item.id]: nextQty,
+                            }));
+                            setBolasQtyDraft((prev) => ({
+                              ...prev,
+                              [item.id]: String(nextQty),
+                            }));
+                          }}
                         />
                       ) : null}
                     </label>
@@ -1782,9 +1817,8 @@ export function NovaVendaForm({
             <Label htmlFor="valor">Valor decoração (R$)</Label>
             <Input
               id="valor"
-              type="number"
-              step="0.01"
-              min="0"
+              inputMode="decimal"
+              autoComplete="off"
               className="h-11 text-base md:h-9 md:text-sm"
               placeholder="1500.00"
               aria-invalid={Boolean(errors.valor)}
@@ -1922,9 +1956,8 @@ export function NovaVendaForm({
               </Label>
               <Input
                 id="pagamento-valor-nova"
-                type="number"
-                step="0.01"
-                min="0"
+                inputMode="decimal"
+                autoComplete="off"
                 className="h-11 text-base md:h-9 md:text-sm"
                 placeholder="400.00"
                 value={pagamentoValor}
