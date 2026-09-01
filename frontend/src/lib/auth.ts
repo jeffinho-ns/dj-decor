@@ -43,6 +43,12 @@ const ROLE_LABELS: Record<Role, string> = {
 const SOCIAS = new Set(["Lorena"]);
 const DONAS = new Set(["Debora"]);
 
+/**
+ * Gerentes exibidas como vendedoras (só visual).
+ * Permissões reais continuam sendo `GERENTE` no token/API.
+ */
+const GERENTES_COMO_VENDEDORA = new Set(["Suellem"]);
+
 export function roleLabel(role: Role, nome?: string | null): string {
   const nomeTrim = nome?.trim() ?? "";
   if (nomeTrim && DONAS.has(nomeTrim) && role === "GERENTE") {
@@ -50,6 +56,9 @@ export function roleLabel(role: Role, nome?: string | null): string {
   }
   if (nomeTrim && SOCIAS.has(nomeTrim) && role === "GERENTE") {
     return "Sócia";
+  }
+  if (nomeTrim && GERENTES_COMO_VENDEDORA.has(nomeTrim) && role === "GERENTE") {
+    return "Vendedora";
   }
   return ROLE_LABELS[role] ?? role;
 }

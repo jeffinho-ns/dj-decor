@@ -136,7 +136,7 @@ export function UsuariosPainel({ token, canEdit }: UsuariosPainelProps) {
                 >
                   {ROLES.map((r) => (
                     <option key={r} value={r}>
-                      {roleLabel(r)}
+                      {roleLabel(r, u.nome)}
                     </option>
                   ))}
                 </select>
