@@ -518,37 +518,61 @@ async function seedConfigECatalogoVendas() {
   console.log(`[seed] ${addons.length} add-ons de venda prontos`);
 
   const bolista = await prisma.user.findUnique({ where: { nome: "Marcelo" } });
+  /** Catálogo oficial — adicional de serviços de balões (PDF). */
   const catalogoBolasSeed = [
     {
-      nome: "Arco de bolas ornamentado",
-      descricao: "Arco completo com balões gas e ar — cores a combinar.",
+      nome: "Arco em todo painel elaborado",
+      descricao:
+        "Arco de balões incluso na decoração — em todo painel elaborado.",
       valorTabela: 300,
       ordem: 1,
     },
     {
-      nome: "Coluna de bolas",
-      descricao: "Coluna decorativa unitária.",
-      valorTabela: 120,
+      nome: "Arco de entrada elaborado",
+      descricao: "Arco de entrada elaborado.",
+      valorTabela: 340,
       ordem: 2,
     },
     {
-      nome: "Painel de bolas",
-      descricao: "Painel orgânico / backdrop de balões.",
-      valorTabela: 450,
+      nome: "Arco de entrada uma lateral elaborado",
+      descricao: "Arco de entrada em uma lateral — elaborado.",
+      valorTabela: 230,
       ordem: 3,
     },
     {
-      nome: "Números / letras com bolas",
-      descricao: "Número ou letra em balões.",
-      valorTabela: 80,
+      nome: "Arco de entrada temático",
+      descricao: "Arco de entrada temático (tema da festa).",
+      valorTabela: 340,
       ordem: 4,
     },
     {
-      nome: "Centro de mesa com balões",
-      descricao: "Arranjo para mesa (unidade).",
-      valorTabela: 45,
+      nome: "Arco de entrada simples",
+      descricao:
+        "Arco de entrada simples (túnel de arcos simples — unidade).",
+      valorTabela: 180,
       ordem: 5,
     },
+    {
+      nome: "Túnel de entrada bolas em tela",
+      descricao: "Túnel de entrada com bolas em tela.",
+      valorTabela: 680,
+      ordem: 6,
+    },
+    {
+      nome: "Centro de mesa temático",
+      descricao: "Centro de mesa temático (unidade).",
+      valorTabela: 20,
+      ordem: 7,
+    },
+  ];
+
+  /** Itens antigos do seed — substituídos pelo PDF oficial. */
+  const catalogoBolasLegado = [
+    "Arco de bolas ornamentado",
+    "Coluna de bolas",
+    "Painel de bolas",
+    "Números / letras com bolas",
+    "Centro de mesa com balões",
   ];
 
   for (const item of catalogoBolasSeed) {
@@ -578,6 +602,10 @@ async function seedConfigECatalogoVendas() {
       });
     }
   }
+  await prisma.catalogoBola.updateMany({
+    where: { nome: { in: catalogoBolasLegado } },
+    data: { ativo: false },
+  });
   console.log(`[seed] ${catalogoBolasSeed.length} itens de catálogo de bolas prontos`);
 
   const semToken = await prisma.festa.findMany({
