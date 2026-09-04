@@ -415,8 +415,8 @@ export function NovaVendaForm({
   /** Pegue e monte sem entrega: força endereço do depósito. */
   useEffect(() => {
     if (!pegueEMonte || montadorLevaBusca) return;
-    if (!enderecoEmpresa) return;
-    setValue("endereco", enderecoEmpresa, { shouldValidate: true });
+    const deposito = enderecoEmpresa.trim() || "Depósito da empresa";
+    setValue("endereco", deposito, { shouldValidate: true });
   }, [pegueEMonte, montadorLevaBusca, enderecoEmpresa, setValue]);
 
   useEffect(() => {
@@ -540,9 +540,14 @@ export function NovaVendaForm({
       return;
     }
     setMontadorLevaBusca(false);
-    if (enderecoEmpresa) {
-      setValue("endereco", enderecoEmpresa, { shouldValidate: true });
-    }
+    setEquipe({
+      montadorEquipeId: null,
+      desmontadorEquipeId: null,
+      montadorCarroProprio: true,
+      desmontadorCarroProprio: true,
+    });
+    const deposito = enderecoEmpresa.trim() || "Depósito da empresa";
+    setValue("endereco", deposito, { shouldValidate: true });
     const hora = getValues("horaEvento");
     if (hora) setValue("horaMontagem", hora);
   }
@@ -550,8 +555,9 @@ export function NovaVendaForm({
   function toggleMontadorLevaBusca(ativo: boolean) {
     setMontadorLevaBusca(ativo);
     setValorManual(false);
-    if (!ativo && enderecoEmpresa) {
-      setValue("endereco", enderecoEmpresa, { shouldValidate: true });
+    if (!ativo) {
+      const deposito = enderecoEmpresa.trim() || "Depósito da empresa";
+      setValue("endereco", deposito, { shouldValidate: true });
     }
   }
 
@@ -651,7 +657,7 @@ export function NovaVendaForm({
     }
 
     const pegueAtivo = Boolean(!soBolas && kitSelecionado && pegueEMonte);
-    const precisaEquipe = !soBolas && (!pegueAtivo || montadorLevaBusca);
+    const precisaEquipe = !soBolas && !pegueAtivo;
     if (
       precisaEquipe &&
       (!equipe.montadorEquipeId || !equipe.desmontadorEquipeId)
@@ -679,10 +685,9 @@ export function NovaVendaForm({
 
     try {
       const horaMontagem = pegueAtivo ? data.horaEvento : data.horaMontagem;
+      const depositoPadrao = enderecoEmpresa.trim() || "Depósito da empresa";
       const enderecoFinal =
-        pegueAtivo && !montadorLevaBusca && enderecoEmpresa
-          ? enderecoEmpresa
-          : data.endereco;
+        pegueAtivo && !montadorLevaBusca ? depositoPadrao : data.endereco;
 
       let observacoes = data.observacoes?.trim() || "";
       if (pegueAtivo && montadorLevaBusca) {
@@ -1033,8 +1038,8 @@ export function NovaVendaForm({
             Referências do primeiro contato
           </p>
           <p className="text-xs text-muted-foreground">
-            Tire foto no celular ou escolha da galeria — tema da festa e
-            referência das bolas.
+            Escolha da galeria ou tire foto — tema da festa e referência das
+            bolas.
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -1042,9 +1047,8 @@ export function NovaVendaForm({
               <Input
                 id="temaFotos"
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 multiple
-                capture="environment"
                 className="min-h-11"
                 disabled={temaUploadBusy}
                 onChange={async (event) => {
@@ -1084,9 +1088,8 @@ export function NovaVendaForm({
               <Input
                 id="bolasFotos"
                 type="file"
-                accept="image/*"
+                accept="image/*,.heic,.heif"
                 multiple
-                capture="environment"
                 className="min-h-11"
                 disabled={bolasUploadBusy}
                 onChange={async (event) => {
@@ -1521,7 +1524,7 @@ export function NovaVendaForm({
               className="h-11 text-base md:h-9 md:text-sm"
               placeholder={
                 pegueEMonte && !montadorLevaBusca
-                  ? enderecoEmpresa || "Depósito da empresa"
+                  ? enderecoEmpresa.trim() || "Depósito da empresa"
                   : "Rua das Flores, 123 — São Paulo/SP"
               }
               readOnly={pegueEMonte && !montadorLevaBusca}
@@ -1927,7 +1930,7 @@ export function NovaVendaForm({
           </div>
         ) : null}
 
-        {!soBolas && !(kitSelecionado && pegueEMonte && !montadorLevaBusca) ? (
+        {!soBolas && !pegueEMonte ? (
           <div className="space-y-3 rounded-2xl neo-inset p-4">
             <p className="text-xs font-medium uppercase tracking-wider text-balloon-sky">
               Equipe de montagem e desmontagem

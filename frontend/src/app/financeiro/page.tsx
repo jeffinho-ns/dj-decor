@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { FinanceiroPainel } from "@/components/financeiro/financeiro-painel";
+import { ColaboradoresFinanceiroLista } from "@/components/financeiro/colaboradores-financeiro-lista";
 import { ComissoesPagar } from "@/components/financeiro/comissoes-pagar";
 import { EquipeDiariasPagar } from "@/components/financeiro/equipe-diarias-pagar";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
@@ -57,7 +58,7 @@ export default async function FinanceiroPage() {
     <DashboardShell
       user={user}
       title="Financeiro"
-      description="Fluxo de caixa, comissões e pagamento de montadores e desmontadores."
+      description="Fluxo de caixa, comissões e pagamento de desmontadores."
     >
       {error ? (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
@@ -66,6 +67,7 @@ export default async function FinanceiroPage() {
         </div>
       ) : resumo ? (
         <div className="space-y-6">
+          <ColaboradoresFinanceiroLista token={token} />
           <FinanceiroPainel
             resumo={resumo}
             previsao={previsao}

@@ -9,7 +9,7 @@ comissoesRoutes.use(auth);
 
 comissoesRoutes.get(
   "/ranking",
-  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  requireRoles(Role.GERENTE, Role.ADMIN),
   (req, res, next) => comissoesController.ranking(req, res, next)
 );
 
@@ -17,6 +17,12 @@ comissoesRoutes.get(
   "/minhas",
   requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
   (req, res, next) => comissoesController.minhas(req, res, next)
+);
+
+comissoesRoutes.get(
+  "/meus-totais",
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  (req, res, next) => comissoesController.meusTotais(req, res, next)
 );
 
 comissoesRoutes.get(

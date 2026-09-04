@@ -1,104 +1,211 @@
 "use client";
 
-import { useState } from "react";
-import { Clock, CheckCircle2, Trophy } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import {
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Wallet,
+} from "lucide-react";
 
-import { ComissaoRankingWidget } from "@/components/vendas/comissao-ranking-widget";
 import { Button } from "@/components/ui/button";
+import { getMeusTotais } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { ComissaoExtrato } from "@/types/financeiro";
-import type { ComissaoRanking } from "@/types/financeiro";
+import type { ComissaoExtrato, MeusTotaisPeriodo } from "@/types/financeiro";
 
-type FiltroStatus = "todas" | "pendente" | "paga";
+type Periodo = "semana" | "quinzena" | "mes";
 
-interface CarteiraComissoesProps {
-  comissoes: ComissaoExtrato[];
-  ranking: ComissaoRanking | null;
-  vendedorId: string;
-}
+const PERIODOS: Array<{ id: Periodo; label: string; hint: string }> = [
+  { id: "semana", label: "Semana", hint: "segunda a domingo" },
+  { id: "quinzena", label: "15 dias", hint: "1–15 e 16–fim" },
+  { id: "mes", label: "Mês", hint: "mês civil" },
+];
 
 function formatData(iso: string): string {
   try {
     return new Intl.DateTimeFormat("pt-BR", {
       day: "2-digit",
       month: "short",
-      year: "numeric",
     }).format(new Date(iso));
   } catch {
     return iso;
   }
 }
 
+interface CarteiraComissoesProps {
+  token: string;
+  /** Extrato completo (fallback / histórico). */
+  comissoes: ComissaoExtrato[];
+  /** Só gestão vê ranking; vendedor fica só no próprio. */
+  showRankingSlot?: React.ReactNode;
+}
+
 export function CarteiraComissoes({
+  token,
   comissoes,
-  ranking,
-  vendedorId,
+  showRankingSlot,
 }: CarteiraComissoesProps) {
-  const [filtro, setFiltro] = useState<FiltroStatus>("todas");
+  const [periodo, setPeriodo] = useState<Periodo>("semana");
+  const [offset, setOffset] = useState(0);
+  const [totais, setTotais] = useState<MeusTotaisPeriodo | null>(null);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [filtro, setFiltro] = useState<"todas" | "pendente" | "paga">("todas");
 
-  const pendentes = comissoes.filter((c) => c.status === "PENDENTE");
-  const pagas = comissoes.filter((c) => c.status === "PAGA");
-  const totalPendente = pendentes.reduce((acc, c) => acc + c.valor, 0);
-  const totalPago = pagas.reduce((acc, c) => acc + c.valor, 0);
-  const totalGeral = totalPendente + totalPago;
+  useEffect(() => {
+    setError(null);
+    startTransition(() => {
+      void getMeusTotais(token, { periodo, offset })
+        .then(setTotais)
+        .catch((err) =>
+          setError(
+            err instanceof Error ? err.message : "Falha ao carregar totais"
+          )
+        );
+    });
+  }, [token, periodo, offset]);
 
+  const lancamentos = totais?.lancamentos ?? [];
   const lista =
     filtro === "pendente"
-      ? pendentes
+      ? lancamentos.filter((c) => c.status === "PENDENTE")
       : filtro === "paga"
-        ? pagas
-        : comissoes;
+        ? lancamentos.filter((c) => c.status === "PAGA")
+        : lancamentos;
+
+  // Fallback histórico se API de totais falhar
+  const fallbackPend = comissoes.filter((c) => c.status === "PENDENTE");
+  const fallbackPago = comissoes.filter((c) => c.status === "PAGA");
 
   return (
     <div className="space-y-6">
-      {ranking ? (
-        <ComissaoRankingWidget ranking={ranking} vendedorId={vendedorId} />
-      ) : null}
+      {showRankingSlot}
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl neo-sm p-4">
+      <section className="space-y-3 rounded-2xl neo-sm p-4">
+        <div>
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Total acumulado
+            Seu recebimento
           </p>
-          <p className="mt-1 font-display text-xl text-foreground">
-            {formatCurrency(totalGeral)}
-          </p>
+          <h2 className="mt-1 font-display text-lg text-foreground">
+            Só você vê estes valores
+          </h2>
         </div>
-        <div className="rounded-2xl neo-sm p-4">
-          <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <Clock className="size-3.5" />
-            Pendente
-          </p>
-          <p className="mt-1 font-display text-xl text-balloon-sun">
-            {formatCurrency(totalPendente)}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {pendentes.length} lançamento{pendentes.length !== 1 ? "s" : ""}
-          </p>
+
+        <div className="flex flex-wrap gap-2">
+          {PERIODOS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                setPeriodo(p.id);
+                setOffset(0);
+              }}
+              className={cn(
+                "rounded-xl px-3 py-2 text-left text-xs outline-none focus-visible:ring-2 focus-visible:ring-balloon-sky/30",
+                periodo === p.id
+                  ? "neo-inset text-foreground"
+                  : "neo-sm text-muted-foreground"
+              )}
+            >
+              <span className="block font-medium">{p.label}</span>
+              <span className="text-[11px]">{p.hint}</span>
+            </button>
+          ))}
         </div>
-        <div className="rounded-2xl neo-sm p-4">
-          <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <CheckCircle2 className="size-3.5" />
-            Pago
+
+        <div className="flex items-center justify-between gap-2 rounded-xl neo-inset px-2 py-1.5">
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            disabled={pending}
+            onClick={() => setOffset((n) => n - 1)}
+          >
+            <ChevronLeft className="size-4" />
+            Anterior
+          </Button>
+          <p className="min-w-0 text-center text-sm font-medium capitalize">
+            {totais?.label ?? (pending ? "Carregando…" : "—")}
           </p>
-          <p className="mt-1 font-display text-xl text-balloon-mint">
-            {formatCurrency(totalPago)}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {pagas.length} lançamento{pagas.length !== 1 ? "s" : ""}
-          </p>
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            disabled={pending}
+            onClick={() => setOffset((n) => n + 1)}
+          >
+            Próximo
+            <ChevronRight className="size-4" />
+          </Button>
         </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl neo-inset p-3">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Total do período
+            </p>
+            <p className="mt-1 font-display text-lg tabular-nums">
+              {formatCurrency(totais?.total ?? 0)}
+            </p>
+          </div>
+          <div className="rounded-2xl neo-inset p-3">
+            <p className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              <Clock className="size-3" /> A receber
+            </p>
+            <p className="mt-1 font-display text-lg tabular-nums text-balloon-sun">
+              {formatCurrency(totais?.totalPendente ?? fallbackPend.reduce((a, c) => a + c.valor, 0))}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Liberado agora:{" "}
+              {formatCurrency(totais?.totalLiberado ?? 0)}
+            </p>
+          </div>
+          <div className="rounded-2xl neo-inset p-3">
+            <p className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              <CheckCircle2 className="size-3" /> Já pago
+            </p>
+            <p className="mt-1 font-display text-lg tabular-nums text-balloon-mint">
+              {formatCurrency(totais?.totalPago ?? fallbackPago.reduce((a, c) => a + c.valor, 0))}
+            </p>
+          </div>
+        </div>
+
+        {totais && totais.porTipo.length > 0 ? (
+          <ul className="space-y-1.5">
+            {totais.porTipo.map((t) => (
+              <li
+                key={t.tipo}
+                className="flex items-center justify-between gap-2 text-sm"
+              >
+                <span className="text-muted-foreground">{t.label}</span>
+                <span className="tabular-nums font-medium">
+                  {formatCurrency(t.total)}
+                  {t.pendente > 0 ? (
+                    <span className="ml-1.5 text-xs text-balloon-sun">
+                      ({formatCurrency(t.pendente)} pend.)
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
       </section>
 
       <section className="rounded-2xl neo-sm p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Extrato
+              Extrato do período
             </p>
-            <h2 className="mt-1 font-display text-lg text-foreground">
-              Suas comissões
+            <h2 className="mt-1 flex items-center gap-2 font-display text-lg text-foreground">
+              <Wallet className="size-4 text-balloon-sky" />
+              Lançamentos
             </h2>
           </div>
           <div className="flex gap-1 rounded-2xl neo-inset p-0.5">
@@ -124,18 +231,9 @@ export function CarteiraComissoes({
         </div>
 
         {lista.length === 0 ? (
-          <div className="mt-6 rounded-2xl neo-inset px-4 py-10 text-center">
-            <span className="mx-auto flex size-10 items-center justify-center rounded-2xl neo-sun">
-              <Trophy className="size-4" />
-            </span>
-            <p className="mt-3 text-sm text-muted-foreground">
-              {filtro === "pendente"
-                ? "Nenhuma comissão pendente no momento."
-                : filtro === "paga"
-                  ? "Nenhuma comissão paga registrada ainda."
-                  : "Você ainda não tem comissões registradas."}
-            </p>
-          </div>
+          <p className="mt-6 rounded-2xl neo-inset px-4 py-8 text-center text-sm text-muted-foreground">
+            Nenhum lançamento neste período.
+          </p>
         ) : (
           <ul className="mt-4 space-y-2">
             {lista.map((item) => (
@@ -153,13 +251,6 @@ export function CarteiraComissoes({
                     {item.festa.cliente.nome}
                     {" · "}
                     {formatData(item.criadoEm)}
-                    {item.status === "PAGA" && item.pagoEm
-                      ? ` · pago em ${formatData(item.pagoEm)}`
-                      : ""}
-                    {item.status === "PENDENTE" &&
-                    item.liberadoParaPagamento === false
-                      ? " · aguarda mês do evento"
-                      : ""}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">

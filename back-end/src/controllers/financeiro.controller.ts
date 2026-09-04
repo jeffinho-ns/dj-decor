@@ -97,6 +97,59 @@ export class FinanceiroController {
       next(error);
     }
   }
+
+  async listColaboradores(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const list = await financeiroService.listColaboradores();
+      res.status(200).json(list);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getColaborador(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const id =
+        typeof req.params.id === "string"
+          ? req.params.id
+          : Array.isArray(req.params.id)
+            ? req.params.id[0]
+            : null;
+      if (!id) {
+        res.status(400).json({ error: "ID é obrigatório" });
+        return;
+      }
+      const detalhe = await financeiroService.getColaboradorDetalhe(
+        id,
+        req.query
+      );
+      res.status(200).json(detalhe);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          error: "Parâmetros inválidos",
+          details: error.flatten().fieldErrors,
+        });
+        return;
+      }
+      if (
+        error instanceof Error &&
+        error.message.startsWith("Colaborador não encontrado")
+      ) {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
 }
 
 export const financeiroController = new FinanceiroController();

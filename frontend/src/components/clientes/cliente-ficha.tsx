@@ -20,9 +20,9 @@ const selectClassName =
 
 const statusLabel: Record<StatusFesta, string> = {
   ORCAMENTO: "Orçamento",
-  AGUARDANDO_PAGAMENTO: "Aguardando pagamento",
+  AGUARDANDO_PAGAMENTO: "Sinal",
   PAGO: "Pago",
-  FECHADO: "Fechado",
+  FECHADO: "Reserva fechada",
   EM_MONTAGEM: "Em montagem",
   CONCLUIDO: "Concluído",
   CANCELADO: "Cancelado",

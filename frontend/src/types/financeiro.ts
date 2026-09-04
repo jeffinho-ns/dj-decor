@@ -132,3 +132,75 @@ export interface EquipeDiariasPeriodo {
   totalPago: number;
   pessoas: EquipeDiariaPessoa[];
 }
+
+export type PeriodoRecebimento = "semana" | "quinzena" | "mes" | "tudo";
+
+export interface MeusTotaisPorTipo {
+  tipo: string;
+  label: string;
+  pendente: number;
+  pago: number;
+  total: number;
+}
+
+export interface MeusTotaisPeriodo {
+  periodo: "semana" | "quinzena" | "mes";
+  offset: number;
+  label: string;
+  inicio: string;
+  fim: string;
+  total: number;
+  totalPendente: number;
+  totalLiberado: number;
+  totalPago: number;
+  porTipo: MeusTotaisPorTipo[];
+  lancamentos: ComissaoExtrato[];
+}
+
+export interface ColaboradorFinanceiroResumo {
+  id: string;
+  nome: string;
+  role: string;
+  telefone?: string | null;
+  email?: string | null;
+  ehSocia?: boolean;
+  ehDona?: boolean;
+  totalPendente: number;
+  totalLiberado: number;
+  totalPago: number;
+  totalComissaoVenda: number;
+  totalDiarias: number;
+  totalDivisao: number;
+}
+
+export interface ColaboradorFinanceiroDetalhe {
+  colaborador: {
+    id: string;
+    nome: string;
+    role: string;
+    telefone?: string | null;
+    email?: string | null;
+    ehSocia?: boolean;
+    ehDona?: boolean;
+    ativo?: boolean;
+  };
+  periodo: PeriodoRecebimento;
+  offset: number;
+  label: string;
+  inicio: string;
+  fim: string;
+  total: number;
+  totalPendente: number;
+  totalLiberado: number;
+  totalPago: number;
+  porTipo: MeusTotaisPorTipo[];
+  lancamentos: ComissaoExtrato[];
+  festasVendidas: Array<{
+    id: string;
+    tema: string;
+    status: string;
+    valor: number;
+    dataEvento: string;
+    clienteNome: string;
+  }>;
+}

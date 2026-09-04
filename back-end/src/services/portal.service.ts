@@ -118,19 +118,26 @@ function buildTimeline(
     romaneioConcluido: boolean;
     montagemLocalConcluida: boolean;
   } | null,
-  pagamentoConfirmadoEm: Date | null
+  pagamentoConfirmadoEm: Date | null,
+  financeiro: { valorPago: number; quitado: boolean }
 ): PortalTimelineStep[] {
   const festaRank = FESTA_RANK[festaStatus] ?? 0;
   const osRank = os ? OS_RANK[os.status] : -1;
   const cancelled = festaStatus === StatusFesta.CANCELADO;
+  const temSinal = financeiro.valorPago > 0.009;
+  const quitado = financeiro.quitado;
 
-  const pagamentoDone = festaRank >= FESTA_RANK.PAGO;
-  const pagamentoKey = pagamentoDone ? "PAGO" : "AGUARDANDO_PAGAMENTO";
-  const pagamentoLabel = pagamentoDone
+  const sinalDone = (temSinal || festaRank >= FESTA_RANK.FECHADO) && !cancelled;
+  const pagamentoKey = quitado
+    ? "PAGO"
+    : temSinal
+      ? "SINAL_PAGO"
+      : "AGUARDANDO_PAGAMENTO";
+  const pagamentoLabel = quitado
     ? "Pagamento confirmado"
-    : festaRank >= FESTA_RANK.AGUARDANDO_PAGAMENTO
-      ? "Aguardando pagamento"
-      : "Pagamento";
+    : temSinal
+      ? "Sinal pago"
+      : "Aguardando sinal";
 
   let montagemKey = "EM_MONTAGEM";
   let montagemLabel = "Em montagem";
@@ -155,23 +162,29 @@ function buildTimeline(
     montagemLabel = "Separando material";
   }
 
+  const reservaFechada =
+    sinalDone ||
+    festaRank >= FESTA_RANK.FECHADO ||
+    festaRank >= FESTA_RANK.PAGO;
+
   return [
     {
       key: "ORCAMENTO",
       label: "Orçamento",
-      done: !cancelled && festaRank > FESTA_RANK.ORCAMENTO,
+      done: !cancelled && (festaRank > FESTA_RANK.ORCAMENTO || temSinal),
       at: festa.criadoEm.toISOString(),
     },
     {
       key: pagamentoKey,
       label: pagamentoLabel,
-      done: pagamentoDone && !cancelled,
+      done: sinalDone,
       at: pagamentoConfirmadoEm?.toISOString(),
     },
     {
       key: "FECHADO",
       label: "Reserva fechada",
-      done: festaRank >= FESTA_RANK.FECHADO && !cancelled,
+      done: reservaFechada && !cancelled,
+      at: sinalDone ? pagamentoConfirmadoEm?.toISOString() : undefined,
     },
     {
       key: montagemKey,
@@ -305,7 +318,8 @@ export class PortalService {
         festa.status,
         festa,
         festa.ordemServico,
-        pagamentoConfirmadoEm
+        pagamentoConfirmadoEm,
+        { valorPago, quitado }
       ),
       montagemStatus: festa.ordemServico?.status,
       itensExtras: festa.itensExtras,

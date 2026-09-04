@@ -37,4 +37,16 @@ financeiroRoutes.patch(
   (req, res, next) => financeiroController.frequenciaEquipe(req, res, next)
 );
 
+financeiroRoutes.get(
+  "/colaboradores",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => financeiroController.listColaboradores(req, res, next)
+);
+
+financeiroRoutes.get(
+  "/colaboradores/:id",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => financeiroController.getColaborador(req, res, next)
+);
+
 export { financeiroRoutes };

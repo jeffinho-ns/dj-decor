@@ -1,4 +1,10 @@
-import { StatusFesta, StatusPagamento, TipoPagamento } from "@prisma/client";
+import {
+  StatusComissao,
+  StatusFesta,
+  StatusPagamento,
+  TipoPagamento,
+  TipoRepasse,
+} from "@prisma/client";
 import { z } from "zod";
 import { dispatchWhatsAppSafe } from "../integrations/whatsapp";
 import { prisma } from "../prisma/client";
@@ -42,6 +48,13 @@ export class MidiaNotFoundForPagamentoError extends Error {
   constructor(id: string) {
     super(`Mídia de comprovante não encontrada: ${id}`);
     this.name = "MidiaNotFoundForPagamentoError";
+  }
+}
+
+export class PagamentoJaEstornadoError extends Error {
+  constructor(id: string) {
+    super(`Pagamento ${id} já está estornado`);
+    this.name = "PagamentoJaEstornadoError";
   }
 }
 
@@ -93,9 +106,8 @@ export class PagamentosService {
   }
 
   /**
-   * Confirma um pagamento pendente. Gera comissão sobre o valor pago.
-   * Só marca a festa como PAGO quando a soma dos confirmados cobre o valor;
-   * entrada parcial mantém/avança para AGUARDANDO_PAGAMENTO.
+   * Confirma um pagamento pendente. Gera comissão quando quitado.
+   * Sinal parcial → FECHADO (reserva fechada). Quitação → PAGO.
    */
   async confirmar(pagamentoId: string, rawInput: unknown) {
     const data = this.parseConfirmar(rawInput);
@@ -134,6 +146,10 @@ export class PagamentosService {
           throw new PagamentoJaConfirmadoError(pagamentoId);
         }
 
+        if (pagamento.status === StatusPagamento.ESTORNADO) {
+          throw new PagamentoJaEstornadoError(pagamentoId);
+        }
+
         if (data.comprovanteMidiaId) {
           const midia = await tx.midia.findUnique({
             where: { id: data.comprovanteMidiaId },
@@ -167,11 +183,11 @@ export class PagamentosService {
         const quitado = totalPago + 0.009 >= valorFesta;
 
         const statusAtual = pagamento.festa.status;
-        if (
-          quitado &&
-          (statusAtual === StatusFesta.ORCAMENTO ||
-            statusAtual === StatusFesta.AGUARDANDO_PAGAMENTO)
-        ) {
+        const statusInicial =
+          statusAtual === StatusFesta.ORCAMENTO ||
+          statusAtual === StatusFesta.AGUARDANDO_PAGAMENTO;
+
+        if (quitado && statusInicial) {
           await tx.festa.update({
             where: { id: pagamento.festa.id },
             data: {
@@ -186,11 +202,12 @@ export class PagamentosService {
           });
         } else if (
           !quitado &&
-          statusAtual === StatusFesta.ORCAMENTO
+          (statusInicial || statusAtual === StatusFesta.PAGO)
         ) {
+          // Qualquer sinal confirma a reserva (FECHADO).
           await tx.festa.update({
             where: { id: pagamento.festa.id },
-            data: { status: StatusFesta.AGUARDANDO_PAGAMENTO },
+            data: { status: StatusFesta.FECHADO },
           });
         }
 
@@ -236,6 +253,148 @@ export class PagamentosService {
     });
 
     return pagamentoAtualizado;
+  }
+
+  /**
+   * Remove lançamento errado: apaga se ainda pendente; estorna se confirmado.
+   * Recalcula status da festa sem marcar como pago por engano.
+   */
+  async excluirOuEstornar(pagamentoId: string) {
+    const {
+      pagamento: resultado,
+      festaId,
+      totalPago,
+      valorFesta,
+    } = await prisma.$transaction(async (tx) => {
+      const pagamento = await tx.pagamento.findUnique({
+        where: { id: pagamentoId },
+        include: {
+          festa: {
+            select: {
+              id: true,
+              status: true,
+              valor: true,
+              quitadoEm: true,
+            },
+          },
+        },
+      });
+
+      if (!pagamento) {
+        throw new PagamentoNotFoundError(pagamentoId);
+      }
+
+      if (pagamento.status === StatusPagamento.ESTORNADO) {
+        throw new PagamentoJaEstornadoError(pagamentoId);
+      }
+
+      let resultado;
+      if (pagamento.status === StatusPagamento.PENDENTE) {
+        await tx.pagamento.delete({ where: { id: pagamentoId } });
+        resultado = {
+          ...pagamento,
+          status: StatusPagamento.ESTORNADO,
+          confirmadoEm: null,
+          comprovanteMidiaId: null,
+        };
+      } else {
+        resultado = await tx.pagamento.update({
+          where: { id: pagamentoId },
+          data: {
+            status: StatusPagamento.ESTORNADO,
+            confirmadoEm: null,
+          },
+        });
+      }
+
+      const confirmados = await tx.pagamento.aggregate({
+        where: {
+          festaId: pagamento.festa.id,
+          status: StatusPagamento.CONFIRMADO,
+        },
+        _sum: { valor: true },
+      });
+      const totalPago = Number(confirmados._sum.valor ?? 0);
+      const valorFesta = Number(pagamento.festa.valor);
+      const quitado = totalPago + 0.009 >= valorFesta;
+      const statusAtual = pagamento.festa.status;
+
+      const statusAjustaveis: StatusFesta[] = [
+        StatusFesta.ORCAMENTO,
+        StatusFesta.AGUARDANDO_PAGAMENTO,
+        StatusFesta.PAGO,
+        StatusFesta.FECHADO,
+      ];
+
+      if (statusAjustaveis.includes(statusAtual)) {
+        if (quitado) {
+          await tx.festa.update({
+            where: { id: pagamento.festa.id },
+            data: {
+              status: StatusFesta.PAGO,
+              ...(pagamento.festa.quitadoEm ? {} : { quitadoEm: new Date() }),
+            },
+          });
+          await comissoesService.gerarSplitFesta(tx, pagamento.festa.id);
+        } else if (totalPago > 0) {
+          await tx.festa.update({
+            where: { id: pagamento.festa.id },
+            data: { status: StatusFesta.FECHADO, quitadoEm: null },
+          });
+          await tx.comissao.updateMany({
+            where: {
+              festaId: pagamento.festa.id,
+              status: StatusComissao.PENDENTE,
+              tipo: {
+                in: [
+                  TipoRepasse.COMISSAO_VENDEDOR,
+                  TipoRepasse.COMISSAO_SOCIA,
+                  TipoRepasse.COMISSAO_DONA,
+                ],
+              },
+            },
+            data: { status: StatusComissao.CANCELADA },
+          });
+        } else {
+          await tx.festa.update({
+            where: { id: pagamento.festa.id },
+            data: {
+              status: StatusFesta.ORCAMENTO,
+              quitadoEm: null,
+            },
+          });
+          await tx.comissao.updateMany({
+            where: {
+              festaId: pagamento.festa.id,
+              status: StatusComissao.PENDENTE,
+              tipo: {
+                in: [
+                  TipoRepasse.COMISSAO_VENDEDOR,
+                  TipoRepasse.COMISSAO_SOCIA,
+                  TipoRepasse.COMISSAO_DONA,
+                ],
+              },
+            },
+            data: { status: StatusComissao.CANCELADA },
+          });
+        }
+      }
+
+      return {
+        pagamento: resultado,
+        festaId: pagamento.festa.id,
+        totalPago,
+        valorFesta,
+      };
+    });
+
+    await bolasService.syncPagamentoClientePorFesta(
+      festaId,
+      totalPago,
+      valorFesta
+    );
+
+    return resultado;
   }
 
   /** Anexa, troca ou remove o comprovante de um pagamento (pendente ou confirmado). */

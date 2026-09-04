@@ -34,6 +34,31 @@ export class ComissoesController {
     }
   }
 
+  async meusTotais(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: "Não autenticado" });
+        return;
+      }
+      const result = await comissoesService.getMeusTotais(userId, req.query);
+      res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          error: "Parâmetros inválidos",
+          details: error.flatten().fieldErrors,
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+
   async pendentes(
     _req: AuthenticatedRequest,
     res: Response,

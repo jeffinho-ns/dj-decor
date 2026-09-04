@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronDown, LayoutGrid, List, Loader2 } from "lucide-react";
+import { ChevronDown, LayoutGrid, List, Loader2, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,9 +43,9 @@ const KANBAN_COLUMNS: StatusFesta[] = [
 
 const statusLabel: Record<StatusFesta, string> = {
   ORCAMENTO: "Orçamento",
-  AGUARDANDO_PAGAMENTO: "Aguardando pag.",
+  AGUARDANDO_PAGAMENTO: "Sinal",
   PAGO: "Pago",
-  FECHADO: "Fechado",
+  FECHADO: "Reserva fechada",
   EM_MONTAGEM: "Em montagem",
   CONCLUIDO: "Concluído",
   CANCELADO: "Cancelar (lixeira)",
@@ -53,10 +53,10 @@ const statusLabel: Record<StatusFesta, string> = {
 
 /** Espelha as transições do back-end (festas.service STATUS_TRANSITIONS). */
 const STATUS_TRANSITIONS: Record<StatusFesta, StatusFesta[]> = {
-  ORCAMENTO: ["AGUARDANDO_PAGAMENTO", "CANCELADO"],
-  AGUARDANDO_PAGAMENTO: ["PAGO", "ORCAMENTO", "CANCELADO"],
+  ORCAMENTO: ["AGUARDANDO_PAGAMENTO", "FECHADO", "CANCELADO"],
+  AGUARDANDO_PAGAMENTO: ["FECHADO", "PAGO", "ORCAMENTO", "CANCELADO"],
   PAGO: ["FECHADO", "CANCELADO"],
-  FECHADO: ["EM_MONTAGEM", "CANCELADO"],
+  FECHADO: ["EM_MONTAGEM", "PAGO", "CANCELADO"],
   EM_MONTAGEM: ["CONCLUIDO", "CANCELADO"],
   CONCLUIDO: [],
   CANCELADO: ["ORCAMENTO"],
@@ -349,35 +349,44 @@ function FestaCard({
                 ) : null}
               </div>
               <div className="mt-4 border-t border-border/50 pt-3">
-                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Equipe
-                </p>
-                <EquipeFestaFields
-                  pessoas={pessoas}
-                  compact
-                  required={!festa.pegueEMonte}
-                  value={{
-                    montadorEquipeId: festa.montadorEquipeId ?? null,
-                    desmontadorEquipeId: festa.desmontadorEquipeId ?? null,
-                    montadorCarroProprio: festa.montadorCarroProprio ?? true,
-                    desmontadorCarroProprio:
-                      festa.desmontadorCarroProprio ?? true,
-                  }}
-                  onChange={(value: EquipeFestaValue) => {
-                    void updateFesta(
-                      festa.id,
-                      {
-                        montadorEquipeId: value.montadorEquipeId,
-                        desmontadorEquipeId: value.desmontadorEquipeId,
-                        montadorCarroProprio: value.montadorCarroProprio,
-                        desmontadorCarroProprio: value.desmontadorCarroProprio,
-                      },
-                      token
-                    )
-                      .then(onFestaUpdate)
-                      .catch(() => undefined);
-                  }}
-                />
+                {!festa.pegueEMonte ? (
+                  <>
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Equipe
+                    </p>
+                    <EquipeFestaFields
+                      pessoas={pessoas}
+                      compact
+                      required
+                      value={{
+                        montadorEquipeId: festa.montadorEquipeId ?? null,
+                        desmontadorEquipeId: festa.desmontadorEquipeId ?? null,
+                        montadorCarroProprio: festa.montadorCarroProprio ?? true,
+                        desmontadorCarroProprio:
+                          festa.desmontadorCarroProprio ?? true,
+                      }}
+                      onChange={(value: EquipeFestaValue) => {
+                        void updateFesta(
+                          festa.id,
+                          {
+                            montadorEquipeId: value.montadorEquipeId,
+                            desmontadorEquipeId: value.desmontadorEquipeId,
+                            montadorCarroProprio: value.montadorCarroProprio,
+                            desmontadorCarroProprio:
+                              value.desmontadorCarroProprio,
+                          },
+                          token
+                        )
+                          .then(onFestaUpdate)
+                          .catch(() => undefined);
+                      }}
+                    />
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Pegue e monte — o cliente monta. Sem equipe de montagem.
+                  </p>
+                )}
               </div>
               <div className="mt-4 border-t border-border/50 pt-3">
                 <FestaContratoPanel
@@ -402,6 +411,7 @@ export function KanbanBoard({
   const [festas, setFestas] = useState(initialFestas);
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [activeStatus, setActiveStatus] = useState<StatusFesta>("ORCAMENTO");
+  const [busca, setBusca] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [detalheId, setDetalheId] = useState<string | null>(null);
   const [pagamentosByFesta, setPagamentosByFesta] = useState<
@@ -442,15 +452,31 @@ export function KanbanBoard({
     );
   }
 
+  const festasFiltradas = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    if (!q) return festas;
+    return festas.filter((festa) => {
+      const nome = festa.cliente.nome.toLowerCase();
+      const tema = festa.tema.toLowerCase();
+      const telefone = (festa.cliente.telefone ?? "").replace(/\D/g, "");
+      const qDigits = q.replace(/\D/g, "");
+      return (
+        nome.includes(q) ||
+        tema.includes(q) ||
+        (qDigits.length >= 3 && telefone.includes(qDigits))
+      );
+    });
+  }, [festas, busca]);
+
   const byStatus = useMemo(() => {
     const map = Object.fromEntries(
       KANBAN_COLUMNS.map((s) => [s, [] as Festa[]])
     ) as Record<StatusFesta, Festa[]>;
-    for (const festa of festas) {
+    for (const festa of festasFiltradas) {
       (map[festa.status] ?? map.ORCAMENTO).push(festa);
     }
     return map;
-  }, [festas]);
+  }, [festasFiltradas]);
 
   async function moverStatus(festaId: string, status: StatusFesta) {
     setError(null);
@@ -538,17 +564,18 @@ export function KanbanBoard({
             .filter((p) => p.status === "CONFIRMADO")
             .reduce((acc, p) => acc + Number(p.valor), 0);
           const valorFesta = Number(festa.valor);
-          if (
-            totalPago + 0.009 >= valorFesta &&
-            (festa.status === "ORCAMENTO" ||
-              festa.status === "AGUARDANDO_PAGAMENTO")
-          ) {
+          const statusAjustavel =
+            festa.status === "ORCAMENTO" ||
+            festa.status === "AGUARDANDO_PAGAMENTO" ||
+            festa.status === "PAGO" ||
+            festa.status === "FECHADO";
+          if (!statusAjustavel) return;
+          if (totalPago + 0.009 >= valorFesta) {
             handleFestaUpdate({ ...festa, status: "PAGO" });
-          } else if (totalPago > 0 && festa.status === "ORCAMENTO") {
-            handleFestaUpdate({
-              ...festa,
-              status: "AGUARDANDO_PAGAMENTO",
-            });
+          } else if (totalPago > 0) {
+            handleFestaUpdate({ ...festa, status: "FECHADO" });
+          } else {
+            handleFestaUpdate({ ...festa, status: "ORCAMENTO" });
           }
         }}
         onFestaUpdate={handleFestaUpdate}
@@ -590,6 +617,18 @@ export function KanbanBoard({
         </div>
       </div>
 
+      <div className="relative">
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          value={busca}
+          onChange={(event) => setBusca(event.target.value)}
+          placeholder="Buscar cliente, tema ou telefone…"
+          className="h-11 pl-10 text-base md:h-9 md:text-sm"
+          aria-label="Buscar no kanban"
+        />
+      </div>
+
       {error ? (
         <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
@@ -598,7 +637,7 @@ export function KanbanBoard({
 
       {view === "table" ? (
         <FestasTable
-          festas={festas}
+          festas={festasFiltradas}
           onSelectFesta={(festa) => setDetalheId(festa.id)}
         />
       ) : (

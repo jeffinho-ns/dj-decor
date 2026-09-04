@@ -1,6 +1,7 @@
 import {
   FrequenciaPagamentoEquipe,
   Prisma,
+  Role,
   StatusComissao,
   StatusFesta,
   StatusPagamento,
@@ -405,9 +406,7 @@ export class FinanceiroService {
     const diaFim = ymdToUtcNoon(fimYmd);
     const comissoes = await prisma.comissao.findMany({
       where: {
-        tipo: {
-          in: [TipoRepasse.DIARIA_MONTAGEM, TipoRepasse.DIARIA_DESMONTAGEM],
-        },
+        tipo: TipoRepasse.DIARIA_DESMONTAGEM,
         status: { not: StatusComissao.CANCELADA },
         OR: [
           { diaReferencia: { gte: diaInicio, lte: diaFim } },
@@ -452,14 +451,9 @@ export class FinanceiroService {
       if (!params.pessoa) return;
       if (!ymdNoPeriodo(params.ymd, inicioYmd, fimYmd)) return;
       const key = `${params.pessoa.id}|${params.tipo}|${params.ymd}`;
-      const valor =
-        params.tipo === TipoRepasse.DIARIA_MONTAGEM
-          ? params.carroProprio
-            ? regras.diariaMontador
-            : regras.diariaMontadorCarroEmpresa
-          : params.carroProprio
-            ? regras.diariaDesmontador
-            : regras.diariaDesmontadorCarroEmpresa;
+      const valor = params.carroProprio
+        ? regras.diariaDesmontador
+        : regras.diariaDesmontadorCarroEmpresa;
       const existing = dias.get(key);
       if (existing) {
         if (!existing.festas.some((f) => f.id === params.festa.id)) {
@@ -484,23 +478,12 @@ export class FinanceiroService {
         tema: festa.tema,
         clienteNome: festa.cliente.nome,
       };
-      const montador =
-        festa.ordemServico?.montador ?? festa.montadorEquipe;
       const desmontador =
         festa.ordemServico?.desmontador ?? festa.desmontadorEquipe;
-      const montadorCarro =
-        festa.ordemServico?.montadorCarroProprio ?? festa.montadorCarroProprio;
       const desmontadorCarro =
         festa.ordemServico?.desmontadorCarroProprio ??
         festa.desmontadorCarroProprio;
 
-      pushDia({
-        ymd: ymdBrasil(festa.horarioMontagem),
-        tipo: TipoRepasse.DIARIA_MONTAGEM,
-        pessoa: montador,
-        carroProprio: montadorCarro,
-        festa: resumoFesta,
-      });
       pushDia({
         ymd: ymdBrasil(festa.dataEvento),
         tipo: TipoRepasse.DIARIA_DESMONTAGEM,
@@ -517,9 +500,7 @@ export class FinanceiroService {
     for (const c of comissoes) {
       const ymd = c.diaReferencia
         ? ymdBrasil(c.diaReferencia)
-        : c.tipo === TipoRepasse.DIARIA_MONTAGEM
-          ? ymdBrasil(c.festa.horarioMontagem)
-          : ymdBrasil(c.festa.dataEvento);
+        : ymdBrasil(c.festa.dataEvento);
       if (!ymdNoPeriodo(ymd, inicioYmd, fimYmd)) continue;
       const key = `${c.beneficiarioId}|${c.tipo}|${ymd}`;
       const prev = comissaoByKey.get(key);
@@ -578,10 +559,7 @@ export class FinanceiroService {
       pessoa.dias.push({
         ymd: dia.ymd,
         tipo: dia.tipo as "DIARIA_MONTAGEM" | "DIARIA_DESMONTAGEM",
-        tipoLabel:
-          dia.tipo === TipoRepasse.DIARIA_MONTAGEM
-            ? "Montagem"
-            : "Desmontagem",
+        tipoLabel: "Desmontagem",
         carroProprio: dia.carroProprio,
         valor,
         status,
@@ -646,6 +624,236 @@ export class FinanceiroService {
     const { frequencia } = frequenciaEquipeSchema.parse(rawBody);
     await configuracoesService.update({ frequenciaPagamentoEquipe: frequencia });
     return this.listEquipeDiarias({ offset: 0 });
+  }
+
+  /** Lista colaboradores com totais a receber (visão gestão). */
+  async listColaboradores() {
+    const agora = new Date();
+    const users = await prisma.user.findMany({
+      where: {
+        ativo: true,
+        role: {
+          in: [Role.VENDEDOR, Role.GERENTE, Role.ADMIN, Role.MONTADOR],
+        },
+      },
+      select: {
+        id: true,
+        nome: true,
+        role: true,
+        telefone: true,
+        email: true,
+        ehSocia: true,
+        ehDona: true,
+      },
+      orderBy: { nome: "asc" },
+    });
+
+    const comissoes = await prisma.comissao.findMany({
+      where: {
+        status: { not: StatusComissao.CANCELADA },
+        beneficiarioId: { in: users.map((u) => u.id) },
+      },
+      select: {
+        beneficiarioId: true,
+        tipo: true,
+        valor: true,
+        status: true,
+        elegivelEm: true,
+      },
+    });
+
+    const byUser = new Map<
+      string,
+      {
+        pendente: number;
+        liberado: number;
+        pago: number;
+        comissaoVenda: number;
+        diarias: number;
+        divisao: number;
+      }
+    >();
+
+    for (const c of comissoes) {
+      const acc = byUser.get(c.beneficiarioId) ?? {
+        pendente: 0,
+        liberado: 0,
+        pago: 0,
+        comissaoVenda: 0,
+        diarias: 0,
+        divisao: 0,
+      };
+      const valor = Number(c.valor);
+      if (c.status === StatusComissao.PAGA) acc.pago += valor;
+      else {
+        acc.pendente += valor;
+        if (c.elegivelEm <= agora) acc.liberado += valor;
+      }
+      if (c.tipo === TipoRepasse.COMISSAO_VENDEDOR) acc.comissaoVenda += valor;
+      else if (
+        c.tipo === TipoRepasse.DIARIA_MONTAGEM ||
+        c.tipo === TipoRepasse.DIARIA_DESMONTAGEM
+      ) {
+        acc.diarias += valor;
+      } else {
+        acc.divisao += valor;
+      }
+      byUser.set(c.beneficiarioId, acc);
+    }
+
+    return users.map((u) => {
+      const t = byUser.get(u.id) ?? {
+        pendente: 0,
+        liberado: 0,
+        pago: 0,
+        comissaoVenda: 0,
+        diarias: 0,
+        divisao: 0,
+      };
+      return {
+        id: u.id,
+        nome: u.nome,
+        role: u.role,
+        telefone: u.telefone,
+        email: u.email,
+        ehSocia: u.ehSocia,
+        ehDona: u.ehDona,
+        totalPendente: Number(t.pendente.toFixed(2)),
+        totalLiberado: Number(t.liberado.toFixed(2)),
+        totalPago: Number(t.pago.toFixed(2)),
+        totalComissaoVenda: Number(t.comissaoVenda.toFixed(2)),
+        totalDiarias: Number(t.diarias.toFixed(2)),
+        totalDivisao: Number(t.divisao.toFixed(2)),
+      };
+    });
+  }
+
+  async getColaboradorDetalhe(id: string, rawQuery: unknown) {
+    const query = z
+      .object({
+        periodo: z.enum(["semana", "quinzena", "mes", "tudo"]).default("mes"),
+        offset: z.coerce.number().int().min(-36).max(36).default(0),
+      })
+      .parse(rawQuery ?? {});
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        nome: true,
+        role: true,
+        telefone: true,
+        email: true,
+        ehSocia: true,
+        ehDona: true,
+        ativo: true,
+      },
+    });
+    if (!user) {
+      throw new Error(`Colaborador não encontrado: ${id}`);
+    }
+
+    const totais = await comissoesService.getMeusTotais(
+      id,
+      query.periodo === "tudo"
+        ? { periodo: "mes", offset: 0 }
+        : { periodo: query.periodo, offset: query.offset }
+    );
+
+    // Se "tudo", busca extrato completo
+    let lancamentos = totais.lancamentos;
+    let porTipo = totais.porTipo;
+    let total = totais.total;
+    let totalPendente = totais.totalPendente;
+    let totalLiberado = totais.totalLiberado;
+    let totalPago = totais.totalPago;
+    let label = totais.label;
+    let inicio = totais.inicio;
+    let fim = totais.fim;
+
+    if (query.periodo === "tudo") {
+      const full = await comissoesService.listByBeneficiario(id);
+      const agora = new Date();
+      const byTipo: Record<
+        string,
+        { tipo: string; label: string; pendente: number; pago: number; total: number }
+      > = {};
+      totalPendente = 0;
+      totalPago = 0;
+      totalLiberado = 0;
+      lancamentos = full.map((item) => {
+        const valor = Number(item.valor);
+        if (item.status === "PAGA") totalPago += valor;
+        else {
+          totalPendente += valor;
+          if (item.liberadoParaPagamento) totalLiberado += valor;
+        }
+        const key = String(item.tipo ?? "OUTRO");
+        const bucket = byTipo[key] ?? {
+          tipo: key,
+          label: String(item.tipoLabel ?? key),
+          pendente: 0,
+          pago: 0,
+          total: 0,
+        };
+        bucket.total += valor;
+        if (item.status === "PAGA") bucket.pago += valor;
+        else bucket.pendente += valor;
+        byTipo[key] = bucket;
+        return item;
+      });
+      porTipo = Object.values(byTipo);
+      total = Number((totalPendente + totalPago).toFixed(2));
+      totalPendente = Number(totalPendente.toFixed(2));
+      totalLiberado = Number(totalLiberado.toFixed(2));
+      totalPago = Number(totalPago.toFixed(2));
+      label = "Todo o histórico";
+      const oldest = full.length
+        ? new Date(full[full.length - 1]!.criadoEm as string | Date)
+        : new Date(0);
+      inicio = oldest.toISOString();
+      fim = agora.toISOString();
+    }
+
+    const festasVendidas = await prisma.festa.findMany({
+      where: {
+        vendedorId: id,
+        status: { not: StatusFesta.CANCELADO },
+      },
+      select: {
+        id: true,
+        tema: true,
+        status: true,
+        valor: true,
+        dataEvento: true,
+        cliente: { select: { nome: true } },
+      },
+      orderBy: { dataEvento: "desc" },
+      take: 80,
+    });
+
+    return {
+      colaborador: user,
+      periodo: query.periodo,
+      offset: query.offset,
+      label,
+      inicio,
+      fim,
+      total,
+      totalPendente,
+      totalLiberado,
+      totalPago,
+      porTipo,
+      lancamentos,
+      festasVendidas: festasVendidas.map((f) => ({
+        id: f.id,
+        tema: f.tema,
+        status: f.status,
+        valor: Number(f.valor),
+        dataEvento: f.dataEvento.toISOString(),
+        clienteNome: f.cliente.nome,
+      })),
+    };
   }
 }
 

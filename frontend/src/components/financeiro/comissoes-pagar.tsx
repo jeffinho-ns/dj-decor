@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -14,8 +15,8 @@ interface ComissaoPendente {
   tipoLabel?: string;
   tipo?: string;
   diaReferencia?: string | null;
-  vendedor?: { nome: string };
-  beneficiario?: { nome: string };
+  vendedor?: { id?: string; nome: string };
+  beneficiario?: { id?: string; nome: string };
   festa: {
     tema: string;
     dataEvento?: string;
@@ -83,6 +84,8 @@ export function ComissoesPagar({ token }: ComissoesPagarProps) {
           {items.map((item) => {
             const nome =
               item.beneficiario?.nome ?? item.vendedor?.nome ?? "Beneficiário";
+            const colaboradorId =
+              item.beneficiario?.id ?? item.vendedor?.id ?? null;
             return (
               <li
                 key={item.id}
@@ -102,7 +105,17 @@ export function ComissoesPagar({ token }: ComissoesPagarProps) {
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">
-                    {nome} · {formatCurrency(item.valor)}
+                    {colaboradorId ? (
+                      <Link
+                        href={`/financeiro/colaboradores/${colaboradorId}`}
+                        className="hover:underline"
+                      >
+                        {nome}
+                      </Link>
+                    ) : (
+                      nome
+                    )}{" "}
+                    · {formatCurrency(item.valor)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {item.tipoLabel ?? item.tipo ?? "Repasse"}

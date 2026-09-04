@@ -26,8 +26,8 @@ function CarroOpcoes({
   onChange,
 }: {
   value: boolean;
-  proprioLabel: string;
-  empresaLabel: string;
+  proprioLabel?: string;
+  empresaLabel?: string;
   disabled?: boolean;
   onChange: (carroProprio: boolean) => void;
 }) {
@@ -43,9 +43,11 @@ function CarroOpcoes({
         )}
       >
         Carro próprio
-        <span className="mt-0.5 block font-medium text-foreground">
-          {proprioLabel}
-        </span>
+        {proprioLabel ? (
+          <span className="mt-0.5 block font-medium text-foreground">
+            {proprioLabel}
+          </span>
+        ) : null}
       </button>
       <button
         type="button"
@@ -57,9 +59,11 @@ function CarroOpcoes({
         )}
       >
         Carro da empresa
-        <span className="mt-0.5 block font-medium text-foreground">
-          {empresaLabel}
-        </span>
+        {empresaLabel ? (
+          <span className="mt-0.5 block font-medium text-foreground">
+            {empresaLabel}
+          </span>
+        ) : null}
       </button>
     </div>
   );
@@ -113,13 +117,14 @@ export function EquipeFestaFields({
         </select>
         <CarroOpcoes
           value={value.montadorCarroProprio}
-          proprioLabel={`R$ ${v.montagemProprio}/dia`}
-          empresaLabel={`R$ ${v.montagemEmpresa}/dia`}
           disabled={disabled}
           onChange={(montadorCarroProprio) =>
             onChange({ ...value, montadorCarroProprio })
           }
         />
+        <p className="text-[11px] text-muted-foreground">
+          Valor de montagem incluso no plano — sem pagamento separado.
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -153,10 +158,8 @@ export function EquipeFestaFields({
       </div>
 
       <p className="text-[11px] leading-snug text-muted-foreground">
-        Pagamento por dia de trabalho, não por festa. Duas festas no mesmo dia
-        = 1 diária daquele tipo. Montar e desmontar no mesmo dia = duas diárias
-        (valores diferentes). Qualquer pessoa da equipe pode montar ou
-        desmontar.
+        Desmontagem é paga por dia de trabalho. Qualquer pessoa da equipe pode
+        montar ou desmontar.
       </p>
     </div>
   );

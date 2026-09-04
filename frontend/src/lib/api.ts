@@ -67,6 +67,9 @@ import type {
   PrevisaoCaixa,
   EquipeDiariasPeriodo,
   FrequenciaPagamentoEquipe,
+  MeusTotaisPeriodo,
+  ColaboradorFinanceiroResumo,
+  ColaboradorFinanceiroDetalhe,
 } from "@/types/financeiro";
 import type {
   CheckinPayload,
@@ -406,6 +409,20 @@ export async function anexarComprovantePagamento(
       method: "PATCH",
       headers: authHeaders(token),
       body: JSON.stringify({ comprovanteMidiaId }),
+    }
+  );
+  return handleResponse<Pagamento>(response);
+}
+
+export async function excluirPagamento(
+  pagamentoId: string,
+  token: string
+): Promise<Pagamento> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/pagamentos/${pagamentoId}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(token),
     }
   );
   return handleResponse<Pagamento>(response);
@@ -956,6 +973,153 @@ export async function listMinhasComissoes(token: string): Promise<ComissaoExtrat
   });
   const raw = await handleResponse<Array<Record<string, unknown>>>(response);
   return raw.map(normalizeComissaoExtrato);
+}
+
+/** Totais do próprio usuário por período (semana / 15 dias / mês). */
+export async function getMeusTotais(
+  token: string,
+  options?: { periodo?: "semana" | "quinzena" | "mes"; offset?: number }
+): Promise<MeusTotaisPeriodo> {
+  const params = new URLSearchParams();
+  if (options?.periodo) params.set("periodo", options.periodo);
+  if (options?.offset != null) params.set("offset", String(options.offset));
+  const qs = params.toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/comissoes/meus-totais${qs ? `?${qs}` : ""}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  const raw = await handleResponse<Record<string, unknown>>(response);
+  const porTipoRaw = Array.isArray(raw.porTipo) ? raw.porTipo : [];
+  const lancRaw = Array.isArray(raw.lancamentos) ? raw.lancamentos : [];
+  return {
+    periodo:
+      raw.periodo === "quinzena" || raw.periodo === "mes"
+        ? raw.periodo
+        : "semana",
+    offset: toNumber(raw.offset),
+    label: typeof raw.label === "string" ? raw.label : "",
+    inicio: typeof raw.inicio === "string" ? raw.inicio : "",
+    fim: typeof raw.fim === "string" ? raw.fim : "",
+    total: toNumber(raw.total),
+    totalPendente: toNumber(raw.totalPendente),
+    totalLiberado: toNumber(raw.totalLiberado),
+    totalPago: toNumber(raw.totalPago),
+    porTipo: porTipoRaw.map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        tipo: typeof row.tipo === "string" ? row.tipo : "",
+        label: typeof row.label === "string" ? row.label : "",
+        pendente: toNumber(row.pendente),
+        pago: toNumber(row.pago),
+        total: toNumber(row.total),
+      };
+    }),
+    lancamentos: lancRaw.map((item) =>
+      normalizeComissaoExtrato(item as Record<string, unknown>)
+    ),
+  };
+}
+
+export async function listColaboradoresFinanceiro(
+  token: string
+): Promise<ColaboradorFinanceiroResumo[]> {
+  const response = await fetch(`${getBaseUrl()}/api/financeiro/colaboradores`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  const raw = await handleResponse<Array<Record<string, unknown>>>(response);
+  return raw.map((row) => ({
+    id: String(row.id ?? ""),
+    nome: typeof row.nome === "string" ? row.nome : "",
+    role: typeof row.role === "string" ? row.role : "",
+    telefone: typeof row.telefone === "string" ? row.telefone : null,
+    email: typeof row.email === "string" ? row.email : null,
+    ehSocia: Boolean(row.ehSocia),
+    ehDona: Boolean(row.ehDona),
+    totalPendente: toNumber(row.totalPendente),
+    totalLiberado: toNumber(row.totalLiberado),
+    totalPago: toNumber(row.totalPago),
+    totalComissaoVenda: toNumber(row.totalComissaoVenda),
+    totalDiarias: toNumber(row.totalDiarias),
+    totalDivisao: toNumber(row.totalDivisao),
+  }));
+}
+
+export async function getColaboradorFinanceiro(
+  token: string,
+  id: string,
+  options?: { periodo?: string; offset?: number }
+): Promise<ColaboradorFinanceiroDetalhe> {
+  const params = new URLSearchParams();
+  if (options?.periodo) params.set("periodo", options.periodo);
+  if (options?.offset != null) params.set("offset", String(options.offset));
+  const qs = params.toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/financeiro/colaboradores/${id}${qs ? `?${qs}` : ""}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  const raw = await handleResponse<Record<string, unknown>>(response);
+  const col = (raw.colaborador ?? {}) as Record<string, unknown>;
+  const porTipoRaw = Array.isArray(raw.porTipo) ? raw.porTipo : [];
+  const lancRaw = Array.isArray(raw.lancamentos) ? raw.lancamentos : [];
+  const festasRaw = Array.isArray(raw.festasVendidas) ? raw.festasVendidas : [];
+  return {
+    colaborador: {
+      id: String(col.id ?? id),
+      nome: typeof col.nome === "string" ? col.nome : "",
+      role: typeof col.role === "string" ? col.role : "",
+      telefone: typeof col.telefone === "string" ? col.telefone : null,
+      email: typeof col.email === "string" ? col.email : null,
+      ehSocia: Boolean(col.ehSocia),
+      ehDona: Boolean(col.ehDona),
+      ativo: col.ativo !== false,
+    },
+    periodo:
+      raw.periodo === "semana" ||
+      raw.periodo === "quinzena" ||
+      raw.periodo === "mes" ||
+      raw.periodo === "tudo"
+        ? raw.periodo
+        : "mes",
+    offset: toNumber(raw.offset),
+    label: typeof raw.label === "string" ? raw.label : "",
+    inicio: typeof raw.inicio === "string" ? raw.inicio : "",
+    fim: typeof raw.fim === "string" ? raw.fim : "",
+    total: toNumber(raw.total),
+    totalPendente: toNumber(raw.totalPendente),
+    totalLiberado: toNumber(raw.totalLiberado),
+    totalPago: toNumber(raw.totalPago),
+    porTipo: porTipoRaw.map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        tipo: typeof row.tipo === "string" ? row.tipo : "",
+        label: typeof row.label === "string" ? row.label : "",
+        pendente: toNumber(row.pendente),
+        pago: toNumber(row.pago),
+        total: toNumber(row.total),
+      };
+    }),
+    lancamentos: lancRaw.map((item) =>
+      normalizeComissaoExtrato(item as Record<string, unknown>)
+    ),
+    festasVendidas: festasRaw.map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        id: String(row.id ?? ""),
+        tema: typeof row.tema === "string" ? row.tema : "",
+        status: typeof row.status === "string" ? row.status : "",
+        valor: toNumber(row.valor),
+        dataEvento: typeof row.dataEvento === "string" ? row.dataEvento : "",
+        clienteNome: typeof row.clienteNome === "string" ? row.clienteNome : "",
+      };
+    }),
+  };
 }
 
 export async function listFollowUps(

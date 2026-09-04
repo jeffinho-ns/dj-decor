@@ -15,7 +15,7 @@ export default async function FollowUpsPage() {
       title="Follow-up"
       description="Orçamentos parados e pedidos em risco — contate o cliente."
     >
-      <FollowUpFila token={token} />
+      <FollowUpFila token={token} viewerRole={user.role} />
     </DashboardShell>
   );
 }

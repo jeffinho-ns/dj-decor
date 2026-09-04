@@ -143,15 +143,21 @@ export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
 const STATUS_TRANSITIONS: Record<StatusFesta, StatusFesta[]> = {
   [StatusFesta.ORCAMENTO]: [
     StatusFesta.AGUARDANDO_PAGAMENTO,
+    StatusFesta.FECHADO,
     StatusFesta.CANCELADO,
   ],
   [StatusFesta.AGUARDANDO_PAGAMENTO]: [
+    StatusFesta.FECHADO,
     StatusFesta.PAGO,
     StatusFesta.ORCAMENTO,
     StatusFesta.CANCELADO,
   ],
   [StatusFesta.PAGO]: [StatusFesta.FECHADO, StatusFesta.CANCELADO],
-  [StatusFesta.FECHADO]: [StatusFesta.EM_MONTAGEM, StatusFesta.CANCELADO],
+  [StatusFesta.FECHADO]: [
+    StatusFesta.EM_MONTAGEM,
+    StatusFesta.PAGO,
+    StatusFesta.CANCELADO,
+  ],
   [StatusFesta.EM_MONTAGEM]: [StatusFesta.CONCLUIDO, StatusFesta.CANCELADO],
   [StatusFesta.CONCLUIDO]: [],
   [StatusFesta.CANCELADO]: [StatusFesta.ORCAMENTO],

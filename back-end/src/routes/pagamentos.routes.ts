@@ -42,4 +42,10 @@ pagamentosRoutes.post(
   (req, res, next) => pagamentosController.gerarPix(req, res, next)
 );
 
+pagamentosRoutes.delete(
+  "/pagamentos/:id",
+  requireRoles(Role.GERENTE, Role.ADMIN),
+  (req, res, next) => pagamentosController.excluir(req, res, next)
+);
+
 export { pagamentosRoutes };

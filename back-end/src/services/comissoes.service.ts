@@ -9,7 +9,13 @@ const rankingQuerySchema = z.object({
   periodo: z.enum(["semana", "mes"]).default("semana"),
 });
 
+const meusTotaisQuerySchema = z.object({
+  periodo: z.enum(["semana", "quinzena", "mes"]).default("semana"),
+  offset: z.coerce.number().int().min(-36).max(36).default(0),
+});
+
 export type RankingQueryInput = z.infer<typeof rankingQuerySchema>;
+export type MeusTotaisQueryInput = z.infer<typeof meusTotaisQuerySchema>;
 
 function startOfWeek(date: Date): Date {
   const d = new Date(date);
@@ -220,8 +226,8 @@ export class ComissoesService {
   }
 
   /**
-   * Diárias ao finalizar a OS — 1 pagamento por pessoa/tipo/dia civil (BR).
-   * Montar e desmontar no mesmo dia geram duas diárias (tipos diferentes).
+   * Diárias ao finalizar a OS — apenas desmontagem.
+   * Montagem já está inclusa no plano de venda (sem pagamento separado).
    */
   async gerarDiariasOs(
     tx: Prisma.TransactionClient,
@@ -238,22 +244,6 @@ export class ComissoesService {
     const cfg = await configuracoesService.getRegrasFinanceiras();
     const elegivelEm = startOfMonthBrasil(params.dataEvento);
     const created = [];
-
-    if (params.montadorId) {
-      const diaria = await this.emitirDiariaSeNova(tx, {
-        festaId: params.festaId,
-        beneficiarioId: params.montadorId,
-        tipo: TipoRepasse.DIARIA_MONTAGEM,
-        valor: money(
-          params.montadorCarroProprio === false
-            ? cfg.diariaMontadorCarroEmpresa
-            : cfg.diariaMontador
-        ),
-        elegivelEm,
-        diaReferencia: inicioDiaBrasil(params.horarioMontagem),
-      });
-      if (diaria) created.push(diaria);
-    }
 
     if (params.desmontadorId) {
       const diaria = await this.emitirDiariaSeNova(tx, {
@@ -524,6 +514,160 @@ export class ComissoesService {
 
   parseRankingQuery(query: unknown): RankingQueryInput {
     return rankingQuerySchema.parse(query);
+  }
+
+  private resolvePeriodoWindow(
+    periodo: "semana" | "quinzena" | "mes",
+    offset: number
+  ): { inicio: Date; fim: Date; label: string } {
+    const agora = new Date();
+    if (periodo === "mes") {
+      const base = new Date(agora.getFullYear(), agora.getMonth() + offset, 1);
+      const inicio = new Date(base.getFullYear(), base.getMonth(), 1, 0, 0, 0, 0);
+      const fim = new Date(
+        base.getFullYear(),
+        base.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999
+      );
+      const label = inicio.toLocaleDateString("pt-BR", {
+        month: "long",
+        year: "numeric",
+      });
+      return { inicio, fim, label };
+    }
+    if (periodo === "quinzena") {
+      const dia = agora.getDate();
+      const primeira = dia <= 15;
+      // offset em quinzenas
+      let year = agora.getFullYear();
+      let month = agora.getMonth();
+      let half = primeira ? 0 : 1;
+      const total = half + offset;
+      month += Math.floor(total / 2);
+      half = ((total % 2) + 2) % 2;
+      while (month < 0) {
+        month += 12;
+        year -= 1;
+      }
+      while (month > 11) {
+        month -= 12;
+        year += 1;
+      }
+      const inicio = new Date(year, month, half === 0 ? 1 : 16, 0, 0, 0, 0);
+      const fim =
+        half === 0
+          ? new Date(year, month, 15, 23, 59, 59, 999)
+          : new Date(year, month + 1, 0, 23, 59, 59, 999);
+      const label =
+        half === 0
+          ? `1–15/${String(month + 1).padStart(2, "0")}/${year}`
+          : `16–fim/${String(month + 1).padStart(2, "0")}/${year}`;
+      return { inicio, fim, label };
+    }
+    // semana (segunda–domingo), offset em semanas
+    const inicio = startOfWeek(agora);
+    inicio.setDate(inicio.getDate() + offset * 7);
+    const fim = new Date(inicio);
+    fim.setDate(fim.getDate() + 6);
+    fim.setHours(23, 59, 59, 999);
+    const label = `${inicio.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+    })} – ${fim.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+    })}`;
+    return { inicio, fim, label };
+  }
+
+  /** Totais do próprio colaborador por período (semana / 15 dias / mês). */
+  async getMeusTotais(beneficiarioId: string, rawQuery: unknown) {
+    const { periodo, offset } = meusTotaisQuerySchema.parse(rawQuery ?? {});
+    const { inicio, fim, label } = this.resolvePeriodoWindow(periodo, offset);
+    const agora = new Date();
+
+    const list = await prisma.comissao.findMany({
+      where: {
+        beneficiarioId,
+        status: { not: StatusComissao.CANCELADA },
+        elegivelEm: { gte: inicio, lte: fim },
+      },
+      include: {
+        festa: {
+          select: {
+            id: true,
+            tema: true,
+            dataEvento: true,
+            cliente: { select: { nome: true } },
+          },
+        },
+      },
+      orderBy: { elegivelEm: "desc" },
+    });
+
+    const filtrados = list;
+
+    const byTipo: Record<
+      string,
+      { tipo: string; label: string; pendente: number; pago: number; total: number }
+    > = {};
+
+    let totalPendente = 0;
+    let totalPago = 0;
+    let totalLiberado = 0;
+
+    const lancamentos = filtrados.map((item) => {
+      const valor = Number(item.valor);
+      const liberado =
+        item.status === StatusComissao.PAGA || item.elegivelEm <= agora;
+      if (item.status === StatusComissao.PAGA) totalPago += valor;
+      else {
+        totalPendente += valor;
+        if (liberado) totalLiberado += valor;
+      }
+      const key = item.tipo;
+      const bucket = byTipo[key] ?? {
+        tipo: key,
+        label: tipoLabel[item.tipo],
+        pendente: 0,
+        pago: 0,
+        total: 0,
+      };
+      bucket.total += valor;
+      if (item.status === StatusComissao.PAGA) bucket.pago += valor;
+      else bucket.pendente += valor;
+      byTipo[key] = bucket;
+
+      return {
+        ...item,
+        tipoLabel: tipoLabel[item.tipo],
+        liberadoParaPagamento: liberado,
+        valor,
+      };
+    });
+
+    return {
+      periodo,
+      offset,
+      label,
+      inicio: inicio.toISOString(),
+      fim: fim.toISOString(),
+      total: money(totalPendente + totalPago),
+      totalPendente: money(totalPendente),
+      totalLiberado: money(totalLiberado),
+      totalPago: money(totalPago),
+      porTipo: Object.values(byTipo).map((b) => ({
+        ...b,
+        pendente: money(b.pendente),
+        pago: money(b.pago),
+        total: money(b.total),
+      })),
+      lancamentos,
+    };
   }
 
   async getRanking(rawQuery: unknown) {

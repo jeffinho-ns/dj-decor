@@ -34,9 +34,9 @@ import type { PortalFestaStatus, PortalTimelineStep } from "@/types/os";
 
 const STATUS_LABEL: Record<string, string> = {
   ORCAMENTO: "Orçamento",
-  AGUARDANDO_PAGAMENTO: "Aguardando pagamento",
+  AGUARDANDO_PAGAMENTO: "Sinal",
   PAGO: "Pago",
-  FECHADO: "Fechado",
+  FECHADO: "Reserva fechada",
   EM_MONTAGEM: "Em montagem",
   CONCLUIDO: "Concluído",
   CANCELADO: "Cancelado",
@@ -435,7 +435,11 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
             </div>
             <div className="neo-sm rounded-xl px-2 py-2.5">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Pago
+                {data.financeiro.quitado
+                  ? "Pago"
+                  : data.financeiro.valorPago > 0
+                    ? "Sinal pago"
+                    : "Pago"}
               </p>
               <p className="mt-0.5 text-sm font-semibold tabular-nums text-balloon-mint">
                 {formatCurrency(data.financeiro.valorPago)}

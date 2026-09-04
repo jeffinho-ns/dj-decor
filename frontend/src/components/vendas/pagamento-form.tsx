@@ -20,6 +20,7 @@ import {
   anexarComprovantePagamento,
   confirmarPagamento,
   createPagamento,
+  excluirPagamento,
   gerarPixQr,
   getMidiaAuthUrl,
   uploadMidia,
@@ -49,7 +50,7 @@ interface PagamentoFormProps {
   valorFesta: number;
   /** Valor das bolas cobrado do cliente (opcional). */
   valorBolasCliente?: number;
-  /** ADMIN / GERENTE (sócia) podem abrir o comprovante. */
+  /** ADMIN / GERENTE podem excluir ou estornar lançamentos. */
   viewerRole?: Role;
   onPagamentosChange: (pagamentos: Pagamento[]) => void;
 }
@@ -64,6 +65,8 @@ export function PagamentoForm({
   onPagamentosChange,
 }: PagamentoFormProps) {
   const canViewComprovante = true;
+  const canExcluirLancamento =
+    viewerRole === "ADMIN" || viewerRole === "GERENTE";
 
   const totalDevido = Number(valorFesta) + Number(valorBolasCliente || 0);
   const totalConfirmado = pagamentos
@@ -81,6 +84,7 @@ export function PagamentoForm({
   const [pending, setPending] = useState(false);
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
   const [anexandoId, setAnexandoId] = useState<string | null>(null);
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewIsPdf, setPreviewIsPdf] = useState(false);
@@ -269,6 +273,36 @@ export function PagamentoForm({
       );
     } finally {
       setAnexandoId(null);
+    }
+  }
+
+  async function excluirLancamento(pagamento: Pagamento) {
+    if (!canExcluirLancamento) return;
+    const acao =
+      pagamento.status === "CONFIRMADO"
+        ? "Estornar este lançamento confirmado? O valor deixa de contar como pago."
+        : "Excluir este lançamento? Ele será removido sem marcar como pago.";
+    if (!window.confirm(acao)) return;
+
+    setError(null);
+    setExcluindoId(pagamento.id);
+    try {
+      const atualizado = await excluirPagamento(pagamento.id, token);
+      if (pagamento.status === "PENDENTE") {
+        onPagamentosChange(pagamentos.filter((p) => p.id !== pagamento.id));
+      } else {
+        onPagamentosChange(
+          pagamentos.map((p) => (p.id === atualizado.id ? atualizado : p))
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível excluir o lançamento"
+      );
+    } finally {
+      setExcluindoId(null);
     }
   }
 
@@ -477,7 +511,7 @@ export function PagamentoForm({
                         disabled={anexandoId === pagamento.id}
                         onClick={() => void removerComprovante(pagamento.id)}
                       >
-                        Excluir
+                        Remover anexo
                       </Button>
                     </div>
                   ) : null}
@@ -497,6 +531,25 @@ export function PagamentoForm({
                         <Upload className="size-4" />
                       )}
                       Anexar comprovante
+                    </Button>
+                  ) : null}
+
+                  {canExcluirLancamento &&
+                  pagamento.status !== "ESTORNADO" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-10 w-full text-destructive"
+                      disabled={excluindoId === pagamento.id}
+                      onClick={() => void excluirLancamento(pagamento)}
+                    >
+                      {excluindoId === pagamento.id ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : pagamento.status === "CONFIRMADO" ? (
+                        "Estornar lançamento"
+                      ) : (
+                        "Excluir lançamento"
+                      )}
                     </Button>
                   ) : null}
                 </div>

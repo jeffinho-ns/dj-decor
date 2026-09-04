@@ -5,6 +5,7 @@ import {
   FestaNotFoundForPagamentoError,
   MidiaNotFoundForPagamentoError,
   PagamentoJaConfirmadoError,
+  PagamentoJaEstornadoError,
   PagamentoNotFoundError,
   pagamentosService,
 } from "../services/pagamentos.service";
@@ -94,6 +95,20 @@ export class PagamentosController {
     }
   }
 
+  async excluir(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const id = getParamId(req.params.id);
+      if (!id) {
+        res.status(400).json({ error: "ID do pagamento é obrigatório" });
+        return;
+      }
+      const pagamento = await pagamentosService.excluirOuEstornar(id);
+      res.status(200).json(pagamento);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
   private handleError(error: unknown, res: Response, next: NextFunction) {
     if (error instanceof ZodError) {
       res.status(400).json({
@@ -112,7 +127,10 @@ export class PagamentosController {
       return;
     }
 
-    if (error instanceof PagamentoJaConfirmadoError) {
+    if (
+      error instanceof PagamentoJaConfirmadoError ||
+      error instanceof PagamentoJaEstornadoError
+    ) {
       res.status(409).json({ error: error.message });
       return;
     }

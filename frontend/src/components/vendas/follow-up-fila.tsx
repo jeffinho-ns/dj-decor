@@ -32,6 +32,8 @@ interface FollowUpItem {
 
 interface FollowUpFilaProps {
   token: string;
+  /** Vendedor: só a própria fila, sem toggle. */
+  viewerRole?: string;
 }
 
 function badgeProximoContato(proximo: string | null): "atrasado" | "hoje" | null {
@@ -42,24 +44,25 @@ function badgeProximoContato(proximo: string | null): "atrasado" | "hoje" | null
   return null;
 }
 
-export function FollowUpFila({ token }: FollowUpFilaProps) {
+export function FollowUpFila({ token, viewerRole }: FollowUpFilaProps) {
+  const soProprio = viewerRole === "VENDEDOR";
   const [items, setItems] = useState<FollowUpItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [somenteMeus, setSomenteMeus] = useState(false);
+  const [somenteMeus, setSomenteMeus] = useState(soProprio);
   const [proximasDatas, setProximasDatas] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
 
   function reload(minhas = somenteMeus) {
-    return listFollowUps(token, { minhas }).then((data) =>
+    return listFollowUps(token, { minhas: soProprio || minhas }).then((data) =>
       setItems(data as FollowUpItem[])
     );
   }
 
   useEffect(() => {
-    reload(somenteMeus).catch((err) =>
+    reload(soProprio || somenteMeus).catch((err) =>
       setError(err instanceof Error ? err.message : "Falha ao carregar")
     );
-  }, [token, somenteMeus]);
+  }, [token, somenteMeus, soProprio]);
 
   function registrar(
     festaId: string,
@@ -88,22 +91,26 @@ export function FollowUpFila({ token }: FollowUpFilaProps) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl neo-sm px-4 py-3">
         <p className="text-sm text-muted-foreground">
-          Prioridade para contatos atrasados e de hoje.
+          {soProprio
+            ? "Só seus orçamentos na fila de follow-up."
+            : "Prioridade para contatos atrasados e de hoje."}
         </p>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={somenteMeus}
-          onClick={() => setSomenteMeus((v) => !v)}
-          className={cn(
-            "min-h-10 rounded-2xl px-4 text-sm font-medium transition-all neo-press",
-            somenteMeus
-              ? "neo-pink text-white"
-              : "neo-inset text-muted-foreground"
-          )}
-        >
-          Só meus
-        </button>
+        {!soProprio ? (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={somenteMeus}
+            onClick={() => setSomenteMeus((v) => !v)}
+            className={cn(
+              "min-h-10 rounded-2xl px-4 text-sm font-medium transition-all neo-press",
+              somenteMeus
+                ? "neo-pink text-white"
+                : "neo-inset text-muted-foreground"
+            )}
+          >
+            Só meus
+          </button>
+        ) : null}
       </div>
 
       {items.length === 0 ? (

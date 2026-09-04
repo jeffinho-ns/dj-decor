@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 
@@ -103,8 +104,8 @@ export function EquipeDiariasPagar({ token }: EquipeDiariasPagarProps) {
         <div>
           <h2 className="font-display text-lg">Pagamento da equipe</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Montadores e desmontadores — 1 diária por pessoa, tipo e dia.
-            Quem monta e desmonta no mesmo dia recebe as duas.
+            Desmontadores — 1 diária por pessoa e dia. Montagem já está
+            inclusa no plano de venda (sem pagamento separado).
           </p>
         </div>
         <Button
@@ -181,7 +182,7 @@ export function EquipeDiariasPagar({ token }: EquipeDiariasPagarProps) {
         </p>
       ) : data && data.pessoas.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Nenhuma montagem ou desmontagem neste período. A equipe precisa
+          Nenhuma desmontagem neste período. A equipe de desmontagem precisa
           estar escolhida na venda (festas pagas ou fechadas).
         </p>
       ) : (
@@ -190,7 +191,12 @@ export function EquipeDiariasPagar({ token }: EquipeDiariasPagarProps) {
             <li key={pessoa.id} className="rounded-2xl neo-inset p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium">{pessoa.nome}</p>
+                  <Link
+                    href={`/financeiro/colaboradores/${pessoa.id}`}
+                    className="font-medium text-foreground hover:underline"
+                  >
+                    {pessoa.nome}
+                  </Link>
                   <p className="text-xs text-muted-foreground">
                     {pessoa.diasPendentes} dia(s) a pagar · {pessoa.diasPagos}{" "}
                     pago(s)

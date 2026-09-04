@@ -24,10 +24,12 @@ function resolveMinhas(
   role: string,
   minhasParam: string | undefined
 ): boolean {
+  // Vendedor só vê as próprias — API também força isso.
+  if (role === "VENDEDOR") return true;
   if (minhasParam === "1") return true;
   if (minhasParam === "0") return false;
-  // Vendedores e gerentes (também vendem) começam em Minhas; ADMIN fica em Todas
-  return role === "VENDEDOR" || role === "GERENTE";
+  // Gerentes começam em Minhas; ADMIN fica em Todas
+  return role === "GERENTE";
 }
 
 export default async function VendasPage({ searchParams }: VendasPageProps) {
@@ -37,10 +39,16 @@ export default async function VendasPage({ searchParams }: VendasPageProps) {
     redirect("/montagem");
   }
 
+  const podeVerTodas = user.role === "GERENTE" || user.role === "ADMIN";
+  const podeVerRanking = podeVerTodas;
+
   const params = await searchParams;
+  if (user.role === "VENDEDOR" && params.minhas !== "1") {
+    redirect("/vendas?minhas=1");
+  }
   if (
     params.minhas === undefined &&
-    (user.role === "VENDEDOR" || user.role === "GERENTE")
+    user.role === "GERENTE"
   ) {
     redirect("/vendas?minhas=1");
   }
@@ -56,12 +64,7 @@ export default async function VendasPage({ searchParams }: VendasPageProps) {
       err instanceof Error ? err.message : "Falha ao carregar vendas da API";
   }
 
-  if (
-    !error &&
-    (user.role === "VENDEDOR" ||
-      user.role === "GERENTE" ||
-      user.role === "ADMIN")
-  ) {
+  if (!error && podeVerRanking) {
     try {
       comissaoRanking = await getComissaoRanking(token, "semana");
     } catch {
@@ -80,9 +83,11 @@ export default async function VendasPage({ searchParams }: VendasPageProps) {
       }
       actions={
         <div className="flex items-center gap-2">
-          <Suspense fallback={null}>
-            <VendasEscopoToggle minhas={minhas} />
-          </Suspense>
+          {podeVerTodas ? (
+            <Suspense fallback={null}>
+              <VendasEscopoToggle minhas={minhas} />
+            </Suspense>
+          ) : null}
           <Link
             href="/vendas/nova"
             className={cn(

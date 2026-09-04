@@ -1,4 +1,5 @@
 import type { NextFunction, Response } from "express";
+import { Role } from "@prisma/client";
 import { ZodError } from "zod";
 import type { AuthenticatedRequest } from "../middlewares/auth";
 import {
@@ -28,6 +29,21 @@ function getParamId(value: string | string[] | undefined): string | null {
   return null;
 }
 
+/** VENDEDOR só acessa festas em que é o vendedor. Gestão vê tudo. */
+async function assertAcessoFesta(
+  req: AuthenticatedRequest,
+  festaId: string
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  if (req.user?.role !== Role.VENDEDOR) {
+    return { ok: true };
+  }
+  const festa = await festasService.getById(festaId);
+  if (festa.vendedorId !== req.user.id) {
+    return { ok: false, status: 403, error: "Acesso negado a esta festa" };
+  }
+  return { ok: true };
+}
+
 export class FestasController {
   async list(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
@@ -37,11 +53,14 @@ export class FestasController {
         raw === "true" ||
         (Array.isArray(raw) && (raw[0] === "1" || raw[0] === "true"));
       const rawMinhas = req.query.minhas;
-      const minhas =
+      const pediuMinhas =
         rawMinhas === "1" ||
         rawMinhas === "true" ||
         (Array.isArray(rawMinhas) &&
           (rawMinhas[0] === "1" || rawMinhas[0] === "true"));
+      // VENDEDOR só vê as próprias festas (não pode abrir o funil dos outros).
+      const forcarMinhas = req.user?.role === Role.VENDEDOR;
+      const minhas = forcarMinhas || pediuMinhas;
       const festas = await festasService.list({
         lixeira,
         vendedorId: minhas ? req.user?.id : undefined,
@@ -59,6 +78,11 @@ export class FestasController {
         res.status(400).json({ error: "ID é obrigatório" });
         return;
       }
+      const acesso = await assertAcessoFesta(req, id);
+      if (!acesso.ok) {
+        res.status(acesso.status).json({ error: acesso.error });
+        return;
+      }
       const festa = await festasService.getById(id);
       res.status(200).json(festa);
     } catch (error) {
@@ -68,8 +92,13 @@ export class FestasController {
 
   async create(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
+      // Vendedor não pode atribuir a venda a outra pessoa.
+      const body =
+        req.user?.role === Role.VENDEDOR
+          ? { ...req.body, vendedorId: req.user.id }
+          : req.body;
       const vendedorId = req.user?.id ?? "mock-vendedor-id";
-      const festa = await festasService.create(req.body, vendedorId);
+      const festa = await festasService.create(body, vendedorId);
       res.status(201).json(festa);
     } catch (error) {
       this.handleError(error, res, next);
@@ -81,6 +110,11 @@ export class FestasController {
       const id = getParamId(req.params.id);
       if (!id) {
         res.status(400).json({ error: "ID é obrigatório" });
+        return;
+      }
+      const acesso = await assertAcessoFesta(req, id);
+      if (!acesso.ok) {
+        res.status(acesso.status).json({ error: acesso.error });
         return;
       }
       const festa = await festasService.update(id, req.body);
@@ -115,6 +149,11 @@ export class FestasController {
         res.status(400).json({ error: "ID é obrigatório" });
         return;
       }
+      const acesso = await assertAcessoFesta(req, id);
+      if (!acesso.ok) {
+        res.status(acesso.status).json({ error: acesso.error });
+        return;
+      }
       const festa = await festasService.updateChecklist(
         id,
         req.body?.itensExtrasConcluidos
@@ -136,6 +175,11 @@ export class FestasController {
         res.status(400).json({ error: "ID é obrigatório" });
         return;
       }
+      const acesso = await assertAcessoFesta(req, id);
+      if (!acesso.ok) {
+        res.status(acesso.status).json({ error: acesso.error });
+        return;
+      }
       const festa = await festasService.updateStatus(id, req.body);
       res.status(200).json(festa);
     } catch (error) {
@@ -148,6 +192,11 @@ export class FestasController {
       const id = getParamId(req.params.id);
       if (!id) {
         res.status(400).json({ error: "ID é obrigatório" });
+        return;
+      }
+      const acesso = await assertAcessoFesta(req, id);
+      if (!acesso.ok) {
+        res.status(acesso.status).json({ error: acesso.error });
         return;
       }
       const risco = await riscoService.getByFestaId(id);
@@ -186,11 +235,12 @@ export class FestasController {
   ) {
     try {
       const rawMinhas = req.query.minhas;
-      const minhas =
+      const pediuMinhas =
         rawMinhas === "1" ||
         rawMinhas === "true" ||
         (Array.isArray(rawMinhas) &&
           (rawMinhas[0] === "1" || rawMinhas[0] === "true"));
+      const minhas = req.user?.role === Role.VENDEDOR || pediuMinhas;
       const rawHoje = req.query.hoje;
       const hoje =
         rawHoje === "1" ||

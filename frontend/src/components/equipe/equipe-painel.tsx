@@ -39,9 +39,9 @@ const CARD_ACCENTS = [
 
 const FESTA_STATUS_LABEL: Record<string, string> = {
   ORCAMENTO: "Orçamento",
-  AGUARDANDO_PAGAMENTO: "Aguardando pagamento",
+  AGUARDANDO_PAGAMENTO: "Sinal",
   PAGO: "Pago",
-  FECHADO: "Fechado",
+  FECHADO: "Reserva fechada",
   EM_MONTAGEM: "Em montagem",
   CONCLUIDO: "Concluído",
 };
