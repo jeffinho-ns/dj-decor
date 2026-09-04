@@ -58,12 +58,10 @@ export class FestasController {
         rawMinhas === "true" ||
         (Array.isArray(rawMinhas) &&
           (rawMinhas[0] === "1" || rawMinhas[0] === "true"));
-      // VENDEDOR só vê as próprias festas (não pode abrir o funil dos outros).
-      const forcarMinhas = req.user?.role === Role.VENDEDOR;
-      const minhas = forcarMinhas || pediuMinhas;
+      // Agenda vê todas; Vendas passa minhas=1 para filtrar no frontend.
       const festas = await festasService.list({
         lixeira,
-        vendedorId: minhas ? req.user?.id : undefined,
+        vendedorId: pediuMinhas ? req.user?.id : undefined,
       });
       res.status(200).json(festas);
     } catch (error) {
@@ -78,11 +76,7 @@ export class FestasController {
         res.status(400).json({ error: "ID é obrigatório" });
         return;
       }
-      const acesso = await assertAcessoFesta(req, id);
-      if (!acesso.ok) {
-        res.status(acesso.status).json({ error: acesso.error });
-        return;
-      }
+      // Leitura liberada (agenda mostra todas); escrita continua restrita em update*.
       const festa = await festasService.getById(id);
       res.status(200).json(festa);
     } catch (error) {

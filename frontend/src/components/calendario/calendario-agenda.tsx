@@ -78,12 +78,17 @@ interface CalendarioAgendaProps {
   festas: Festa[];
   token?: string | null;
   canEdit?: boolean;
+  /** Vendedor só edita as próprias festas na agenda. */
+  viewerUserId?: string;
+  viewerRole?: string;
 }
 
 export function CalendarioAgenda({
   festas: initialFestas,
   token,
   canEdit = false,
+  viewerUserId,
+  viewerRole,
 }: CalendarioAgendaProps) {
   const [festas, setFestas] = useState(initialFestas);
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
@@ -106,6 +111,13 @@ export function CalendarioAgenda({
   const festaDetalhe = detalheId
     ? (festas.find((f) => f.id === detalheId) ?? null)
     : null;
+
+  const canEditDetalhe =
+    canEdit &&
+    Boolean(festaDetalhe) &&
+    (viewerRole !== "VENDEDOR" ||
+      !viewerUserId ||
+      festaDetalhe!.vendedorId === viewerUserId);
 
   return (
     <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)]">
@@ -407,7 +419,7 @@ export function CalendarioAgenda({
         open={Boolean(festaDetalhe)}
         onClose={() => setDetalheId(null)}
         token={token}
-        canEdit={canEdit}
+        canEdit={canEditDetalhe}
         onUpdated={(updated) => {
           setFestas((prev) =>
             prev.map((f) =>

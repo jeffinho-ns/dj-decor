@@ -74,6 +74,8 @@ export default async function DashboardPage() {
             festas={festas}
             token={token}
             canEdit={user.role !== "MONTADOR"}
+            viewerUserId={user.id}
+            viewerRole={user.role}
           />
         </>
       )}
