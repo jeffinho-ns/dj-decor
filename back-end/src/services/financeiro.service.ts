@@ -800,7 +800,7 @@ export class FinanceiroService {
         if (item.status === "PAGA") bucket.pago += valor;
         else bucket.pendente += valor;
         byTipo[key] = bucket;
-        return item;
+        return { ...item, valor };
       });
       porTipo = Object.values(byTipo);
       total = Number((totalPendente + totalPago).toFixed(2));
