@@ -3,20 +3,30 @@
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { AlertaForaParacambi } from "@/components/financeiro/alerta-fora-paracambi";
+import { CalendarioDiariasMesView } from "@/components/financeiro/calendario-diarias-mes";
 import { ColaboradoresFinanceiroLista } from "@/components/financeiro/colaboradores-financeiro-lista";
+import { FestasFinanceiroMes } from "@/components/financeiro/festas-financeiro-mes";
 import { FilaAPagar } from "@/components/financeiro/fila-a-pagar";
 import { FinanceiroPainel } from "@/components/financeiro/financeiro-painel";
+import { ResumoDeboraMes } from "@/components/financeiro/resumo-debora-mes";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ComissaoRanking, FinanceiroResumo, PrevisaoCaixa } from "@/types/financeiro";
 
-export type FinanceiroAba = "pagar" | "colaboradores" | "caixa" | "festas";
+export type FinanceiroAba =
+  | "pagar"
+  | "colaboradores"
+  | "caixa"
+  | "festas"
+  | "calendario";
 
 const ABAS: { id: FinanceiroAba; label: string }[] = [
   { id: "pagar", label: "Hoje / Pagar" },
   { id: "colaboradores", label: "Colaboradores" },
   { id: "caixa", label: "Caixa" },
   { id: "festas", label: "Festas" },
+  { id: "calendario", label: "Agenda diárias" },
 ];
 
 interface FinanceiroShellProps {
@@ -93,6 +103,11 @@ export function FinanceiroShell({
         </Button>
       </div>
 
+      <div className="space-y-3">
+        <ResumoDeboraMes token={token} mes={mes} />
+        <AlertaForaParacambi token={token} mes={mes} />
+      </div>
+
       <div
         role="tablist"
         aria-label="Seções financeiras"
@@ -136,12 +151,11 @@ export function FinanceiroShell({
         ) : null}
 
         {aba === "festas" ? (
-          <section className="rounded-2xl neo-sm p-4 sm:p-6">
-            <h2 className="font-display text-lg text-foreground">Festas</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Em breve: festas do mês com split
-            </p>
-          </section>
+          <FestasFinanceiroMes token={token} mes={mes} />
+        ) : null}
+
+        {aba === "calendario" ? (
+          <CalendarioDiariasMesView token={token} mes={mes} />
         ) : null}
       </div>
     </div>

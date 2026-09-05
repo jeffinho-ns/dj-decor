@@ -48,6 +48,26 @@ const aPagarQuerySchema = z.object({
     .optional(),
 });
 
+const calendarioDiariasQuerySchema = z.object({
+  mes: z.string().regex(/^\d{4}-\d{2}$/, "mes deve ser YYYY-MM"),
+});
+
+const mesObrigatorioSchema = z.object({
+  mes: z.string().regex(/^\d{4}-\d{2}$/, "mes deve ser YYYY-MM"),
+});
+
+const festasMesQuerySchema = z.object({
+  mes: z.string().regex(/^\d{4}-\d{2}$/, "mes deve ser YYYY-MM"),
+});
+
+/** Pipeline fechado / em execução — aba Festas do financeiro. */
+const STATUS_FESTAS_MES: StatusFesta[] = [
+  StatusFesta.FECHADO,
+  StatusFesta.PAGO,
+  StatusFesta.EM_MONTAGEM,
+  StatusFesta.CONCLUIDO,
+];
+
 const TIPO_LABEL_A_PAGAR: Record<TipoRepasse, string> = {
   COMISSAO_VENDEDOR: "Comissão venda",
   COMISSAO_SOCIA: "Comissão montagem fora",
@@ -945,6 +965,474 @@ export class FinanceiroService {
         dataEvento: f.dataEvento.toISOString(),
         clienteNome: f.cliente.nome,
       })),
+    };
+  }
+
+  /**
+   * Festas do mês (dataEvento em America/Sao_Paulo) no pipeline fechado,
+   * com resumo de split (comissões + diárias) quando existirem.
+   */
+  async listFestasMes(rawQuery: unknown) {
+    const { mes } = festasMesQuerySchema.parse(rawQuery);
+    const [y, m] = mes.split("-").map(Number);
+    // Padding de ±2 dias para cobrir bordas de fuso.
+    const padStart = new Date(Date.UTC(y, m - 1, -1, 0, 0, 0));
+    const padEnd = new Date(Date.UTC(y, m, 2, 23, 59, 59, 999));
+
+    const festas = await prisma.festa.findMany({
+      where: {
+        status: { in: STATUS_FESTAS_MES },
+        dataEvento: { gte: padStart, lte: padEnd },
+      },
+      select: {
+        id: true,
+        tema: true,
+        status: true,
+        valor: true,
+        dataEvento: true,
+        foraParacambi: true,
+        cliente: { select: { nome: true } },
+        vendedor: { select: { id: true, nome: true } },
+        montadorEquipe: { select: { id: true, nome: true } },
+        desmontadorEquipe: { select: { id: true, nome: true } },
+        comissoes: {
+          where: { status: { not: StatusComissao.CANCELADA } },
+          select: {
+            tipo: true,
+            percentual: true,
+            valor: true,
+            status: true,
+            beneficiario: { select: { id: true, nome: true } },
+          },
+        },
+      },
+      orderBy: { dataEvento: "asc" },
+    });
+
+    const itens = festas
+      .filter((f) => ymdBrasil(f.dataEvento).startsWith(mes))
+      .map((f) => {
+        const comissoes = f.comissoes;
+        let split: {
+          vendedor: {
+            percentual: number | null;
+            valor: number;
+            beneficiarioNome: string;
+          } | null;
+          suellemFora: {
+            percentual: number | null;
+            valor: number;
+            beneficiarioNome: string;
+          } | null;
+          debora: { percentual: number | null; valor: number } | null;
+          diarias: {
+            montagem: number;
+            desmontagem: number;
+            total: number;
+          };
+          total: number;
+        } | null = null;
+
+        if (comissoes.length > 0) {
+          const vend = comissoes.find(
+            (c) => c.tipo === TipoRepasse.COMISSAO_VENDEDOR
+          );
+          const fora = comissoes.find(
+            (c) => c.tipo === TipoRepasse.COMISSAO_SOCIA
+          );
+          const donas = comissoes.filter(
+            (c) => c.tipo === TipoRepasse.COMISSAO_DONA
+          );
+          const montagem = comissoes
+            .filter((c) => c.tipo === TipoRepasse.DIARIA_MONTAGEM)
+            .reduce((acc, c) => acc + Number(c.valor), 0);
+          const desmontagem = comissoes
+            .filter((c) => c.tipo === TipoRepasse.DIARIA_DESMONTAGEM)
+            .reduce((acc, c) => acc + Number(c.valor), 0);
+          const deboraValor = donas.reduce(
+            (acc, c) => acc + Number(c.valor),
+            0
+          );
+          const deboraPct =
+            donas.length > 0
+              ? donas.reduce(
+                  (acc, c) => acc + (c.percentual != null ? Number(c.percentual) : 0),
+                  0
+                )
+              : null;
+          const totalSplit = Number(
+            comissoes
+              .reduce((acc, c) => acc + Number(c.valor), 0)
+              .toFixed(2)
+          );
+
+          split = {
+            vendedor: vend
+              ? {
+                  percentual:
+                    vend.percentual != null ? Number(vend.percentual) : null,
+                  valor: Number(vend.valor),
+                  beneficiarioNome: vend.beneficiario.nome,
+                }
+              : null,
+            suellemFora: fora
+              ? {
+                  percentual:
+                    fora.percentual != null ? Number(fora.percentual) : null,
+                  valor: Number(fora.valor),
+                  beneficiarioNome: fora.beneficiario.nome,
+                }
+              : null,
+            debora:
+              deboraValor > 0
+                ? {
+                    percentual: deboraPct != null && deboraPct > 0
+                      ? Number(deboraPct.toFixed(2))
+                      : null,
+                    valor: Number(deboraValor.toFixed(2)),
+                  }
+                : null,
+            diarias: {
+              montagem: Number(montagem.toFixed(2)),
+              desmontagem: Number(desmontagem.toFixed(2)),
+              total: Number((montagem + desmontagem).toFixed(2)),
+            },
+            total: totalSplit,
+          };
+        }
+
+        return {
+          id: f.id,
+          tema: f.tema,
+          status: f.status,
+          valor: Number(f.valor),
+          dataEvento: f.dataEvento.toISOString(),
+          clienteNome: f.cliente.nome,
+          foraParacambi: f.foraParacambi,
+          vendedor: { id: f.vendedor.id, nome: f.vendedor.nome },
+          montador: f.montadorEquipe
+            ? { id: f.montadorEquipe.id, nome: f.montadorEquipe.nome }
+            : null,
+          desmontador: f.desmontadorEquipe
+            ? { id: f.desmontadorEquipe.id, nome: f.desmontadorEquipe.nome }
+            : null,
+          split,
+        };
+      });
+
+    const totalValor = Number(
+      itens.reduce((acc, i) => acc + i.valor, 0).toFixed(2)
+    );
+
+    return {
+      mes,
+      label: labelMesBrasil(mes),
+      totalValor,
+      quantidade: itens.length,
+      itens,
+    };
+  }
+
+  /**
+   * Totais de COMISSAO_DONA da Debora (ehDona) no mês do evento.
+   * pendente = ainda não pago; liberado = pendente e festa já aconteceu; pago = PAGA.
+   */
+  async resumoDeboraMes(rawQuery?: unknown) {
+    const { mes } = mesObrigatorioSchema.parse(rawQuery ?? {});
+    const agora = new Date();
+
+    const donas = await prisma.user.findMany({
+      where: { ehDona: true, ativo: true },
+      select: { id: true, nome: true },
+      orderBy: { nome: "asc" },
+    });
+
+    const comissoes = await prisma.comissao.findMany({
+      where: {
+        tipo: TipoRepasse.COMISSAO_DONA,
+        status: { not: StatusComissao.CANCELADA },
+        beneficiario: { ehDona: true },
+      },
+      select: {
+        valor: true,
+        status: true,
+        festa: { select: { dataEvento: true } },
+      },
+    });
+
+    let pendente = 0;
+    let liberado = 0;
+    let pago = 0;
+
+    for (const c of comissoes) {
+      if (!ymdBrasil(c.festa.dataEvento).startsWith(mes)) continue;
+      const valor = Number(c.valor);
+      if (c.status === StatusComissao.PAGA) {
+        pago += valor;
+      } else {
+        pendente += valor;
+        if (festaJaAconteceu(c.festa.dataEvento, agora)) {
+          liberado += valor;
+        }
+      }
+    }
+
+    return {
+      mes,
+      label: labelMesBrasil(mes),
+      beneficiarias: donas,
+      pendente: Number(pendente.toFixed(2)),
+      liberado: Number(liberado.toFixed(2)),
+      pago: Number(pago.toFixed(2)),
+      total: Number((pendente + pago).toFixed(2)),
+    };
+  }
+
+  /**
+   * Festas do mês cujo endereço parece fora de Paracambi
+   * (sem "paracambi" no texto) e ainda não marcadas como foraParacambi.
+   */
+  async alertasForaParacambi(rawQuery?: unknown) {
+    const { mes } = mesObrigatorioSchema.parse(rawQuery ?? {});
+
+    const festas = await prisma.festa.findMany({
+      where: {
+        foraParacambi: false,
+        status: {
+          notIn: [StatusFesta.CANCELADO, StatusFesta.ORCAMENTO],
+        },
+      },
+      select: {
+        id: true,
+        tema: true,
+        endereco: true,
+        dataEvento: true,
+        status: true,
+        cliente: { select: { nome: true } },
+      },
+      orderBy: { dataEvento: "asc" },
+    });
+
+    const itens = festas
+      .filter((f) => ymdBrasil(f.dataEvento).startsWith(mes))
+      .filter((f) => !f.endereco.toLowerCase().includes("paracambi"))
+      .map((f) => ({
+        id: f.id,
+        tema: f.tema,
+        endereco: f.endereco,
+        dataEvento: f.dataEvento.toISOString(),
+        status: f.status,
+        clienteNome: f.cliente.nome,
+      }));
+
+    return {
+      mes,
+      label: labelMesBrasil(mes),
+      total: itens.length,
+      itens,
+    };
+  }
+
+  /**
+   * Agenda de diárias do mês: montagem (horarioMontagem) e desmontagem (dataEvento).
+   * Prefere Comissao DIARIA_*; completa com equipe escalada nas festas.
+   */
+  async listCalendarioDiarias(rawQuery: unknown) {
+    const { mes } = calendarioDiariasQuerySchema.parse(rawQuery);
+    const [year, month] = mes.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(year, month, 0, 12, 0, 0)).getUTCDate();
+    const inicioYmd = `${mes}-01`;
+    const fimYmd = `${mes}-${String(lastDay).padStart(2, "0")}`;
+    const padStart = ymdToUtcNoon(inicioYmd);
+    padStart.setUTCDate(padStart.getUTCDate() - 1);
+    const padEnd = ymdToUtcNoon(fimYmd);
+    padEnd.setUTCDate(padEnd.getUTCDate() + 1);
+    const diaInicio = ymdToUtcNoon(inicioYmd);
+    const diaFim = ymdToUtcNoon(fimYmd);
+
+    const regras = await configuracoesService.getRegrasFinanceiras();
+
+    const festas = await prisma.festa.findMany({
+      where: {
+        status: {
+          in: [
+            StatusFesta.PAGO,
+            StatusFesta.FECHADO,
+            StatusFesta.EM_MONTAGEM,
+            StatusFesta.CONCLUIDO,
+          ],
+        },
+        OR: [
+          { horarioMontagem: { gte: padStart, lte: padEnd } },
+          { dataEvento: { gte: padStart, lte: padEnd } },
+        ],
+      },
+      include: {
+        cliente: { select: { nome: true } },
+        montadorEquipe: { select: { id: true, nome: true, role: true } },
+        desmontadorEquipe: { select: { id: true, nome: true, role: true } },
+        ordemServico: {
+          include: {
+            montador: { select: { id: true, nome: true, role: true } },
+            desmontador: { select: { id: true, nome: true, role: true } },
+          },
+        },
+      },
+    });
+
+    const comissoes = await prisma.comissao.findMany({
+      where: {
+        tipo: {
+          in: [TipoRepasse.DIARIA_MONTAGEM, TipoRepasse.DIARIA_DESMONTAGEM],
+        },
+        status: { not: StatusComissao.CANCELADA },
+        OR: [
+          { diaReferencia: { gte: diaInicio, lte: diaFim } },
+          {
+            diaReferencia: null,
+            festaId: { in: festas.map((f) => f.id) },
+          },
+        ],
+      },
+      include: {
+        beneficiario: { select: { id: true, nome: true } },
+        festa: {
+          select: {
+            id: true,
+            tema: true,
+            dataEvento: true,
+            horarioMontagem: true,
+          },
+        },
+      },
+    });
+
+    type PessoaDia = {
+      pessoaId: string;
+      pessoaNome: string;
+      tipo: "DIARIA_MONTAGEM" | "DIARIA_DESMONTAGEM";
+      tipoLabel: string;
+      valor: number;
+      status: "PENDENTE" | "PAGA" | "PREVISTA";
+      comissaoId: string | null;
+      festaId: string;
+      festaTema: string;
+    };
+
+    const byDay = new Map<string, PessoaDia[]>();
+
+    const push = (ymd: string, entry: PessoaDia) => {
+      if (!ymdNoPeriodo(ymd, inicioYmd, fimYmd)) return;
+      const list = byDay.get(ymd) ?? [];
+      const dup = list.find(
+        (p) =>
+          p.pessoaId === entry.pessoaId &&
+          p.tipo === entry.tipo &&
+          p.festaId === entry.festaId
+      );
+      if (dup) {
+        if (entry.comissaoId && !dup.comissaoId) {
+          Object.assign(dup, entry);
+        }
+        return;
+      }
+      list.push(entry);
+      byDay.set(ymd, list);
+    };
+
+    for (const c of comissoes) {
+      const ymd =
+        c.diaReferencia != null
+          ? ymdBrasil(c.diaReferencia)
+          : c.tipo === TipoRepasse.DIARIA_MONTAGEM
+            ? ymdBrasil(c.festa.horarioMontagem)
+            : ymdBrasil(c.festa.dataEvento);
+      push(ymd, {
+        pessoaId: c.beneficiario.id,
+        pessoaNome: c.beneficiario.nome,
+        tipo: c.tipo as "DIARIA_MONTAGEM" | "DIARIA_DESMONTAGEM",
+        tipoLabel: TIPO_LABEL_A_PAGAR[c.tipo] ?? c.tipo,
+        valor: Number(c.valor),
+        status: c.status === StatusComissao.PAGA ? "PAGA" : "PENDENTE",
+        comissaoId: c.id,
+        festaId: c.festa.id,
+        festaTema: c.festa.tema,
+      });
+    }
+
+    for (const festa of festas) {
+      const montador =
+        festa.ordemServico?.montador ?? festa.montadorEquipe;
+      const desmontador =
+        festa.ordemServico?.desmontador ?? festa.desmontadorEquipe;
+      const montadorCarro =
+        festa.ordemServico?.montadorCarroProprio ?? festa.montadorCarroProprio;
+      const desmontadorCarro =
+        festa.ordemServico?.desmontadorCarroProprio ??
+        festa.desmontadorCarroProprio;
+
+      if (
+        montador &&
+        montador.role !== Role.VENDEDOR &&
+        !festa.pegueEMonte
+      ) {
+        const ymd = ymdBrasil(festa.horarioMontagem);
+        const valor = montadorCarro
+          ? regras.diariaMontador
+          : regras.diariaMontadorCarroEmpresa;
+        push(ymd, {
+          pessoaId: montador.id,
+          pessoaNome: montador.nome,
+          tipo: "DIARIA_MONTAGEM",
+          tipoLabel: TIPO_LABEL_A_PAGAR.DIARIA_MONTAGEM,
+          valor,
+          status: "PREVISTA",
+          comissaoId: null,
+          festaId: festa.id,
+          festaTema: festa.tema,
+        });
+      }
+
+      if (desmontador && desmontador.role !== Role.VENDEDOR) {
+        const ymd = ymdBrasil(festa.dataEvento);
+        const valor = desmontadorCarro
+          ? regras.diariaDesmontador
+          : regras.diariaDesmontadorCarroEmpresa;
+        push(ymd, {
+          pessoaId: desmontador.id,
+          pessoaNome: desmontador.nome,
+          tipo: "DIARIA_DESMONTAGEM",
+          tipoLabel: TIPO_LABEL_A_PAGAR.DIARIA_DESMONTAGEM,
+          valor,
+          status: "PREVISTA",
+          comissaoId: null,
+          festaId: festa.id,
+          festaTema: festa.tema,
+        });
+      }
+    }
+
+    const dias = [...byDay.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([ymd, pessoas]) => {
+        const sorted = [...pessoas].sort(
+          (a, b) =>
+            a.tipo.localeCompare(b.tipo) ||
+            a.pessoaNome.localeCompare(b.pessoaNome, "pt-BR")
+        );
+        const total = Number(
+          sorted.reduce((acc, p) => acc + p.valor, 0).toFixed(2)
+        );
+        return { ymd, total, pessoas: sorted };
+      });
+
+    return {
+      mes,
+      label: labelMesBrasil(mes),
+      inicioYmd,
+      fimYmd,
+      total: Number(dias.reduce((acc, d) => acc + d.total, 0).toFixed(2)),
+      dias,
     };
   }
 }

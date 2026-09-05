@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ExportAPagarCsv } from "@/components/financeiro/export-a-pagar-csv";
 import { listAPagar, marcarComissoesPagas } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import type { APagarFila, APagarItem } from "@/types/financeiro";
@@ -112,15 +113,22 @@ export function FilaAPagar({ token, mes }: FilaAPagarProps) {
             {mes ? " neste mês" : ""}.
           </p>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          disabled={pending || selected.size === 0}
-          onClick={pagarSelecionados}
-        >
-          {pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          Pagar selecionados ({formatCurrency(totalSelecionado)})
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportAPagarCsv
+            itens={data?.itens ?? []}
+            mes={data?.mes ?? mes}
+            disabled={!data || data.itens.length === 0}
+          />
+          <Button
+            type="button"
+            size="sm"
+            disabled={pending || selected.size === 0}
+            onClick={pagarSelecionados}
+          >
+            {pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            Pagar selecionados ({formatCurrency(totalSelecionado)})
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl neo-inset px-3 py-2 text-sm">

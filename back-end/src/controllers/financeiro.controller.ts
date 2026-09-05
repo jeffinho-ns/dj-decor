@@ -118,6 +118,26 @@ export class FinanceiroController {
     }
   }
 
+  async listCalendarioDiarias(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await financeiroService.listCalendarioDiarias(req.query);
+      res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          error: "Parâmetros inválidos",
+          details: error.flatten().fieldErrors,
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+
   async listColaboradores(
     _req: AuthenticatedRequest,
     res: Response,
@@ -165,6 +185,66 @@ export class FinanceiroController {
         error.message.startsWith("Colaborador não encontrado")
       ) {
         res.status(404).json({ error: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  async listFestasMes(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await financeiroService.listFestasMes(req.query);
+      res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          error: "Parâmetros inválidos",
+          details: error.flatten().fieldErrors,
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  async resumoDebora(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await financeiroService.resumoDeboraMes(req.query);
+      res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          error: "Parâmetros inválidos",
+          details: error.flatten().fieldErrors,
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  async alertasFora(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await financeiroService.alertasForaParacambi(req.query);
+      res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          error: "Parâmetros inválidos",
+          details: error.flatten().fieldErrors,
+        });
         return;
       }
       next(error);

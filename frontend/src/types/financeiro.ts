@@ -238,3 +238,106 @@ export interface ColaboradorFinanceiroDetalhe {
     clienteNome: string;
   }>;
 }
+
+/** Pessoa numa diária do calendário mensal. */
+export interface CalendarioDiariaPessoa {
+  pessoaId: string;
+  pessoaNome: string;
+  tipo: "DIARIA_MONTAGEM" | "DIARIA_DESMONTAGEM";
+  tipoLabel: string;
+  valor: number;
+  status: "PENDENTE" | "PAGA" | "PREVISTA";
+  comissaoId: string | null;
+  festaId: string;
+  festaTema: string;
+}
+
+/** Dia com diárias no calendário (GET /api/financeiro/calendario-diarias). */
+export interface CalendarioDiariaDia {
+  ymd: string;
+  total: number;
+  pessoas: CalendarioDiariaPessoa[];
+}
+
+/** Resposta do calendário de diárias do mês. */
+export interface CalendarioDiariasMes {
+  mes: string;
+  label: string;
+  inicioYmd: string;
+  fimYmd: string;
+  total: number;
+  dias: CalendarioDiariaDia[];
+}
+
+/** Fatia do split na aba Festas do mês. */
+export interface FestaMesSplitFatia {
+  percentual: number | null;
+  valor: number;
+  beneficiarioNome?: string;
+}
+
+/** Resumo de split (comissões + diárias) por festa. */
+export interface FestaMesSplit {
+  vendedor: FestaMesSplitFatia | null;
+  suellemFora: FestaMesSplitFatia | null;
+  debora: { percentual: number | null; valor: number } | null;
+  diarias: {
+    montagem: number;
+    desmontagem: number;
+    total: number;
+  };
+  total: number;
+}
+
+/** Linha da aba Festas (GET /api/financeiro/festas-mes). */
+export interface FestaFinanceiroMesItem {
+  id: string;
+  tema: string;
+  status: string;
+  valor: number;
+  dataEvento: string;
+  clienteNome: string;
+  foraParacambi: boolean;
+  vendedor: { id: string; nome: string };
+  montador: { id: string; nome: string } | null;
+  desmontador: { id: string; nome: string } | null;
+  split: FestaMesSplit | null;
+}
+
+/** Resposta das festas do mês. */
+export interface FestasFinanceiroMes {
+  mes: string;
+  label: string;
+  totalValor: number;
+  quantidade: number;
+  itens: FestaFinanceiroMesItem[];
+}
+
+/** Totais COMISSAO_DONA da Debora no mês (GET /api/financeiro/resumo-debora). */
+export interface ResumoDeboraMes {
+  mes: string;
+  label: string;
+  beneficiarias: Array<{ id: string; nome: string }>;
+  pendente: number;
+  liberado: number;
+  pago: number;
+  total: number;
+}
+
+/** Festa suspeita de estar fora de Paracambi sem checkbox. */
+export interface AlertaForaParacambiItem {
+  id: string;
+  tema: string;
+  endereco: string;
+  dataEvento: string;
+  status: string;
+  clienteNome: string;
+}
+
+/** Alertas fora de Paracambi (GET /api/financeiro/alertas-fora). */
+export interface AlertasForaParacambi {
+  mes: string;
+  label: string;
+  total: number;
+  itens: AlertaForaParacambiItem[];
+}

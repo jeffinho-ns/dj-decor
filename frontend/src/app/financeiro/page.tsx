@@ -29,6 +29,7 @@ const ABAS_VALIDAS: FinanceiroAba[] = [
   "colaboradores",
   "caixa",
   "festas",
+  "calendario",
 ];
 
 function mesAtualSaoPaulo(): string {

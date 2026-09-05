@@ -44,6 +44,13 @@ financeiroRoutes.get(
 );
 
 financeiroRoutes.get(
+  "/calendario-diarias",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) =>
+    financeiroController.listCalendarioDiarias(req, res, next)
+);
+
+financeiroRoutes.get(
   "/colaboradores",
   requireRoles(Role.ADMIN, Role.GERENTE),
   (req, res, next) => financeiroController.listColaboradores(req, res, next)
@@ -53,6 +60,24 @@ financeiroRoutes.get(
   "/colaboradores/:id",
   requireRoles(Role.ADMIN, Role.GERENTE),
   (req, res, next) => financeiroController.getColaborador(req, res, next)
+);
+
+financeiroRoutes.get(
+  "/festas-mes",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => financeiroController.listFestasMes(req, res, next)
+);
+
+financeiroRoutes.get(
+  "/resumo-debora",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => financeiroController.resumoDebora(req, res, next)
+);
+
+financeiroRoutes.get(
+  "/alertas-fora",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => financeiroController.alertasFora(req, res, next)
 );
 
 export { financeiroRoutes };

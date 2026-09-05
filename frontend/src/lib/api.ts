@@ -72,6 +72,15 @@ import type {
   ColaboradorFinanceiroDetalhe,
   APagarFila,
   APagarItem,
+  CalendarioDiariasMes,
+  CalendarioDiariaDia,
+  CalendarioDiariaPessoa,
+  FestasFinanceiroMes,
+  FestaFinanceiroMesItem,
+  FestaMesSplit,
+  ResumoDeboraMes,
+  AlertasForaParacambi,
+  AlertaForaParacambiItem,
 } from "@/types/financeiro";
 import type {
   CheckinPayload,
@@ -1654,6 +1663,246 @@ export async function listAPagar(
     mes: typeof raw.mes === "string" ? raw.mes : null,
     label: typeof raw.label === "string" ? raw.label : "Todos liberados",
     total: toNumber(raw.total),
+    itens,
+  };
+}
+
+/** Agenda de diárias do mês (GET /api/financeiro/calendario-diarias). */
+export async function getCalendarioDiarias(
+  token: string,
+  mes: string
+): Promise<CalendarioDiariasMes> {
+  const qs = new URLSearchParams({ mes }).toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/financeiro/calendario-diarias?${qs}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  const raw = await handleResponse<Record<string, unknown>>(response);
+  const diasRaw = Array.isArray(raw.dias) ? raw.dias : [];
+  const dias: CalendarioDiariaDia[] = diasRaw.map((row) => {
+    const d = row as Record<string, unknown>;
+    const pessoasRaw = Array.isArray(d.pessoas) ? d.pessoas : [];
+    const pessoas: CalendarioDiariaPessoa[] = pessoasRaw.map((pRow) => {
+      const p = pRow as Record<string, unknown>;
+      const tipo =
+        p.tipo === "DIARIA_DESMONTAGEM"
+          ? ("DIARIA_DESMONTAGEM" as const)
+          : ("DIARIA_MONTAGEM" as const);
+      const status =
+        p.status === "PAGA"
+          ? ("PAGA" as const)
+          : p.status === "PREVISTA"
+            ? ("PREVISTA" as const)
+            : ("PENDENTE" as const);
+      return {
+        pessoaId: String(p.pessoaId ?? ""),
+        pessoaNome: typeof p.pessoaNome === "string" ? p.pessoaNome : "",
+        tipo,
+        tipoLabel:
+          typeof p.tipoLabel === "string"
+            ? p.tipoLabel
+            : tipo === "DIARIA_DESMONTAGEM"
+              ? "Diária desmontagem"
+              : "Diária montagem",
+        valor: toNumber(p.valor),
+        status,
+        comissaoId:
+          typeof p.comissaoId === "string" && p.comissaoId
+            ? p.comissaoId
+            : null,
+        festaId: String(p.festaId ?? ""),
+        festaTema: typeof p.festaTema === "string" ? p.festaTema : "",
+      };
+    });
+    return {
+      ymd: typeof d.ymd === "string" ? d.ymd : "",
+      total: toNumber(d.total),
+      pessoas,
+    };
+  });
+  return {
+    mes: typeof raw.mes === "string" ? raw.mes : mes,
+    label: typeof raw.label === "string" ? raw.label : mes,
+    inicioYmd: typeof raw.inicioYmd === "string" ? raw.inicioYmd : `${mes}-01`,
+    fimYmd: typeof raw.fimYmd === "string" ? raw.fimYmd : `${mes}-28`,
+    total: toNumber(raw.total),
+    dias,
+  };
+}
+
+function normalizeFestaMesSplit(raw: unknown): FestaMesSplit | null {
+  if (!raw || typeof raw !== "object") return null;
+  const s = raw as Record<string, unknown>;
+  const fatia = (v: unknown) => {
+    if (!v || typeof v !== "object") return null;
+    const f = v as Record<string, unknown>;
+    return {
+      percentual:
+        f.percentual == null || f.percentual === ""
+          ? null
+          : toNumber(f.percentual),
+      valor: toNumber(f.valor),
+      beneficiarioNome:
+        typeof f.beneficiarioNome === "string" ? f.beneficiarioNome : undefined,
+    };
+  };
+  const diariasRaw =
+    s.diarias && typeof s.diarias === "object"
+      ? (s.diarias as Record<string, unknown>)
+      : {};
+  const deboraRaw =
+    s.debora && typeof s.debora === "object"
+      ? (s.debora as Record<string, unknown>)
+      : null;
+  return {
+    vendedor: fatia(s.vendedor),
+    suellemFora: fatia(s.suellemFora),
+    debora: deboraRaw
+      ? {
+          percentual:
+            deboraRaw.percentual == null || deboraRaw.percentual === ""
+              ? null
+              : toNumber(deboraRaw.percentual),
+          valor: toNumber(deboraRaw.valor),
+        }
+      : null,
+    diarias: {
+      montagem: toNumber(diariasRaw.montagem),
+      desmontagem: toNumber(diariasRaw.desmontagem),
+      total: toNumber(diariasRaw.total),
+    },
+    total: toNumber(s.total),
+  };
+}
+
+/** Festas do mês com split (GET /api/financeiro/festas-mes?mes=YYYY-MM). */
+export async function listFestasFinanceiroMes(
+  token: string,
+  mes: string
+): Promise<FestasFinanceiroMes> {
+  const qs = new URLSearchParams({ mes }).toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/financeiro/festas-mes?${qs}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  const raw = await handleResponse<Record<string, unknown>>(response);
+  const itensRaw = Array.isArray(raw.itens) ? raw.itens : [];
+  const itens: FestaFinanceiroMesItem[] = itensRaw.map((row) => {
+    const item = row as Record<string, unknown>;
+    const vendedor =
+      item.vendedor && typeof item.vendedor === "object"
+        ? (item.vendedor as Record<string, unknown>)
+        : {};
+    const pessoa = (v: unknown) => {
+      if (!v || typeof v !== "object") return null;
+      const p = v as Record<string, unknown>;
+      return {
+        id: String(p.id ?? ""),
+        nome: typeof p.nome === "string" ? p.nome : "",
+      };
+    };
+    return {
+      id: String(item.id ?? ""),
+      tema: typeof item.tema === "string" ? item.tema : "",
+      status: typeof item.status === "string" ? item.status : "",
+      valor: toNumber(item.valor),
+      dataEvento:
+        typeof item.dataEvento === "string"
+          ? item.dataEvento
+          : String(item.dataEvento ?? ""),
+      clienteNome:
+        typeof item.clienteNome === "string" ? item.clienteNome : "",
+      foraParacambi: Boolean(item.foraParacambi),
+      vendedor: {
+        id: String(vendedor.id ?? ""),
+        nome: typeof vendedor.nome === "string" ? vendedor.nome : "",
+      },
+      montador: pessoa(item.montador),
+      desmontador: pessoa(item.desmontador),
+      split: normalizeFestaMesSplit(item.split),
+    };
+  });
+  return {
+    mes: typeof raw.mes === "string" ? raw.mes : mes,
+    label: typeof raw.label === "string" ? raw.label : mes,
+    totalValor: toNumber(raw.totalValor),
+    quantidade: toNumber(raw.quantidade) || itens.length,
+    itens,
+  };
+}
+
+/** Resumo COMISSAO_DONA Debora no mês (GET /api/financeiro/resumo-debora). */
+export async function getResumoDeboraMes(
+  token: string,
+  mes: string
+): Promise<ResumoDeboraMes> {
+  const qs = new URLSearchParams({ mes }).toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/financeiro/resumo-debora?${qs}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  const raw = await handleResponse<Record<string, unknown>>(response);
+  const bensRaw = Array.isArray(raw.beneficiarias) ? raw.beneficiarias : [];
+  return {
+    mes: typeof raw.mes === "string" ? raw.mes : mes,
+    label: typeof raw.label === "string" ? raw.label : mes,
+    beneficiarias: bensRaw.map((row) => {
+      const b = row as Record<string, unknown>;
+      return {
+        id: String(b.id ?? ""),
+        nome: typeof b.nome === "string" ? b.nome : "",
+      };
+    }),
+    pendente: toNumber(raw.pendente),
+    liberado: toNumber(raw.liberado),
+    pago: toNumber(raw.pago),
+    total: toNumber(raw.total),
+  };
+}
+
+/** Alertas fora de Paracambi (GET /api/financeiro/alertas-fora). */
+export async function listAlertasForaParacambi(
+  token: string,
+  mes: string
+): Promise<AlertasForaParacambi> {
+  const qs = new URLSearchParams({ mes }).toString();
+  const response = await fetch(
+    `${getBaseUrl()}/api/financeiro/alertas-fora?${qs}`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  const raw = await handleResponse<Record<string, unknown>>(response);
+  const itensRaw = Array.isArray(raw.itens) ? raw.itens : [];
+  const itens: AlertaForaParacambiItem[] = itensRaw.map((row) => {
+    const item = row as Record<string, unknown>;
+    return {
+      id: String(item.id ?? ""),
+      tema: typeof item.tema === "string" ? item.tema : "",
+      endereco: typeof item.endereco === "string" ? item.endereco : "",
+      dataEvento:
+        typeof item.dataEvento === "string"
+          ? item.dataEvento
+          : String(item.dataEvento ?? ""),
+      status: typeof item.status === "string" ? item.status : "",
+      clienteNome:
+        typeof item.clienteNome === "string" ? item.clienteNome : "",
+    };
+  });
+  return {
+    mes: typeof raw.mes === "string" ? raw.mes : mes,
+    label: typeof raw.label === "string" ? raw.label : mes,
+    total: toNumber(raw.total) || itens.length,
     itens,
   };
 }
