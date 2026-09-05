@@ -51,6 +51,7 @@ const DEFAULT_ITEMS: NavItem[] = [
 
 const GESTAO_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/montagem", label: "Montagem", icon: Hammer },
   { href: "/atendimento", label: "Atendimento", shortLabel: "Inbox", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", shortLabel: "Nova", icon: PlusCircle },
@@ -69,6 +70,7 @@ const GESTAO_ITEMS: NavItem[] = [
 
 const ADMIN_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/montagem", label: "Montagem", icon: Hammer },
   { href: "/atendimento", label: "Atendimento", shortLabel: "Inbox", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", shortLabel: "Nova", icon: PlusCircle },
@@ -113,17 +115,17 @@ const PRIMARY_HREFS_DEFAULT = new Set([
 const PRIMARY_HREFS_GESTAO = new Set([
   "/atendimento",
   "/vendas",
+  "/montagem",
   "/financeiro",
   "/equipe",
-  "/bolas",
 ]);
 
 const PRIMARY_HREFS_ADMIN = new Set([
   "/atendimento",
   "/vendas",
+  "/montagem",
   "/financeiro",
   "/equipe",
-  "/bolas",
 ]);
 
 const PRIMARY_HREFS_BOLISTA = new Set([

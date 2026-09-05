@@ -38,6 +38,12 @@ const envSchema = z.object({
   META_APP_SECRET: z.union([z.string().min(1), z.literal("")]).optional(),
   META_VERIFY_TOKEN: z.union([z.string().min(1), z.literal("")]).optional(),
   META_IG_PAGE_ID: z.union([z.string().min(1), z.literal("")]).optional(),
+  /** Firebase Storage (galeria de montagem). Opcionais — upload falha se ausentes. */
+  FIREBASE_PROJECT_ID: z.union([z.string().min(1), z.literal("")]).optional(),
+  FIREBASE_STORAGE_BUCKET: z.union([z.string().min(1), z.literal("")]).optional(),
+  FIREBASE_SERVICE_ACCOUNT_JSON: z
+    .union([z.string().min(1), z.literal("")])
+    .optional(),
 });
 
 type Env = z.infer<typeof envSchema> & {
@@ -49,6 +55,9 @@ type Env = z.infer<typeof envSchema> & {
   META_APP_SECRET?: string;
   META_VERIFY_TOKEN?: string;
   META_IG_PAGE_ID?: string;
+  FIREBASE_PROJECT_ID?: string;
+  FIREBASE_STORAGE_BUCKET?: string;
+  FIREBASE_SERVICE_ACCOUNT_JSON?: string;
 };
 
 function optionalUrl(value: string | undefined): string | undefined {
@@ -82,6 +91,11 @@ function loadEnv(): Env {
     META_APP_SECRET: optionalStr(data.META_APP_SECRET),
     META_VERIFY_TOKEN: optionalStr(data.META_VERIFY_TOKEN),
     META_IG_PAGE_ID: optionalStr(data.META_IG_PAGE_ID),
+    FIREBASE_PROJECT_ID: optionalStr(data.FIREBASE_PROJECT_ID),
+    FIREBASE_STORAGE_BUCKET: optionalStr(data.FIREBASE_STORAGE_BUCKET),
+    FIREBASE_SERVICE_ACCOUNT_JSON: optionalStr(
+      data.FIREBASE_SERVICE_ACCOUNT_JSON
+    ),
   };
 }
 

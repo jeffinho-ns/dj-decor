@@ -78,6 +78,18 @@ export class MidiasController {
   async getById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const midia = await midiasService.getById(req.params.id as string);
+      if (midia.storagePath) {
+        const { getFirebaseSignedUrl } = await import(
+          "../integrations/firebase-storage"
+        );
+        const url = await getFirebaseSignedUrl(midia.storagePath);
+        res.redirect(302, url);
+        return;
+      }
+      if (!midia.data) {
+        res.status(404).json({ message: "Arquivo indisponível" });
+        return;
+      }
       res.setHeader("Content-Type", midia.mimeType);
       res.setHeader("Content-Length", String(midia.tamanho));
       if (midia.filename) {

@@ -86,7 +86,9 @@ const TIMELINE_COLORS = [
 const TIPO_LABEL: Record<string, string> = {
   REFERENCIA_FESTA: "Referência DJ festas",
   CLIENTE_REFERENCIA: "Sua referência",
-  MONTAGEM_FINAL: "Montagem final",
+  MONTAGEM_FINAL: "Montagem pronta",
+  MONTAGEM_FOTO: "Montagem pronta",
+  MONTAGEM_VIDEO: "Vídeo da montagem",
 };
 
 interface PortalPageProps {
@@ -401,19 +403,37 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            {galeria.map((item) => (
-              <figure key={item.id} className="overflow-hidden rounded-xl neo-sm">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={getPortalMidiaUrl(activeToken, item.id)}
-                  alt={TIPO_LABEL[item.tipo] ?? "Foto"}
-                  className="aspect-square w-full object-cover"
-                />
-                <figcaption className="px-2 py-1.5 text-[10px] text-muted-foreground">
-                  {TIPO_LABEL[item.tipo] ?? item.tipo}
-                </figcaption>
-              </figure>
-            ))}
+            {galeria.map((item) => {
+              const isVideo =
+                item.tipo === "MONTAGEM_VIDEO" ||
+                item.mimeType?.startsWith("video/");
+              const src = getPortalMidiaUrl(activeToken, item.id);
+              return (
+                <figure
+                  key={item.id}
+                  className="overflow-hidden rounded-xl neo-sm"
+                >
+                  {isVideo ? (
+                    <video
+                      src={src}
+                      className="aspect-square w-full object-cover"
+                      controls
+                      playsInline
+                    />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={src}
+                      alt={TIPO_LABEL[item.tipo] ?? "Foto"}
+                      className="aspect-square w-full object-cover"
+                    />
+                  )}
+                  <figcaption className="px-2 py-1.5 text-[10px] text-muted-foreground">
+                    {TIPO_LABEL[item.tipo] ?? item.tipo}
+                  </figcaption>
+                </figure>
+              );
+            })}
           </div>
         )}
       </section>

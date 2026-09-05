@@ -50,6 +50,18 @@ export class PortalController {
       const token = req.params.token as string;
       const midiaId = req.params.midiaId as string;
       const midia = await portalService.getMidiaForToken(token, midiaId);
+      if (midia.storagePath) {
+        const { getFirebaseSignedUrl } = await import(
+          "../integrations/firebase-storage"
+        );
+        const url = await getFirebaseSignedUrl(midia.storagePath);
+        res.redirect(302, url);
+        return;
+      }
+      if (!midia.data) {
+        res.status(404).json({ message: "Arquivo indisponível" });
+        return;
+      }
       res.setHeader("Content-Type", midia.mimeType);
       res.setHeader("Content-Length", String(midia.tamanho));
       res.setHeader("Cache-Control", "public, max-age=3600");

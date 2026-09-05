@@ -41,6 +41,7 @@ const DEFAULT_NAV = [
 
 const GESTAO_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/montagem", label: "Montagem", icon: Hammer },
   { href: "/atendimento", label: "Atendimento", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
@@ -59,6 +60,7 @@ const GESTAO_NAV = [
 
 const ADMIN_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
+  { href: "/montagem", label: "Montagem", icon: Hammer },
   { href: "/atendimento", label: "Atendimento", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },

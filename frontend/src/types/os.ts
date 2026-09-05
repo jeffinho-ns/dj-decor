@@ -105,6 +105,20 @@ export interface PortalGaleriaItem {
   filename: string | null;
 }
 
+export interface MontagemGaleriaItem {
+  id: string;
+  mimeType: string;
+  tamanho: number;
+  tipo: string;
+  filename: string | null;
+  storagePath: string | null;
+  visivelPortal: boolean;
+  ordem: number;
+  festaId: string | null;
+  uploadedById: string | null;
+  criadoEm: string;
+}
+
 export interface PortalPagamentoItem {
   id: string;
   valor: number;

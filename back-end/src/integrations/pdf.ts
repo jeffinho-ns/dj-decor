@@ -402,17 +402,18 @@ export class PdfKitAdapter implements PdfAdapter {
     ]);
 
     const referencias = midias
-      .filter((m) => m.tipo === TipoMidia.REFERENCIA_FESTA)
+      .filter((m) => m.tipo === TipoMidia.REFERENCIA_FESTA && m.data)
       .slice(0, 4)
-      .map((m) => Buffer.from(m.data));
+      .map((m) => Buffer.from(m.data!));
 
     const assinatura = midias.find(
-      (m) => m.tipo === TipoMidia.ASSINATURA_CLIENTE
+      (m) => m.tipo === TipoMidia.ASSINATURA_CLIENTE && m.data
     );
 
-    const logoBuffer = config?.logoMidia
-      ? Buffer.from(config.logoMidia.data)
-      : null;
+    const logoBuffer =
+      config?.logoMidia?.data != null
+        ? Buffer.from(config.logoMidia.data)
+        : null;
 
     const pdfBuffer = await renderContratoPdf(festa, {
       nomeEmpresa: config?.nomeEmpresa ?? "Débora Pimentel Decoradora",
@@ -424,7 +425,9 @@ export class PdfKitAdapter implements PdfAdapter {
       enderecoEmpresa: config?.enderecoEmpresa ?? null,
       logoBuffer,
       referencias,
-      assinaturaBuffer: assinatura ? Buffer.from(assinatura.data) : null,
+      assinaturaBuffer: assinatura?.data
+        ? Buffer.from(assinatura.data)
+        : null,
     });
     const hash = createHash("sha256").update(pdfBuffer).digest("hex");
     const pdfBytes = new Uint8Array(pdfBuffer);

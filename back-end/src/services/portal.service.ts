@@ -93,6 +93,8 @@ const GALERIA_TIPOS: TipoMidia[] = [
   TipoMidia.REFERENCIA_FESTA,
   TipoMidia.CLIENTE_REFERENCIA,
   TipoMidia.MONTAGEM_FINAL,
+  TipoMidia.MONTAGEM_FOTO,
+  TipoMidia.MONTAGEM_VIDEO,
 ];
 
 function primeiroNome(nome: string): string {
@@ -273,7 +275,10 @@ export class PortalService {
           select: { valorCliente: true },
         },
         midias: {
-          where: { tipo: { in: GALERIA_TIPOS } },
+          where: {
+            tipo: { in: GALERIA_TIPOS },
+            visivelPortal: true,
+          },
           select: {
             id: true,
             tipo: true,
@@ -357,7 +362,7 @@ export class PortalService {
     if (!festa) throw new PortalFestaNotFoundError(token);
 
     const midia = await midiasService.getById(midiaId);
-    if (midia.festaId !== festa.id) {
+    if (midia.festaId !== festa.id || midia.visivelPortal === false) {
       throw new PortalFestaNotFoundError(token);
     }
     return midia;

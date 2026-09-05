@@ -368,7 +368,12 @@ export class OsService {
 
   private async withFotoFinal<T extends { festaId: string }>(os: T) {
     const foto = await prisma.midia.findFirst({
-      where: { festaId: os.festaId, tipo: TipoMidia.MONTAGEM_FINAL },
+      where: {
+        festaId: os.festaId,
+        tipo: {
+          in: [TipoMidia.MONTAGEM_FINAL, TipoMidia.MONTAGEM_FOTO],
+        },
+      },
       orderBy: { criadoEm: "desc" },
       select: { id: true },
     });
@@ -858,9 +863,9 @@ export class OsService {
       throw new OsValidationError(`Mídia não encontrada: ${midiaId}`);
     }
 
-    if (midia.tipo !== TipoMidia.MONTAGEM_FINAL) {
+    if (midia.tipo !== TipoMidia.MONTAGEM_FINAL && midia.tipo !== TipoMidia.MONTAGEM_FOTO) {
       throw new OsValidationError(
-        "Mídia deve ser do tipo MONTAGEM_FINAL"
+        "Mídia deve ser do tipo MONTAGEM_FINAL ou MONTAGEM_FOTO"
       );
     }
 

@@ -25,13 +25,14 @@ import {
   finalizarOs,
   seedRomaneio,
   updateRomaneioItem,
-  uploadFotoFinalOs,
   uploadItemFotoRomaneio,
 } from "@/lib/api";
 import { OfflineQueueSync } from "@/components/layout/offline-queue-sync";
+import { MontagemGaleria } from "@/components/montagem/montagem-galeria";
 import { enqueueRomaneioToggle } from "@/lib/offline-queue";
 import { cn } from "@/lib/utils";
 import type { OrdemServico, StatusOS } from "@/types/os";
+import type { User } from "@/types/auth";
 
 const STATUS_OS_LABEL: Record<StatusOS, string> = {
   ABERTA: "Aberta",
@@ -93,6 +94,7 @@ function safeTime(value: string | null | undefined): string {
 interface MontagemOsDetalheProps {
   osInicial: OrdemServico;
   token: string;
+  user: User;
 }
 
 function sectionClass(etapa: Etapa, etapaAtiva: Etapa, dimmed?: boolean) {
@@ -106,15 +108,19 @@ function sectionClass(etapa: Etapa, etapaAtiva: Etapa, dimmed?: boolean) {
 export function MontagemOsDetalhe({
   osInicial,
   token,
+  user,
 }: MontagemOsDetalheProps) {
   const [os, setOs] = useState(osInicial);
   const [erro, setErro] = useState<string | null>(null);
   const [geoStatus, setGeoStatus] = useState<string | null>(null);
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const fotoInputRef = useRef<HTMLInputElement>(null);
   const itemFotoInputRef = useRef<HTMLInputElement>(null);
   const [itemFotoAlvo, setItemFotoAlvo] = useState<string | null>(null);
+
+  const canEdit =
+    user.role === "ADMIN" ||
+    !os.montadorId ||
+    os.montadorId === user.id;
 
   const festa = os.festa;
   const itens = os.itensRomaneio;
@@ -309,23 +315,8 @@ export function MontagemOsDetalhe({
     );
   }
 
-  function fotoHandler(file: File) {
-    setErro(null);
-    setFotoPreview(URL.createObjectURL(file));
-    startTransition(async () => {
-      try {
-        const atualizada = await uploadFotoFinalOs(os.id, file, token);
-        setOs(atualizada);
-      } catch (err) {
-        setFotoPreview(null);
-        setErro(
-          err instanceof Error ? err.message : "Upload da foto falhou"
-        );
-      }
-    });
-  }
-
   function finalizarHandler() {
+    if (!canEdit) return;
     setErro(null);
     startTransition(async () => {
       try {
@@ -351,6 +342,17 @@ export function MontagemOsDetalhe({
         <ArrowLeft className="size-4" />
         Voltar
       </Link>
+
+      {!canEdit ? (
+        <div className="rounded-2xl neo-inset px-4 py-3 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">Modo visualização</p>
+          <p className="mt-1 text-xs">
+            Apenas o montador designado
+            {os.montador?.nome ? ` (${os.montador.nome})` : ""} pode marcar
+            itens e enviar mídia. Você pode ver o fluxo e baixar a galeria.
+          </p>
+        </div>
+      ) : null}
 
       <header className="rounded-2xl p-4 sm:p-5 neo-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -486,13 +488,13 @@ export function MontagemOsDetalhe({
                   <ToggleChip
                     label="Carregado"
                     checked={item.carregado}
-                    disabled={romaneioOk || pending}
+                    disabled={!canEdit || romaneioOk || pending}
                     onChange={(v) => void toggleItem(item.id, "carregado", v)}
                   />
                   <ToggleChip
                     label="Conferido"
                     checked={item.conferido}
-                    disabled={romaneioOk || pending}
+                    disabled={!canEdit || romaneioOk || pending}
                     onChange={(v) => void toggleItem(item.id, "conferido", v)}
                   />
                 </div>
@@ -507,7 +509,7 @@ export function MontagemOsDetalhe({
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={pending}
+                        disabled={!canEdit || pending}
                         onClick={() => {
                           setItemFotoAlvo(item.id);
                           itemFotoInputRef.current?.click();
@@ -659,7 +661,9 @@ export function MontagemOsDetalhe({
                     <ToggleChip
                       label="Montado"
                       checked={item.montado}
-                      disabled={!checkinOk || montagemOk || pending}
+                      disabled={
+                        !canEdit || !checkinOk || montagemOk || pending
+                      }
                       onChange={(v) => void toggleItem(item.id, "montado", v)}
                     />
                   </div>
@@ -675,7 +679,7 @@ export function MontagemOsDetalhe({
                           variant="outline"
                           size="sm"
                           className="min-h-9"
-                          disabled={pending}
+                          disabled={!canEdit || pending}
                           onClick={() => {
                             setItemFotoAlvo(item.id);
                             itemFotoInputRef.current?.click();
@@ -719,76 +723,23 @@ export function MontagemOsDetalhe({
         </div>
 
         {fotoOk ? (
-          <div className="mt-3 space-y-3">
-            <p className="text-sm text-balloon-mint">Foto registrada.</p>
-            {fotoPreview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={fotoPreview}
-                alt="Preview montagem"
-                className="max-h-48 w-full rounded-xl object-cover"
-              />
-            ) : null}
-          </div>
+          <p className="mt-2 text-sm text-balloon-mint">
+            Galeria com pelo menos uma foto — pode baixar para o Instagram.
+          </p>
         ) : (
-          <>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Registre a decoração pronta no salão (máx. 2 MB).
-            </p>
-            {fotoPreview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={fotoPreview}
-                alt="Preview montagem"
-                className="mt-3 max-h-48 w-full rounded-xl object-cover"
-              />
-            ) : null}
-            <input
-              ref={fotoInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="sr-only"
-              disabled={!montagemOk || pending}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) fotoHandler(file);
-                e.target.value = "";
-              }}
-            />
-            <label className="mt-4 hidden cursor-pointer md:flex">
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="sr-only"
-                disabled={!montagemOk || pending}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) fotoHandler(file);
-                  e.target.value = "";
-                }}
-              />
-              <span
-                className={cn(
-                  "inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium transition-colors neo-inset",
-                  montagemOk && !pending
-                    ? "cursor-pointer hover:text-balloon-mint"
-                    : "cursor-not-allowed opacity-50"
-                )}
-              >
-                {pending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <>
-                    <Camera className="size-4" />
-                    Tirar / escolher foto
-                  </>
-                )}
-              </span>
-            </label>
-          </>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Envie até 6 fotos e 2 vídeos da decoração pronta (armazenados no
+            Firebase).
+          </p>
         )}
+
+        <MontagemGaleria
+          os={os}
+          token={token}
+          canEdit={canEdit && montagemOk}
+          onOsUpdate={setOs}
+          onError={setErro}
+        />
       </section>
 
       <section className={sectionClass("saida", etapaAtiva, !fotoOk)}>
@@ -852,8 +803,8 @@ export function MontagemOsDetalhe({
         onConcluirRomaneio={concluirRomaneioHandler}
         onCheckin={checkinHandler}
         onConcluirMontagem={concluirMontagemHandler}
-        onFotoClick={() => fotoInputRef.current?.click()}
         onFinalizar={finalizarHandler}
+        canEdit={canEdit}
       />
     </div>
   );
@@ -871,10 +822,10 @@ function MontagemStickyAction({
   todosItensMontados,
   pending,
   geoStatus,
+  canEdit,
   onConcluirRomaneio,
   onCheckin,
   onConcluirMontagem,
-  onFotoClick,
   onFinalizar,
 }: {
   etapaAtiva: Etapa;
@@ -888,15 +839,17 @@ function MontagemStickyAction({
   todosItensMontados: boolean;
   pending: boolean;
   geoStatus: string | null;
+  canEdit: boolean;
   onConcluirRomaneio: () => void;
   onCheckin: () => void;
   onConcluirMontagem: () => void;
-  onFotoClick: () => void;
   onFinalizar: () => void;
 }) {
   let action: React.ReactNode = null;
 
-  if (etapaAtiva === "romaneio" && !romaneioOk && itensLength > 0) {
+  if (!canEdit) {
+    action = null;
+  } else if (etapaAtiva === "romaneio" && !romaneioOk && itensLength > 0) {
     action = (
       <Button
         type="button"
@@ -946,21 +899,9 @@ function MontagemStickyAction({
     );
   } else if (etapaAtiva === "foto" && !fotoOk) {
     action = (
-      <Button
-        type="button"
-        className="w-full min-h-11"
-        disabled={!montagemOk || pending}
-        onClick={onFotoClick}
-      >
-        {pending ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <>
-            <Camera data-icon="inline-start" />
-            Tirar / escolher foto
-          </>
-        )}
-      </Button>
+      <p className="rounded-xl neo-inset px-3 py-2 text-center text-xs text-muted-foreground">
+        Use &quot;Adicionar foto / vídeo&quot; na galeria acima
+      </p>
     );
   } else if (etapaAtiva === "saida" && !saidaOk) {
     action = (

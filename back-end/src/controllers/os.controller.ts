@@ -1,6 +1,7 @@
 import type { NextFunction, Response } from "express";
 import { TipoMidia } from "@prisma/client";
 import { ZodError } from "zod";
+import { FirebaseNotConfiguredError } from "../integrations/firebase-storage";
 import type { AuthenticatedRequest } from "../middlewares/auth";
 import {
   osService,
@@ -12,6 +13,18 @@ import {
   midiasService,
   MidiaValidationError,
 } from "../services/midias.service";
+import { montagemGaleriaService } from "../services/montagem-galeria.service";
+
+async function assertPodeEditarOs(
+  req: AuthenticatedRequest,
+  osId: string
+): Promise<void> {
+  if (!req.user) {
+    throw new OsValidationError("Não autorizado");
+  }
+  const os = await osService.getById(osId);
+  montagemGaleriaService.assertPodeEditar(os, req.user);
+}
 
 export class OsController {
   async listToday(_req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -62,12 +75,117 @@ export class OsController {
     }
   }
 
+  async listGaleria(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const itens = await montagemGaleriaService.listByOs(
+        req.params.id as string
+      );
+      res.status(200).json({ itens });
+    } catch (error) {
+      if (error instanceof OsNotFoundError) {
+        res.status(404).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  async uploadGaleria(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      if (!req.user) {
+        res.status(401).json({ message: "Não autorizado" });
+        return;
+      }
+      const item = await montagemGaleriaService.upload(
+        req.params.id as string,
+        req.file as Express.Multer.File | undefined,
+        req.user
+      );
+      const os = await osService.getById(req.params.id as string);
+      res.status(201).json({ item, os });
+    } catch (error) {
+      if (
+        error instanceof OsNotFoundError ||
+        error instanceof OsValidationError ||
+        error instanceof MidiaValidationError ||
+        error instanceof FirebaseNotConfiguredError
+      ) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  async deleteGaleriaItem(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      if (!req.user) {
+        res.status(401).json({ message: "Não autorizado" });
+        return;
+      }
+      await montagemGaleriaService.remove(
+        req.params.id as string,
+        req.params.midiaId as string,
+        req.user
+      );
+      const os = await osService.getById(req.params.id as string);
+      res.status(200).json({ ok: true, os });
+    } catch (error) {
+      if (
+        error instanceof OsNotFoundError ||
+        error instanceof OsValidationError ||
+        error instanceof MidiaValidationError
+      ) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  async signedGaleriaUrl(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await montagemGaleriaService.signedUrl(
+        req.params.id as string,
+        req.params.midiaId as string
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      if (
+        error instanceof OsNotFoundError ||
+        error instanceof MidiaValidationError ||
+        error instanceof FirebaseNotConfiguredError
+      ) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
   async addRomaneioItem(
     req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ) {
     try {
+      await assertPodeEditarOs(req, req.params.id as string);
       const item = await osService.addRomaneioItem(
         req.params.id as string,
         req.body
@@ -98,6 +216,7 @@ export class OsController {
     next: NextFunction
   ) {
     try {
+      await assertPodeEditarOs(req, req.params.id as string);
       const item = await osService.updateRomaneioItem(
         req.params.id as string,
         req.params.itemId as string,
@@ -112,11 +231,11 @@ export class OsController {
         });
         return;
       }
-      if (error instanceof OsItemNotFoundError) {
-        res.status(404).json({ message: error.message });
-        return;
-      }
-      if (error instanceof OsValidationError) {
+      if (
+        error instanceof OsNotFoundError ||
+        error instanceof OsItemNotFoundError ||
+        error instanceof OsValidationError
+      ) {
         res.status(400).json({ message: error.message });
         return;
       }
@@ -134,9 +253,9 @@ export class OsController {
         res.status(401).json({ message: "Não autorizado" });
         return;
       }
+      await assertPodeEditarOs(req, req.params.id as string);
 
       let midiaId: string;
-
       if (req.file) {
         const file = midiasService.validateFile(req.file);
         const os = await osService.getById(req.params.id as string);
@@ -184,14 +303,14 @@ export class OsController {
     next: NextFunction
   ) {
     try {
+      await assertPodeEditarOs(req, req.params.id as string);
       const os = await osService.concluirRomaneio(req.params.id as string);
       res.status(200).json(os);
     } catch (error) {
-      if (error instanceof OsNotFoundError) {
-        res.status(404).json({ message: error.message });
-        return;
-      }
-      if (error instanceof OsValidationError) {
+      if (
+        error instanceof OsNotFoundError ||
+        error instanceof OsValidationError
+      ) {
         res.status(400).json({ message: error.message });
         return;
       }
@@ -205,9 +324,7 @@ export class OsController {
     next: NextFunction
   ) {
     try {
-      // Mesmo fluxo do fechamento: reserva estoque + kit/extras do pedido.
-      // Antes só lia reservas (vazias se a festa ainda está PAGO) e a UI
-      // parecia "não fazer nada".
+      await assertPodeEditarOs(req, req.params.id as string);
       const os = await osService.seedRomaneioCompleto(req.params.id as string);
       res.status(200).json(os);
     } catch (error) {
@@ -215,24 +332,8 @@ export class OsController {
         res.status(404).json({ message: error.message });
         return;
       }
-      next(error);
-    }
-  }
-
-  async checkin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    try {
-      const os = await osService.checkin(req.params.id as string, req.body);
-      res.status(200).json(os);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        res.status(400).json({
-          message: "Dados inválidos",
-          details: error.flatten().fieldErrors,
-        });
-        return;
-      }
-      if (error instanceof OsNotFoundError) {
-        res.status(404).json({ message: error.message });
+      if (error instanceof OsValidationError) {
+        res.status(400).json({ message: error.message });
         return;
       }
       next(error);
@@ -270,20 +371,44 @@ export class OsController {
     }
   }
 
+  async checkin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      await assertPodeEditarOs(req, req.params.id as string);
+      const os = await osService.checkin(req.params.id as string, req.body);
+      res.status(200).json(os);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          message: "Dados inválidos",
+          details: error.flatten().fieldErrors,
+        });
+        return;
+      }
+      if (
+        error instanceof OsNotFoundError ||
+        error instanceof OsValidationError
+      ) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
   async concluirMontagemLocal(
     req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ) {
     try {
+      await assertPodeEditarOs(req, req.params.id as string);
       const os = await osService.concluirMontagemLocal(req.params.id as string);
       res.status(200).json(os);
     } catch (error) {
-      if (error instanceof OsNotFoundError) {
-        res.status(404).json({ message: error.message });
-        return;
-      }
-      if (error instanceof OsValidationError) {
+      if (
+        error instanceof OsNotFoundError ||
+        error instanceof OsValidationError
+      ) {
         res.status(400).json({ message: error.message });
         return;
       }
@@ -297,6 +422,7 @@ export class OsController {
     next: NextFunction
   ) {
     try {
+      await assertPodeEditarOs(req, req.params.id as string);
       const os = await osService.finalizar(req.params.id as string);
       res.status(200).json(os);
     } catch (error) {
@@ -318,15 +444,31 @@ export class OsController {
         res.status(401).json({ message: "Não autorizado" });
         return;
       }
+      await assertPodeEditarOs(req, req.params.id as string);
 
       let midiaId: string;
 
       if (req.file) {
+        try {
+          await montagemGaleriaService.upload(
+            req.params.id as string,
+            req.file,
+            req.user
+          );
+          const os = await osService.getById(req.params.id as string);
+          res.status(200).json(os);
+          return;
+        } catch (error) {
+          if (!(error instanceof FirebaseNotConfiguredError)) {
+            throw error;
+          }
+        }
+
         const file = midiasService.validateFile(req.file);
-        const os = await osService.getById(req.params.id as string);
+        const osAtual = await osService.getById(req.params.id as string);
         const midia = await midiasService.create(
           file,
-          { tipo: TipoMidia.MONTAGEM_FINAL, festaId: os.festaId },
+          { tipo: TipoMidia.MONTAGEM_FINAL, festaId: osAtual.festaId },
           req.user.id
         );
         midiaId = midia.id;
@@ -348,7 +490,8 @@ export class OsController {
       if (
         error instanceof OsNotFoundError ||
         error instanceof OsValidationError ||
-        error instanceof MidiaValidationError
+        error instanceof MidiaValidationError ||
+        error instanceof FirebaseNotConfiguredError
       ) {
         res.status(400).json({ message: error.message });
         return;

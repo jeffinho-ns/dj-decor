@@ -1333,6 +1333,74 @@ export async function uploadFotoFinalOs(
   return handleResponse<OrdemServico>(response);
 }
 
+export async function listMontagemGaleria(
+  osId: string,
+  token: string
+): Promise<import("@/types/os").MontagemGaleriaItem[]> {
+  const response = await fetch(`${getBaseUrl()}/api/os/${osId}/galeria`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  const body = await handleResponse<{
+    itens: import("@/types/os").MontagemGaleriaItem[];
+  }>(response);
+  return body.itens ?? [];
+}
+
+export async function uploadMontagemGaleria(
+  osId: string,
+  file: File,
+  token: string
+): Promise<{
+  item: import("@/types/os").MontagemGaleriaItem;
+  os: OrdemServico;
+}> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(`${getBaseUrl()}/api/os/${osId}/galeria`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  return handleResponse(response);
+}
+
+export async function deleteMontagemGaleriaItem(
+  osId: string,
+  midiaId: string,
+  token: string
+): Promise<{ ok: boolean; os: OrdemServico }> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/os/${osId}/galeria/${midiaId}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(token),
+    }
+  );
+  return handleResponse(response);
+}
+
+export async function getMontagemGaleriaSignedUrl(
+  osId: string,
+  midiaId: string,
+  token: string
+): Promise<{
+  url: string | null;
+  mimeType: string;
+  filename: string | null;
+  storage: string;
+  midiaId?: string;
+}> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/os/${osId}/galeria/${midiaId}/url`,
+    {
+      headers: authHeaders(token),
+      cache: "no-store",
+    }
+  );
+  return handleResponse(response);
+}
+
 export async function fotoFinalOsByMidia(
   osId: string,
   midiaId: string,

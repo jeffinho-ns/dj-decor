@@ -66,6 +66,10 @@ enum TipoMidia {
   ITEM
   COMPROVANTE_PIX
   MONTAGEM_FINAL
+  /** Galeria Instagram — fotos (Firebase Storage). */
+  MONTAGEM_FOTO
+  /** Galeria Instagram — vídeos (Firebase Storage). */
+  MONTAGEM_VIDEO
   CONTRATO
   LOGO_EMPRESA
   CATALOGO_ITEM
@@ -441,11 +445,17 @@ model ItemRomaneio {
 
 model Midia {
   id        String    @id @default(cuid())
-  data      Bytes
+  /** Conteúdo embutido (legado). Galeria de montagem usa storagePath. */
+  data      Bytes?
   mimeType  String    @map("mime_type")
   tamanho   Int
   tipo      TipoMidia
   filename  String?
+  /** Path no Firebase Storage (ex.: festas/{id}/montagem/{midiaId}.jpg). */
+  storagePath    String?  @map("storage_path")
+  /** Se false, não aparece no portal do cliente. */
+  visivelPortal  Boolean  @default(true) @map("visivel_portal")
+  ordem          Int      @default(0)
   criadoEm  DateTime  @default(now()) @map("criado_em")
 
   festaId String? @map("festa_id")

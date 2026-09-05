@@ -26,7 +26,7 @@ export default async function MontagemDetalhePage({
         title="Montagem"
         description="Separar, check-in, montagem, foto e saída."
       >
-        <MontagemOsDetalhe osInicial={os} token={token} />
+        <MontagemOsDetalhe osInicial={os} token={token} user={user} />
       </DashboardShell>
     );
   } catch {
