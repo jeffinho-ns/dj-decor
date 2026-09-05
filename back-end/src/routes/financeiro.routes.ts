@@ -38,6 +38,12 @@ financeiroRoutes.patch(
 );
 
 financeiroRoutes.get(
+  "/a-pagar",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => financeiroController.listAPagar(req, res, next)
+);
+
+financeiroRoutes.get(
   "/colaboradores",
   requireRoles(Role.ADMIN, Role.GERENTE),
   (req, res, next) => financeiroController.listColaboradores(req, res, next)

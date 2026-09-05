@@ -98,6 +98,26 @@ export class FinanceiroController {
     }
   }
 
+  async listAPagar(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await financeiroService.listAPagar(req.query);
+      res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          error: "Parâmetros inválidos",
+          details: error.flatten().fieldErrors,
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+
   async listColaboradores(
     _req: AuthenticatedRequest,
     res: Response,

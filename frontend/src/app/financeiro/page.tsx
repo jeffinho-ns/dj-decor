@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { FinanceiroPainel } from "@/components/financeiro/financeiro-painel";
-import { ColaboradoresFinanceiroLista } from "@/components/financeiro/colaboradores-financeiro-lista";
-import { ComissoesPagar } from "@/components/financeiro/comissoes-pagar";
-import { EquipeDiariasPagar } from "@/components/financeiro/equipe-diarias-pagar";
+import {
+  FinanceiroShell,
+  type FinanceiroAba,
+} from "@/components/financeiro/financeiro-shell";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
   getComissaoRanking,
@@ -20,12 +20,55 @@ export const metadata: Metadata = {
   title: "Financeiro | DJ festas",
 };
 
-export default async function FinanceiroPage() {
+interface FinanceiroPageProps {
+  searchParams: Promise<{ mes?: string; aba?: string }>;
+}
+
+const ABAS_VALIDAS: FinanceiroAba[] = [
+  "pagar",
+  "colaboradores",
+  "caixa",
+  "festas",
+];
+
+function mesAtualSaoPaulo(): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((p) => p.type === "year")?.value ?? "2026";
+  const month = parts.find((p) => p.type === "month")?.value ?? "01";
+  return `${year}-${month}`;
+}
+
+function parseMes(value: string | undefined): string {
+  if (value && /^\d{4}-\d{2}$/.test(value)) {
+    const month = Number(value.slice(5));
+    if (month >= 1 && month <= 12) return value;
+  }
+  return mesAtualSaoPaulo();
+}
+
+function parseAba(value: string | undefined): FinanceiroAba {
+  if (value && (ABAS_VALIDAS as string[]).includes(value)) {
+    return value as FinanceiroAba;
+  }
+  return "pagar";
+}
+
+export default async function FinanceiroPage({
+  searchParams,
+}: FinanceiroPageProps) {
   const { token, user } = await requireSession();
 
   if (user.role !== "ADMIN" && user.role !== "GERENTE") {
     redirect(user.role === "MONTADOR" ? "/montagem" : "/dashboard");
   }
+
+  const params = await searchParams;
+  const mes = parseMes(params.mes);
+  const aba = parseAba(params.aba);
 
   let resumo: FinanceiroResumo | null = null;
   let previsao: PrevisaoCaixa | null = null;
@@ -66,16 +109,14 @@ export default async function FinanceiroPage() {
           <p className="mt-1 opacity-90">{error}</p>
         </div>
       ) : resumo ? (
-        <div className="space-y-6">
-          <ColaboradoresFinanceiroLista token={token} />
-          <FinanceiroPainel
-            resumo={resumo}
-            previsao={previsao}
-            comissaoRanking={comissaoRanking}
-          />
-          <EquipeDiariasPagar token={token} />
-          <ComissoesPagar token={token} />
-        </div>
+        <FinanceiroShell
+          token={token}
+          mes={mes}
+          aba={aba}
+          resumo={resumo}
+          previsao={previsao}
+          comissaoRanking={comissaoRanking}
+        />
       ) : null}
     </DashboardShell>
   );

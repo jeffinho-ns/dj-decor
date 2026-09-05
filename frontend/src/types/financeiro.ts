@@ -94,6 +94,37 @@ export interface FinanceiroResumo {
 
 export type FrequenciaPagamentoEquipe = "SEMANAL" | "QUINZENAL" | "MENSAL";
 
+/** Tipo de lançamento na fila "A pagar". */
+export type APagarTipo =
+  | "COMISSAO_VENDEDOR"
+  | "COMISSAO_SOCIA"
+  | "COMISSAO_DONA"
+  | "DIARIA_MONTAGEM"
+  | "DIARIA_DESMONTAGEM"
+  | string;
+
+/** Linha da fila liberada para pagar (GET /api/financeiro/a-pagar). */
+export interface APagarItem {
+  id: string;
+  beneficiarioId: string;
+  beneficiarioNome: string;
+  tipo: APagarTipo;
+  tipoLabel: string;
+  valor: number;
+  festaId: string;
+  festaTema: string;
+  dataEvento: string;
+  liberado: true;
+}
+
+/** Resposta da fila "A pagar". */
+export interface APagarFila {
+  mes: string | null;
+  label: string;
+  total: number;
+  itens: APagarItem[];
+}
+
 export interface EquipeDiariaFesta {
   id: string;
   tema: string;

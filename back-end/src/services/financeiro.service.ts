@@ -41,8 +41,33 @@ const frequenciaEquipeSchema = z.object({
   frequencia: z.nativeEnum(FrequenciaPagamentoEquipe),
 });
 
+const aPagarQuerySchema = z.object({
+  mes: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/, "mes deve ser YYYY-MM")
+    .optional(),
+});
+
+const TIPO_LABEL_A_PAGAR: Record<TipoRepasse, string> = {
+  COMISSAO_VENDEDOR: "Comissão venda",
+  COMISSAO_SOCIA: "Comissão montagem fora",
+  COMISSAO_DONA: "Repasse Debora",
+  DIARIA_MONTAGEM: "Diária montagem",
+  DIARIA_DESMONTAGEM: "Diária desmontagem",
+};
+
 export type ResumoQueryInput = z.infer<typeof resumoQuerySchema>;
 export type PrevisaoQueryInput = z.infer<typeof previsaoQuerySchema>;
+
+function labelMesBrasil(mes: string): string {
+  const [y, m] = mes.split("-").map(Number);
+  if (!y || !m) return mes;
+  const raw = new Date(Date.UTC(y, m - 1, 15, 12, 0, 0)).toLocaleDateString(
+    "pt-BR",
+    { month: "long", year: "numeric", timeZone: "UTC" }
+  );
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
 
 function toNumber(value: Prisma.Decimal | null | undefined): number {
   if (value == null) {
@@ -624,6 +649,61 @@ export class FinanceiroService {
     const { frequencia } = frequenciaEquipeSchema.parse(rawBody);
     await configuracoesService.update({ frequenciaPagamentoEquipe: frequencia });
     return this.listEquipeDiarias({ offset: 0 });
+  }
+
+  /**
+   * Fila "A pagar": todos os lançamentos PENDENTE já liberados
+   * (festa aconteceu — dataEvento Brasil ≤ hoje), incluindo diárias.
+   * Filtro opcional `mes=YYYY-MM` por elegivelEm ou dataEvento.
+   */
+  async listAPagar(rawQuery?: unknown) {
+    const { mes } = aPagarQuerySchema.parse(rawQuery ?? {});
+    const agora = new Date();
+
+    const list = await prisma.comissao.findMany({
+      where: { status: StatusComissao.PENDENTE },
+      include: {
+        beneficiario: { select: { id: true, nome: true } },
+        festa: {
+          select: { id: true, tema: true, dataEvento: true },
+        },
+      },
+      orderBy: [{ elegivelEm: "asc" }, { criadoEm: "desc" }],
+    });
+
+    const itens = list
+      .filter((item) => festaJaAconteceu(item.festa.dataEvento, agora))
+      .filter((item) => {
+        if (!mes) return true;
+        const ymdEvento = ymdBrasil(item.festa.dataEvento);
+        const ymdElegivel = ymdBrasil(item.elegivelEm);
+        return (
+          ymdEvento.startsWith(mes) || ymdElegivel.startsWith(mes)
+        );
+      })
+      .map((item) => ({
+        id: item.id,
+        beneficiarioId: item.beneficiarioId,
+        beneficiarioNome: item.beneficiario.nome,
+        tipo: item.tipo,
+        tipoLabel: TIPO_LABEL_A_PAGAR[item.tipo] ?? item.tipo,
+        valor: Number(item.valor),
+        festaId: item.festaId,
+        festaTema: item.festa.tema,
+        dataEvento: item.festa.dataEvento.toISOString(),
+        liberado: true as const,
+      }));
+
+    const total = Number(
+      itens.reduce((acc, i) => acc + i.valor, 0).toFixed(2)
+    );
+
+    return {
+      mes: mes ?? null,
+      label: mes ? labelMesBrasil(mes) : "Todos liberados",
+      total,
+      itens,
+    };
   }
 
   /** Lista colaboradores com totais a receber (visão gestão). */

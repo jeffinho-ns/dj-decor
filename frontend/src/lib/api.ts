@@ -70,6 +70,8 @@ import type {
   MeusTotaisPeriodo,
   ColaboradorFinanceiroResumo,
   ColaboradorFinanceiroDetalhe,
+  APagarFila,
+  APagarItem,
 } from "@/types/financeiro";
 import type {
   CheckinPayload,
@@ -1612,6 +1614,48 @@ export async function getEquipeDiarias(
   return normalizeEquipeDiarias(
     await handleResponse<EquipeDiariasPeriodo>(response)
   );
+}
+
+/** Fila liberada para pagar agora (GET /api/financeiro/a-pagar). */
+export async function listAPagar(
+  token: string,
+  mes?: string
+): Promise<APagarFila> {
+  const qs = mes ? `?${new URLSearchParams({ mes }).toString()}` : "";
+  const response = await fetch(`${getBaseUrl()}/api/financeiro/a-pagar${qs}`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  const raw = await handleResponse<Record<string, unknown>>(response);
+  const itensRaw = Array.isArray(raw.itens) ? raw.itens : [];
+  const itens: APagarItem[] = itensRaw.map((row) => {
+    const item = row as Record<string, unknown>;
+    return {
+      id: String(item.id ?? ""),
+      beneficiarioId: String(item.beneficiarioId ?? ""),
+      beneficiarioNome:
+        typeof item.beneficiarioNome === "string" ? item.beneficiarioNome : "",
+      tipo: typeof item.tipo === "string" ? item.tipo : "",
+      tipoLabel:
+        typeof item.tipoLabel === "string"
+          ? item.tipoLabel
+          : String(item.tipo ?? "Repasse"),
+      valor: toNumber(item.valor),
+      festaId: String(item.festaId ?? ""),
+      festaTema: typeof item.festaTema === "string" ? item.festaTema : "",
+      dataEvento:
+        typeof item.dataEvento === "string"
+          ? item.dataEvento
+          : String(item.dataEvento ?? ""),
+      liberado: true as const,
+    };
+  });
+  return {
+    mes: typeof raw.mes === "string" ? raw.mes : null,
+    label: typeof raw.label === "string" ? raw.label : "Todos liberados",
+    total: toNumber(raw.total),
+    itens,
+  };
 }
 
 export async function pagarEquipeDiarias(
