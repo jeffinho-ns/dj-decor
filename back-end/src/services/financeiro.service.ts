@@ -17,7 +17,7 @@ import {
   ymdToUtcNoon,
 } from "../lib/periodo-equipe";
 import { configuracoesService } from "./configuracoes.service";
-import { comissoesService } from "./comissoes.service";
+import { comissoesService, festaJaAconteceu } from "./comissoes.service";
 
 const resumoQuerySchema = z.object({
   inicio: z.coerce.date().optional(),
@@ -659,6 +659,7 @@ export class FinanceiroService {
         valor: true,
         status: true,
         elegivelEm: true,
+        festa: { select: { dataEvento: true } },
       },
     });
 
@@ -669,7 +670,9 @@ export class FinanceiroService {
         liberado: number;
         pago: number;
         comissaoVenda: number;
-        diarias: number;
+        diariaMontagem: number;
+        diariaDesmontagem: number;
+        comissaoFora: number;
         divisao: number;
       }
     >();
@@ -680,24 +683,27 @@ export class FinanceiroService {
         liberado: 0,
         pago: 0,
         comissaoVenda: 0,
-        diarias: 0,
+        diariaMontagem: 0,
+        diariaDesmontagem: 0,
+        comissaoFora: 0,
         divisao: 0,
       };
       const valor = Number(c.valor);
+      const liberado =
+        c.status === StatusComissao.PAGA ||
+        festaJaAconteceu(c.festa.dataEvento, agora);
       if (c.status === StatusComissao.PAGA) acc.pago += valor;
       else {
         acc.pendente += valor;
-        if (c.elegivelEm <= agora) acc.liberado += valor;
+        if (liberado) acc.liberado += valor;
       }
       if (c.tipo === TipoRepasse.COMISSAO_VENDEDOR) acc.comissaoVenda += valor;
-      else if (
-        c.tipo === TipoRepasse.DIARIA_MONTAGEM ||
-        c.tipo === TipoRepasse.DIARIA_DESMONTAGEM
-      ) {
-        acc.diarias += valor;
-      } else {
-        acc.divisao += valor;
-      }
+      else if (c.tipo === TipoRepasse.DIARIA_MONTAGEM)
+        acc.diariaMontagem += valor;
+      else if (c.tipo === TipoRepasse.DIARIA_DESMONTAGEM)
+        acc.diariaDesmontagem += valor;
+      else if (c.tipo === TipoRepasse.COMISSAO_SOCIA) acc.comissaoFora += valor;
+      else acc.divisao += valor;
       byUser.set(c.beneficiarioId, acc);
     }
 
@@ -707,9 +713,12 @@ export class FinanceiroService {
         liberado: 0,
         pago: 0,
         comissaoVenda: 0,
-        diarias: 0,
+        diariaMontagem: 0,
+        diariaDesmontagem: 0,
+        comissaoFora: 0,
         divisao: 0,
       };
+      const totalDiarias = t.diariaMontagem + t.diariaDesmontagem;
       return {
         id: u.id,
         nome: u.nome,
@@ -722,7 +731,10 @@ export class FinanceiroService {
         totalLiberado: Number(t.liberado.toFixed(2)),
         totalPago: Number(t.pago.toFixed(2)),
         totalComissaoVenda: Number(t.comissaoVenda.toFixed(2)),
-        totalDiarias: Number(t.diarias.toFixed(2)),
+        totalDiariaMontagem: Number(t.diariaMontagem.toFixed(2)),
+        totalDiariaDesmontagem: Number(t.diariaDesmontagem.toFixed(2)),
+        totalDiarias: Number(totalDiarias.toFixed(2)),
+        totalComissaoFora: Number(t.comissaoFora.toFixed(2)),
         totalDivisao: Number(t.divisao.toFixed(2)),
       };
     });

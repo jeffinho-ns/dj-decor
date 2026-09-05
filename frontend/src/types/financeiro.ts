@@ -169,7 +169,10 @@ export interface ColaboradorFinanceiroResumo {
   totalLiberado: number;
   totalPago: number;
   totalComissaoVenda: number;
+  totalDiariaMontagem: number;
+  totalDiariaDesmontagem: number;
   totalDiarias: number;
+  totalComissaoFora: number;
   totalDivisao: number;
 }
 

@@ -43,7 +43,7 @@ async function seedUsuarios() {
   const senhaHash = await bcrypt.hash(SENHA_TEMPORARIA, SALT_ROUNDS);
 
   for (const seedUser of seedUsers) {
-    /** Sócia no geral: apenas Lorena. Suellem recebe só comissão de vendedora nas vendas dela. */
+    /** Lorena permanece sócia no cargo/visual; não recebe mais fatia de sociedade no split. */
     const ehSocia = seedUser.nome === "Lorena";
     const ehDona = seedUser.nome === "Debora";
     const user = await prisma.user.upsert({

@@ -38,8 +38,8 @@ export function ColaboradoresFinanceiroLista({
           Colaboradores
         </h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Clique no nome para ver comissões, desmontagens, divisão e festas
-          vendidas. Só gestão (Debora, Suellem, Lorena, admin) acessa.
+          Venda, montagem, desmontagem e comissão fora — no mês do evento.
+          Liberado após o dia da festa.
         </p>
       </div>
 
@@ -53,7 +53,7 @@ export function ColaboradoresFinanceiroLista({
             <li key={c.id}>
               <Link
                 href={`/financeiro/colaboradores/${c.id}`}
-                className="flex items-center justify-between gap-3 py-3 transition-opacity hover:opacity-90"
+                className="flex flex-col gap-2 py-3 transition-opacity hover:opacity-90 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="font-medium text-foreground">{c.nome}</p>
@@ -62,14 +62,30 @@ export function ColaboradoresFinanceiroLista({
                     {c.ehSocia ? " · sócia" : ""}
                     {c.ehDona ? " · dona" : ""}
                   </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Venda {formatCurrency(c.totalComissaoVenda)}
+                    {" · "}
+                    Mont. {formatCurrency(c.totalDiariaMontagem)}
+                    {" · "}
+                    Desm. {formatCurrency(c.totalDiariaDesmontagem)}
+                    {c.totalComissaoFora > 0
+                      ? ` · Fora ${formatCurrency(c.totalComissaoFora)}`
+                      : ""}
+                    {c.totalDivisao > 0
+                      ? ` · Debora ${formatCurrency(c.totalDivisao)}`
+                      : ""}
+                  </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3 text-right">
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      A receber
+                      A receber liberado
                     </p>
                     <p className="tabular-nums text-sm font-semibold text-balloon-sun">
                       {formatCurrency(c.totalLiberado)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Pendente {formatCurrency(c.totalPendente)}
                     </p>
                   </div>
                   <ChevronRight className="size-4 text-muted-foreground" />

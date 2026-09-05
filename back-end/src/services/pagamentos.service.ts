@@ -211,9 +211,8 @@ export class PagamentosService {
           });
         }
 
-        if (quitado) {
-          await comissoesService.gerarSplitFesta(tx, pagamento.festa.id);
-        }
+        // Projeta/atualiza comissões e diárias (FECHADO+); ignore se ainda orçamento.
+        await comissoesService.gerarSplitFesta(tx, pagamento.festa.id);
 
         return {
           pagamento: pagamentoAtualizado,

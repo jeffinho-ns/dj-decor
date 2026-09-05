@@ -1,5 +1,10 @@
 import type { Prisma } from "@prisma/client";
-import { StatusComissao, StatusPagamento, TipoRepasse } from "@prisma/client";
+import {
+  Role,
+  StatusComissao,
+  StatusFesta,
+  TipoRepasse,
+} from "@prisma/client";
 import { z } from "zod";
 import { env } from "../config/env";
 import { prisma } from "../prisma/client";
@@ -16,6 +21,20 @@ const meusTotaisQuerySchema = z.object({
 
 export type RankingQueryInput = z.infer<typeof rankingQuerySchema>;
 export type MeusTotaisQueryInput = z.infer<typeof meusTotaisQuerySchema>;
+
+/** Montadora com acordo especial fora de Paracambi (30%). */
+const NOME_SUELLEM = "Suellem";
+/** Diária de montagem da Suellem só em Paracambi. */
+const DIARIA_SUELLEM_PARACAMBI = 70;
+/** % da Suellem quando a festa é fora de Paracambi. */
+const PCT_SUELLEM_FORA = 30;
+
+const STATUS_COM_REPASSE: StatusFesta[] = [
+  StatusFesta.FECHADO,
+  StatusFesta.PAGO,
+  StatusFesta.EM_MONTAGEM,
+  StatusFesta.CONCLUIDO,
+];
 
 function startOfWeek(date: Date): Date {
   const d = new Date(date);
@@ -70,10 +89,15 @@ function money(value: number): number {
   return Number(value.toFixed(2));
 }
 
+/** Liberado para pagar a partir do dia do evento (inclusive). */
+export function festaJaAconteceu(dataEvento: Date, agora = new Date()): boolean {
+  return ymdBrasil(dataEvento) <= ymdBrasil(agora);
+}
+
 const tipoLabel: Record<TipoRepasse, string> = {
-  COMISSAO_VENDEDOR: "Comissão vendedor",
-  COMISSAO_SOCIA: "Comissão sócia",
-  COMISSAO_DONA: "Repasse dona",
+  COMISSAO_VENDEDOR: "Comissão venda",
+  COMISSAO_SOCIA: "Comissão montagem fora",
+  COMISSAO_DONA: "Repasse Debora",
   DIARIA_MONTAGEM: "Diária montagem",
   DIARIA_DESMONTAGEM: "Diária desmontagem",
 };
@@ -83,12 +107,14 @@ export class ComissoesService {
     return env.COMISSAO_PERCENTUAL_DEFAULT;
   }
 
+
   /**
-   * Gera o split da festa quitada:
-   * vendedor % + cada sócia % + dona (resto), todos sobre o valor total.
-   * Sócia com `sociaDesde` só entra se a venda da festa (vendaEm) foi fechada nessa data ou depois
-   * — pipeline antigo da planilha não entra; só fechamentos novos.
-   * Só fica liberado para pagar a partir do mês da data do evento.
+   * Split / projeção da festa (a partir de FECHADO):
+   * - Vendedor: 10% (em Paracambi; Suellem fora = 30% na venda)
+   * - Outro vendedor fora: 10% + Suellem 30% (montagem fora)
+   * - Lorena não recebe fatia de sócia — só 10% se vendeu
+   * - Debora: resto
+   * Liberação no extrato: a partir do dia do evento.
    */
   async gerarSplitFesta(
     tx: Prisma.TransactionClient,
@@ -101,54 +127,50 @@ export class ComissoesService {
         valor: true,
         dataEvento: true,
         vendedorId: true,
-        quitadoEm: true,
-        vendaEm: true,
-        observacoes: true,
+        status: true,
         kitCatalogo: true,
+        foraParacambi: true,
+        pegueEMonte: true,
+        montadorEquipeId: true,
+        desmontadorEquipeId: true,
+        montadorCarroProprio: true,
+        desmontadorCarroProprio: true,
       },
     });
     if (!festa) return [];
 
-    // Venda só de bolas: sem split de comissão de decoração
     if (festa.kitCatalogo === "SO_BOLAS") {
+      await this.cancelarPendentesTipos(tx, festaId, [
+        TipoRepasse.COMISSAO_VENDEDOR,
+        TipoRepasse.COMISSAO_SOCIA,
+        TipoRepasse.COMISSAO_DONA,
+      ]);
       return [];
     }
 
-    const confirmados = await tx.pagamento.aggregate({
-      where: { festaId, status: StatusPagamento.CONFIRMADO },
-      _sum: { valor: true },
-    });
-    const totalPago = Number(confirmados._sum.valor ?? 0);
-    const valorFesta = Number(festa.valor);
-    if (totalPago + 0.009 < valorFesta) {
+    if (
+      festa.status === StatusFesta.CANCELADO ||
+      !STATUS_COM_REPASSE.includes(festa.status)
+    ) {
+      if (festa.status === StatusFesta.CANCELADO) {
+        await this.cancelarPendentesTipos(tx, festaId, [
+          TipoRepasse.COMISSAO_VENDEDOR,
+          TipoRepasse.COMISSAO_SOCIA,
+          TipoRepasse.COMISSAO_DONA,
+          TipoRepasse.DIARIA_MONTAGEM,
+          TipoRepasse.DIARIA_DESMONTAGEM,
+        ]);
+      }
       return [];
-    }
-
-    // Primeira quitação: grava agora. Já quitadas (ex.: import) mantêm quitadoEm antigo.
-    let quitadoEm = festa.quitadoEm;
-    if (!quitadoEm) {
-      quitadoEm = new Date();
-      await tx.festa.update({
-        where: { id: festaId },
-        data: { quitadoEm },
-      });
     }
 
     const cfg = await configuracoesService.getRegrasFinanceiras();
     const elegivelEm = startOfMonthBrasil(festa.dataEvento);
-
-    const sociasRaw = await tx.user.findMany({
-      where: { ehSocia: true, ativo: true },
-      select: { id: true, sociaDesde: true },
-      orderBy: { nome: "asc" },
-    });
-    // Pipeline importado (planilha) não entra para sócia com data de início.
-    const pipelineImportado = (festa.observacoes || "").includes("import-");
-    const vendaYmd = ymdBrasil(festa.vendaEm);
-    const socias = sociasRaw.filter((socia) => {
-      if (!socia.sociaDesde) return true;
-      if (pipelineImportado) return false;
-      return vendaYmd >= ymdBrasil(socia.sociaDesde);
+    const valorFesta = Number(festa.valor);
+    const pctVendedor = cfg.comissaoVendedorPercentual;
+    const suellem = await tx.user.findFirst({
+      where: { nome: NOME_SUELLEM, ativo: true },
+      select: { id: true, nome: true },
     });
     const donas = await tx.user.findMany({
       where: { ehDona: true, ativo: true },
@@ -156,55 +178,71 @@ export class ComissoesService {
       orderBy: { nome: "asc" },
     });
 
-    // Cancela pendências antigas de comissão % desta festa (modelo antigo ou regeneração)
-    await tx.comissao.updateMany({
-      where: {
-        festaId,
-        status: StatusComissao.PENDENTE,
-        tipo: {
-          in: [
-            TipoRepasse.COMISSAO_VENDEDOR,
-            TipoRepasse.COMISSAO_SOCIA,
-            TipoRepasse.COMISSAO_DONA,
-          ],
-        },
-      },
-      data: { status: StatusComissao.CANCELADA },
-    });
+    await this.cancelarPendentesTipos(tx, festaId, [
+      TipoRepasse.COMISSAO_VENDEDOR,
+      TipoRepasse.COMISSAO_SOCIA,
+      TipoRepasse.COMISSAO_DONA,
+    ]);
 
     const created = [];
+    const vendedorEhSuellem = Boolean(suellem && festa.vendedorId === suellem.id);
+    const fora = Boolean(festa.foraParacambi);
+    let totalComissoes = 0;
 
-    const pctVendedor = cfg.comissaoVendedorPercentual;
-    const valorVendedor = money((valorFesta * pctVendedor) / 100);
-    created.push(
-      await this.upsertRepasse(tx, {
-        festaId,
-        beneficiarioId: festa.vendedorId,
-        tipo: TipoRepasse.COMISSAO_VENDEDOR,
-        percentual: pctVendedor,
-        valor: valorVendedor,
-        elegivelEm,
-      })
-    );
-
-    const pctSocia = cfg.comissaoSociaPercentual;
-    let totalSocias = 0;
-    for (const socia of socias) {
-      const valorSocia = money((valorFesta * pctSocia) / 100);
-      totalSocias += valorSocia;
+    if (fora && vendedorEhSuellem && suellem) {
+      const valor = money((valorFesta * PCT_SUELLEM_FORA) / 100);
+      totalComissoes += valor;
       created.push(
         await this.upsertRepasse(tx, {
           festaId,
-          beneficiarioId: socia.id,
+          beneficiarioId: suellem.id,
+          tipo: TipoRepasse.COMISSAO_VENDEDOR,
+          percentual: PCT_SUELLEM_FORA,
+          valor,
+          elegivelEm,
+        })
+      );
+    } else if (fora && suellem && !vendedorEhSuellem) {
+      const valorVend = money((valorFesta * pctVendedor) / 100);
+      totalComissoes += valorVend;
+      created.push(
+        await this.upsertRepasse(tx, {
+          festaId,
+          beneficiarioId: festa.vendedorId,
+          tipo: TipoRepasse.COMISSAO_VENDEDOR,
+          percentual: pctVendedor,
+          valor: valorVend,
+          elegivelEm,
+        })
+      );
+      const valorSuellem = money((valorFesta * PCT_SUELLEM_FORA) / 100);
+      totalComissoes += valorSuellem;
+      created.push(
+        await this.upsertRepasse(tx, {
+          festaId,
+          beneficiarioId: suellem.id,
           tipo: TipoRepasse.COMISSAO_SOCIA,
-          percentual: pctSocia,
-          valor: valorSocia,
+          percentual: PCT_SUELLEM_FORA,
+          valor: valorSuellem,
+          elegivelEm,
+        })
+      );
+    } else {
+      const valorVend = money((valorFesta * pctVendedor) / 100);
+      totalComissoes += valorVend;
+      created.push(
+        await this.upsertRepasse(tx, {
+          festaId,
+          beneficiarioId: festa.vendedorId,
+          tipo: TipoRepasse.COMISSAO_VENDEDOR,
+          percentual: pctVendedor,
+          valor: valorVend,
           elegivelEm,
         })
       );
     }
 
-    const restante = money(valorFesta - valorVendedor - totalSocias);
+    const restante = money(valorFesta - totalComissoes);
     if (donas.length > 0 && restante > 0) {
       const valorPorDona = money(restante / donas.length);
       const pctDona = money((restante / valorFesta) * 100);
@@ -222,13 +260,130 @@ export class ComissoesService {
       }
     }
 
+    const diarias = await this.sincronizarDiariasEquipe(tx, {
+      festaId: festa.id,
+      dataEvento: festa.dataEvento,
+      foraParacambi: fora,
+      pegueEMonte: festa.pegueEMonte,
+      montadorId: festa.montadorEquipeId,
+      desmontadorId: festa.desmontadorEquipeId,
+      montadorCarroProprio: festa.montadorCarroProprio,
+      desmontadorCarroProprio: festa.desmontadorCarroProprio,
+      suellemId: suellem?.id ?? null,
+    });
+    created.push(...diarias);
+
     return created;
   }
 
   /**
-   * Diárias ao finalizar a OS — apenas desmontagem.
-   * Montagem já está inclusa no plano de venda (sem pagamento separado).
+   * Diárias ao escalar equipe:
+   * - Desmontagem / montagem para quem for escalado (exceto role VENDEDOR)
+   * - Suellem em Paracambi: diária montagem R$70; fora: sem diária (só %)
    */
+  async sincronizarDiariasEquipe(
+    tx: Prisma.TransactionClient,
+    params: {
+      festaId: string;
+      dataEvento: Date;
+      foraParacambi: boolean;
+      pegueEMonte: boolean;
+      montadorId: string | null;
+      desmontadorId: string | null;
+      montadorCarroProprio?: boolean;
+      desmontadorCarroProprio?: boolean;
+      suellemId?: string | null;
+    }
+  ) {
+    const cfg = await configuracoesService.getRegrasFinanceiras();
+    const elegivelEm = startOfMonthBrasil(params.dataEvento);
+    const diaReferencia = inicioDiaBrasil(params.dataEvento);
+    const created = [];
+
+    await this.cancelarPendentesTipos(tx, params.festaId, [
+      TipoRepasse.DIARIA_MONTAGEM,
+      TipoRepasse.DIARIA_DESMONTAGEM,
+    ]);
+
+    if (!params.pegueEMonte && params.montadorId) {
+      const montador = await tx.user.findUnique({
+        where: { id: params.montadorId },
+        select: { id: true, nome: true, role: true },
+      });
+      if (montador && montador.role !== Role.VENDEDOR) {
+        const ehSuellem =
+          montador.id === params.suellemId || montador.nome === NOME_SUELLEM;
+        if (!(ehSuellem && params.foraParacambi)) {
+          const valor = money(
+            ehSuellem
+              ? DIARIA_SUELLEM_PARACAMBI
+              : params.montadorCarroProprio === false
+                ? cfg.diariaMontadorCarroEmpresa
+                : cfg.diariaMontador
+          );
+          const diaria = await this.emitirDiariaSeNova(tx, {
+            festaId: params.festaId,
+            beneficiarioId: montador.id,
+            tipo: TipoRepasse.DIARIA_MONTAGEM,
+            valor,
+            elegivelEm,
+            diaReferencia,
+          });
+          if (diaria) created.push(diaria);
+        }
+      }
+    }
+
+    // Suellem vendeu em Paracambi: diária de montagem R$70 mesmo se ainda não escalada como montadora
+    if (
+      !params.pegueEMonte &&
+      !params.foraParacambi &&
+      params.suellemId &&
+      params.montadorId !== params.suellemId
+    ) {
+      const festa = await tx.festa.findUnique({
+        where: { id: params.festaId },
+        select: { vendedorId: true },
+      });
+      if (festa?.vendedorId === params.suellemId) {
+        const diaria = await this.emitirDiariaSeNova(tx, {
+          festaId: params.festaId,
+          beneficiarioId: params.suellemId,
+          tipo: TipoRepasse.DIARIA_MONTAGEM,
+          valor: money(DIARIA_SUELLEM_PARACAMBI),
+          elegivelEm,
+          diaReferencia,
+        });
+        if (diaria) created.push(diaria);
+      }
+    }
+
+    if (params.desmontadorId) {
+      const desmontador = await tx.user.findUnique({
+        where: { id: params.desmontadorId },
+        select: { id: true, role: true },
+      });
+      if (desmontador && desmontador.role !== Role.VENDEDOR) {
+        const diaria = await this.emitirDiariaSeNova(tx, {
+          festaId: params.festaId,
+          beneficiarioId: desmontador.id,
+          tipo: TipoRepasse.DIARIA_DESMONTAGEM,
+          valor: money(
+            params.desmontadorCarroProprio === false
+              ? cfg.diariaDesmontadorCarroEmpresa
+              : cfg.diariaDesmontador
+          ),
+          elegivelEm,
+          diaReferencia,
+        });
+        if (diaria) created.push(diaria);
+      }
+    }
+
+    return created;
+  }
+
+  /** Ao finalizar OS — regenera diárias/split da festa. */
   async gerarDiariasOs(
     tx: Prisma.TransactionClient,
     params: {
@@ -241,27 +396,22 @@ export class ComissoesService {
       desmontadorCarroProprio?: boolean;
     }
   ) {
-    const cfg = await configuracoesService.getRegrasFinanceiras();
-    const elegivelEm = startOfMonthBrasil(params.dataEvento);
-    const created = [];
+    return this.gerarSplitFesta(tx, params.festaId);
+  }
 
-    if (params.desmontadorId) {
-      const diaria = await this.emitirDiariaSeNova(tx, {
-        festaId: params.festaId,
-        beneficiarioId: params.desmontadorId,
-        tipo: TipoRepasse.DIARIA_DESMONTAGEM,
-        valor: money(
-          params.desmontadorCarroProprio === false
-            ? cfg.diariaDesmontadorCarroEmpresa
-            : cfg.diariaDesmontador
-        ),
-        elegivelEm,
-        diaReferencia: inicioDiaBrasil(params.dataEvento),
-      });
-      if (diaria) created.push(diaria);
-    }
-
-    return created;
+  private async cancelarPendentesTipos(
+    tx: Prisma.TransactionClient,
+    festaId: string,
+    tipos: TipoRepasse[]
+  ) {
+    await tx.comissao.updateMany({
+      where: {
+        festaId,
+        status: StatusComissao.PENDENTE,
+        tipo: { in: tipos },
+      },
+      data: { status: StatusComissao.CANCELADA },
+    });
   }
 
   /** Não duplica diária se a pessoa já tem o mesmo tipo no mesmo dia. */
@@ -383,7 +533,8 @@ export class ComissoesService {
       ...item,
       tipoLabel: tipoLabel[item.tipo],
       liberadoParaPagamento:
-        item.status === StatusComissao.PAGA || item.elegivelEm <= agora,
+        item.status === StatusComissao.PAGA ||
+        festaJaAconteceu(item.festa.dataEvento, agora),
     }));
   }
 
@@ -397,7 +548,6 @@ export class ComissoesService {
     const list = await prisma.comissao.findMany({
       where: {
         status: StatusComissao.PENDENTE,
-        elegivelEm: { lte: agora },
         tipo: {
           notIn: [
             TipoRepasse.DIARIA_MONTAGEM,
@@ -419,20 +569,20 @@ export class ComissoesService {
       orderBy: [{ elegivelEm: "asc" }, { criadoEm: "desc" }],
     });
 
-    return list.map((item) => ({
-      ...item,
-      tipoLabel: tipoLabel[item.tipo],
-      vendedor: item.beneficiario,
-    }));
+    return list
+      .filter((item) => festaJaAconteceu(item.festa.dataEvento, agora))
+      .map((item) => ({
+        ...item,
+        tipoLabel: tipoLabel[item.tipo],
+        vendedor: item.beneficiario,
+      }));
   }
 
   async marcarPagas(ids: string[]) {
-    const agora = new Date();
     return prisma.comissao.updateMany({
       where: {
         id: { in: ids },
         status: StatusComissao.PENDENTE,
-        elegivelEm: { lte: agora },
       },
       data: { status: StatusComissao.PAGA, pagoEm: new Date() },
     });
@@ -486,22 +636,14 @@ export class ComissoesService {
    */
   async reconciliarQuitadas() {
     const festas = await prisma.festa.findMany({
-      select: {
-        id: true,
-        valor: true,
-        pagamentos: {
-          where: { status: StatusPagamento.CONFIRMADO },
-          select: { valor: true },
-        },
-      },
+      where: { status: { in: STATUS_COM_REPASSE } },
+      select: { id: true },
     });
 
     let processadas = 0;
     let geradas = 0;
 
     for (const festa of festas) {
-      const pago = festa.pagamentos.reduce((acc, p) => acc + Number(p.valor), 0);
-      if (pago + 0.009 < Number(festa.valor)) continue;
       processadas += 1;
       const created = await prisma.$transaction(async (tx) =>
         this.gerarSplitFesta(tx, festa.id)
@@ -623,7 +765,8 @@ export class ComissoesService {
     const lancamentos = filtrados.map((item) => {
       const valor = Number(item.valor);
       const liberado =
-        item.status === StatusComissao.PAGA || item.elegivelEm <= agora;
+        item.status === StatusComissao.PAGA ||
+        festaJaAconteceu(item.festa.dataEvento, agora);
       if (item.status === StatusComissao.PAGA) totalPago += valor;
       else {
         totalPendente += valor;

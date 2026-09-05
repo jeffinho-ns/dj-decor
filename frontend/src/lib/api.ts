@@ -1043,7 +1043,10 @@ export async function listColaboradoresFinanceiro(
     totalLiberado: toNumber(row.totalLiberado),
     totalPago: toNumber(row.totalPago),
     totalComissaoVenda: toNumber(row.totalComissaoVenda),
+    totalDiariaMontagem: toNumber(row.totalDiariaMontagem),
+    totalDiariaDesmontagem: toNumber(row.totalDiariaDesmontagem),
     totalDiarias: toNumber(row.totalDiarias),
+    totalComissaoFora: toNumber(row.totalComissaoFora),
     totalDivisao: toNumber(row.totalDivisao),
   }));
 }

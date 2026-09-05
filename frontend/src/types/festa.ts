@@ -43,6 +43,7 @@ export interface Festa {
   observacoes?: string | null;
   notasInternas?: string | null;
   endereco: string;
+  foraParacambi?: boolean;
   criadoEm: string;
   clienteId: string;
   vendedorId: string;
@@ -101,6 +102,7 @@ export interface CreateFestaPayload {
   observacoes?: string | null;
   notasInternas?: string | null;
   endereco: string;
+  foraParacambi?: boolean;
   valor: number;
   montadorEquipeId?: string | null;
   desmontadorEquipeId?: string | null;
@@ -128,6 +130,7 @@ export interface UpdateFestaPayload {
   observacoes?: string | null;
   notasInternas?: string | null;
   endereco?: string;
+  foraParacambi?: boolean;
   valor?: number;
   nomeCliente?: string;
   telefone?: string;

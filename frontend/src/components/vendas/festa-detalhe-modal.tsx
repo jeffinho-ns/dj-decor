@@ -237,6 +237,28 @@ export function FestaDetalheModal({
               <MapPin className="mt-0.5 size-4 shrink-0 text-balloon-sky" />
               <span className="min-w-0 break-words">{current.endereco}</span>
             </li>
+            {canEdit && token ? (
+              <li>
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-balloon-pink"
+                    checked={Boolean(current.foraParacambi)}
+                    onChange={async (e) => {
+                      const updated = await updateFesta(
+                        current.id,
+                        { foraParacambi: e.target.checked },
+                        token
+                      );
+                      handleUpdated(updated);
+                    }}
+                  />
+                  Fora de Paracambi (Suellem 30%)
+                </label>
+              </li>
+            ) : current.foraParacambi ? (
+              <li className="text-xs text-balloon-pink">Fora de Paracambi</li>
+            ) : null}
           </ul>
 
           {current.itensFaltaEstoque && current.itensFaltaEstoque.length > 0 ? (

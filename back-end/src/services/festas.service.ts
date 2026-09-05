@@ -68,6 +68,7 @@ const createFestaSchema = z
   observacoes: z.string().max(2000).nullable().optional(),
   notasInternas: z.string().max(4000).nullable().optional(),
   endereco: z.string().min(5, "Endereço é obrigatório"),
+  foraParacambi: z.boolean().optional().default(false),
   valor: z.coerce.number().positive("Valor deve ser positivo"),
   status: z.nativeEnum(StatusFesta).optional().default(StatusFesta.ORCAMENTO),
   vendedorId: z.string().optional(),
@@ -116,6 +117,7 @@ const updateFestaSchema = z.object({
   observacoes: z.string().max(2000).nullable().optional(),
   notasInternas: z.string().max(4000).nullable().optional(),
   endereco: z.string().min(5).optional(),
+  foraParacambi: z.boolean().optional(),
   valor: z.coerce.number().positive().optional(),
   status: z.nativeEnum(StatusFesta).optional(),
   nomeCliente: z.string().min(2).optional(),
@@ -292,6 +294,7 @@ export class FestasService {
         observacoes,
         notasInternas: data.notasInternas?.trim() || null,
         endereco: data.endereco,
+        foraParacambi: data.foraParacambi ?? false,
         clienteId: cliente.id,
         vendedorId,
         portalToken: generatePortalToken(),
@@ -438,6 +441,9 @@ export class FestasService {
           ? { notasInternas: data.notasInternas?.trim() || null }
           : {}),
         ...(data.endereco !== undefined ? { endereco: data.endereco } : {}),
+        ...(data.foraParacambi !== undefined
+          ? { foraParacambi: data.foraParacambi }
+          : {}),
         ...(data.valor !== undefined ? { valor: data.valor } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),
         ...(data.montadorEquipeId !== undefined
@@ -459,6 +465,14 @@ export class FestasService {
     });
 
     await osService.syncEquipeFromFesta(id);
+
+    try {
+      await prisma.$transaction((tx) =>
+        comissoesService.gerarSplitFesta(tx, id)
+      );
+    } catch (error) {
+      console.error("[festas] falha ao sincronizar repasses após update", error);
+    }
 
     if (data.notasInternas !== undefined) {
       await prisma.conversa.updateMany({
@@ -573,21 +587,30 @@ export class FestasService {
         include: festaInclude,
       });
 
-      if (data.status === StatusFesta.PAGO) {
-        const confirmados = await tx.pagamento.aggregate({
-          where: { festaId: id, status: StatusPagamento.CONFIRMADO },
-          _sum: { valor: true },
-        });
-        const totalPago = Number(confirmados._sum.valor ?? 0);
-        if (totalPago + 0.009 >= Number(festaUpdated.valor)) {
-          if (!festaUpdated.quitadoEm) {
+      if (
+        data.status === StatusFesta.PAGO ||
+        data.status === StatusFesta.FECHADO ||
+        data.status === StatusFesta.EM_MONTAGEM ||
+        data.status === StatusFesta.CONCLUIDO ||
+        data.status === StatusFesta.CANCELADO
+      ) {
+        if (data.status === StatusFesta.PAGO) {
+          const confirmados = await tx.pagamento.aggregate({
+            where: { festaId: id, status: StatusPagamento.CONFIRMADO },
+            _sum: { valor: true },
+          });
+          const totalPago = Number(confirmados._sum.valor ?? 0);
+          if (
+            totalPago + 0.009 >= Number(festaUpdated.valor) &&
+            !festaUpdated.quitadoEm
+          ) {
             await tx.festa.update({
               where: { id },
               data: { quitadoEm: new Date() },
             });
           }
-          await comissoesService.gerarSplitFesta(tx, id);
         }
+        await comissoesService.gerarSplitFesta(tx, id);
       }
 
       return festaUpdated;

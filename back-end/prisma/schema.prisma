@@ -237,6 +237,8 @@ model Festa {
   /** Trocas pedidas pelo cliente (mesa, cilindros, etc.) — visível para a equipe. */
   notasInternas         String?           @map("notas_internas") @db.Text
   endereco              String
+  /** true = festa fora de Paracambi (Suellem: 30% montagem; sem diária local). */
+  foraParacambi         Boolean           @default(false) @map("fora_paracambi")
   alertaCompraEstoque   Boolean           @default(false) @map("alerta_compra_estoque")
   itensFaltaEstoque     String[]          @default([]) @map("itens_falta_estoque")
   portalToken           String?           @unique @map("portal_token")

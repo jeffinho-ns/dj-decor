@@ -148,6 +148,8 @@ export function NovaVendaForm({
   const [extrasManuais, setExtrasManuais] = useState<string[]>([]);
   const [kitId, setKitId] = useState<CatalogoKitId | "">("");
   const [pegueEMonte, setPegueEMonte] = useState(false);
+  /** Festa fora de Paracambi — Suellem 30% / sem diária local. */
+  const [foraParacambi, setForaParacambi] = useState(false);
   /** Quando pegue e monte: montador leva e busca (+ R$30). */
   const [montadorLevaBusca, setMontadorLevaBusca] = useState(false);
   const [enderecoEmpresa, setEnderecoEmpresa] = useState(
@@ -721,6 +723,7 @@ export function NovaVendaForm({
           observacoes: observacoes || null,
           notasInternas: data.notasInternas?.trim() || null,
           endereco: enderecoFinal,
+          foraParacambi,
           valor: soBolas
             ? bolasOrcamento.valorCliente
             : Number(data.valor.replace(",", ".")),
@@ -1586,6 +1589,23 @@ export function NovaVendaForm({
               <p className="text-xs text-destructive">
                 {errors.endereco.message}
               </p>
+            ) : null}
+            {!pegueEMonte || montadorLevaBusca ? (
+              <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 rounded-xl neo-inset px-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-balloon-pink"
+                  checked={foraParacambi}
+                  onChange={(e) => setForaParacambi(e.target.checked)}
+                />
+                <span>
+                  Fora de Paracambi
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                    Suellem: 30% (montagem/venda). Em Paracambi ela ganha 10% +
+                    diária R$70 se montar.
+                  </span>
+                </span>
+              </label>
             ) : null}
           </div>
 
