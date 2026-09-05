@@ -54,6 +54,7 @@ import {
   type CatalogoKitId,
 } from "@/lib/catalogo-kits";
 import { formatCurrency } from "@/lib/format";
+import { enderecoPareceForaParacambi } from "@/lib/paracambi";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types/auth";
 import type {
@@ -150,6 +151,8 @@ export function NovaVendaForm({
   const [pegueEMonte, setPegueEMonte] = useState(false);
   /** Festa fora de Paracambi — Suellem 30% / sem diária local. */
   const [foraParacambi, setForaParacambi] = useState(false);
+  /** Usuário desmarcou manualmente apesar do endereço parecer fora. */
+  const foraParacambiClearedRef = useRef(false);
   /** Quando pegue e monte: montador leva e busca (+ R$30). */
   const [montadorLevaBusca, setMontadorLevaBusca] = useState(false);
   const [enderecoEmpresa, setEnderecoEmpresa] = useState(
@@ -227,6 +230,12 @@ export function NovaVendaForm({
   const tamanhoDecoracao = useWatch({ control, name: "tamanhoDecoracao" });
   const valorWatch = useWatch({ control, name: "valor" });
   const telefone = useWatch({ control, name: "telefone" });
+  const enderecoWatch = useWatch({ control, name: "endereco" });
+
+  /** Pegue e monte só depósito — não aplica regra de fora Paracambi. */
+  const pegueDepositoOnly = pegueEMonte && !montadorLevaBusca;
+  const enderecoPareceFora =
+    !pegueDepositoOnly && enderecoPareceForaParacambi(enderecoWatch);
 
   const kitSelecionado = getCatalogoKit(kitId);
   const taxaEntrega =
@@ -422,6 +431,22 @@ export function NovaVendaForm({
     const deposito = enderecoEmpresa.trim() || "Depósito da empresa";
     setValue("endereco", deposito, { shouldValidate: true });
   }, [pegueEMonte, montadorLevaBusca, enderecoEmpresa, setValue]);
+
+  /** Sugere fora de Paracambi quando o endereço parece fora (checkbox ON). */
+  useEffect(() => {
+    if (pegueDepositoOnly) {
+      setForaParacambi(false);
+      foraParacambiClearedRef.current = false;
+      return;
+    }
+    if (enderecoPareceFora) {
+      if (!foraParacambiClearedRef.current) {
+        setForaParacambi(true);
+      }
+      return;
+    }
+    foraParacambiClearedRef.current = false;
+  }, [enderecoPareceFora, pegueDepositoOnly]);
 
   useEffect(() => {
     if (valorManual) return;
@@ -827,6 +852,8 @@ export function NovaVendaForm({
     setKitId("");
     setPegueEMonte(false);
     setMontadorLevaBusca(false);
+    setForaParacambi(false);
+    foraParacambiClearedRef.current = false;
     setAddonIds([]);
     setBolasQty({});
     setBolasQtyDraft({});
@@ -1591,21 +1618,49 @@ export function NovaVendaForm({
               </p>
             ) : null}
             {!pegueEMonte || montadorLevaBusca ? (
-              <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 rounded-xl neo-inset px-3 py-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-balloon-pink"
-                  checked={foraParacambi}
-                  onChange={(e) => setForaParacambi(e.target.checked)}
-                />
-                <span>
-                  Fora de Paracambi
-                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                    Suellem: 30% (montagem/venda). Em Paracambi ela ganha 10% +
-                    diária R$70 se montar.
+              <div className="mt-2 space-y-2">
+                {enderecoPareceFora && !foraParacambi ? (
+                  <div
+                    role="alert"
+                    className="rounded-xl border border-balloon-sun/40 bg-balloon-sun/15 px-3 py-2 text-sm text-foreground"
+                  >
+                    <p className="font-semibold text-balloon-sun">
+                      Endereço parece fora de Paracambi
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Marque &quot;Fora de Paracambi&quot; para Suellem receber
+                      30%. Sem isso a comissão fica errada.
+                    </p>
+                  </div>
+                ) : null}
+                <label
+                  className={cn(
+                    "flex min-h-11 cursor-pointer items-center gap-2 rounded-xl neo-inset px-3 py-2 text-sm",
+                    enderecoPareceFora &&
+                      !foraParacambi &&
+                      "ring-2 ring-balloon-sun/40"
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-balloon-pink"
+                    checked={foraParacambi}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      foraParacambiClearedRef.current =
+                        !checked && enderecoPareceFora;
+                      setForaParacambi(checked);
+                    }}
+                  />
+                  <span>
+                    Fora de Paracambi
+                    <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                      Suellem: 30% (montagem/venda). Em Paracambi ela ganha 10% +
+                      diária R$70 se montar.
+                    </span>
                   </span>
-                </span>
-              </label>
+                </label>
+              </div>
             ) : null}
           </div>
 

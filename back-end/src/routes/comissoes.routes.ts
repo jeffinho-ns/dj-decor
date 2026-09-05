@@ -39,7 +39,7 @@ comissoesRoutes.post(
 
 comissoesRoutes.post(
   "/reconciliar",
-  requireRoles(Role.ADMIN),
+  requireRoles(Role.ADMIN, Role.GERENTE),
   (req, res, next) => comissoesController.reconciliar(req, res, next)
 );
 

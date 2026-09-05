@@ -25,6 +25,7 @@ import { RiscoBadge } from "@/components/vendas/risco-badge";
 import { formatCurrency } from "@/lib/format";
 import { nomeDoKit } from "@/lib/catalogo-kits";
 import { updateFesta } from "@/lib/api";
+import { enderecoPareceForaParacambi } from "@/lib/paracambi";
 import { cn } from "@/lib/utils";
 import type { Festa, StatusFesta } from "@/types/festa";
 
@@ -237,9 +238,34 @@ export function FestaDetalheModal({
               <MapPin className="mt-0.5 size-4 shrink-0 text-balloon-sky" />
               <span className="min-w-0 break-words">{current.endereco}</span>
             </li>
+            {enderecoPareceForaParacambi(current.endereco) &&
+            !current.foraParacambi ? (
+              <li>
+                <div
+                  role="alert"
+                  className="rounded-xl border border-balloon-sun/40 bg-balloon-sun/15 px-3 py-2 text-sm"
+                >
+                  <p className="font-semibold text-balloon-sun">
+                    Endereço parece fora de Paracambi
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {canEdit && token
+                      ? "Marque o checkbox abaixo para Suellem receber 30%. Sem isso a comissão fica errada."
+                      : "Esta festa ainda não está marcada como fora — Suellem pode estar sem os 30%."}
+                  </p>
+                </div>
+              </li>
+            ) : null}
             {canEdit && token ? (
               <li>
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <label
+                  className={cn(
+                    "flex cursor-pointer items-center gap-2 rounded-xl neo-inset px-3 py-2 text-sm",
+                    enderecoPareceForaParacambi(current.endereco) &&
+                      !current.foraParacambi &&
+                      "ring-2 ring-balloon-sun/40"
+                  )}
+                >
                   <input
                     type="checkbox"
                     className="size-4 accent-balloon-pink"

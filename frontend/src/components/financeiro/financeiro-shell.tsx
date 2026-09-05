@@ -9,6 +9,7 @@ import { ColaboradoresFinanceiroLista } from "@/components/financeiro/colaborado
 import { FestasFinanceiroMes } from "@/components/financeiro/festas-financeiro-mes";
 import { FilaAPagar } from "@/components/financeiro/fila-a-pagar";
 import { FinanceiroPainel } from "@/components/financeiro/financeiro-painel";
+import { ReconciliarComissoes } from "@/components/financeiro/reconciliar-comissoes";
 import { ResumoDeboraMes } from "@/components/financeiro/resumo-debora-mes";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -105,6 +106,7 @@ export function FinanceiroShell({
 
       <div className="space-y-3">
         <ResumoDeboraMes token={token} mes={mes} />
+        <ReconciliarComissoes token={token} />
         <AlertaForaParacambi token={token} mes={mes} />
       </div>
 

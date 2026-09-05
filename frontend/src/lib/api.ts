@@ -920,6 +920,17 @@ export async function marcarComissoesPagas(
   return handleResponse(response);
 }
 
+/** Regenera splits/diárias de festas FECHADO+ (POST /api/comissoes/reconciliar). */
+export async function reconciliarComissoes(
+  token: string
+): Promise<{ processadas: number; geradas: number }> {
+  const response = await fetch(`${getBaseUrl()}/api/comissoes/reconciliar`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+  return handleResponse(response);
+}
+
 export async function listComissoesPendentes(token: string): Promise<unknown[]> {
   const response = await fetch(`${getBaseUrl()}/api/comissoes/pendentes`, {
     headers: authHeaders(token),
