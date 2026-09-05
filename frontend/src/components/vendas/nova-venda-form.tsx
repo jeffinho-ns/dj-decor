@@ -39,6 +39,7 @@ import {
 } from "@/lib/api";
 import {
   CATALOGO_ADDONS,
+  CATALOGO_EXTRAS_CASAMENTO,
   CATALOGO_EXTRAS_METROS,
   CATALOGO_KITS,
   ITEM_TAXA_PEGUE_ENTREGA,
@@ -47,6 +48,7 @@ import {
   calcularOrcamento,
   filtrarAddonsParaKit,
   getCatalogoKit,
+  kitAceitaExtrasCasamento,
   kitAceitaExtrasMetros,
   montarTextoOrcamento,
   type CatalogoKitId,
@@ -1301,6 +1303,49 @@ export function NovaVendaForm({
               </div>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 {CATALOGO_EXTRAS_METROS.map((addon) => {
+                  const checked = addonIds.includes(addon.id);
+                  return (
+                    <label
+                      key={addon.id}
+                      className={cn(
+                        "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm transition-all md:min-h-0 md:px-3 md:py-2.5",
+                        checked ? "neo-lilac" : "neo-sm"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-balloon-lilac"
+                          checked={checked}
+                          onChange={() => toggleAddon(addon.id)}
+                        />
+                        {addon.nome}
+                      </span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {formatCurrency(addon.valor)}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        ) : null}
+
+        {kitAceitaExtrasCasamento(kitId) ? (
+          <>
+            <Separator className="bg-border/60" />
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-balloon-lilac">
+                  Decoração extra (Casamento pós civil)
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Mesas e cerimônia para kits de casamento e pós civil.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {CATALOGO_EXTRAS_CASAMENTO.map((addon) => {
                   const checked = addonIds.includes(addon.id);
                   return (
                     <label

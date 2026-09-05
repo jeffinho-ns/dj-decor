@@ -1,5 +1,6 @@
 import {
   CATALOGO_ADDONS,
+  CATALOGO_EXTRAS_CASAMENTO,
   CATALOGO_EXTRAS_METROS,
   ITEM_TAXA_PEGUE_ENTREGA,
   TAXA_PEGUE_ENTREGA,
@@ -10,7 +11,11 @@ import {
 
 const PRECO_POR_NOME = new Map<string, number>();
 
-for (const addon of [...CATALOGO_ADDONS, ...CATALOGO_EXTRAS_METROS]) {
+for (const addon of [
+  ...CATALOGO_ADDONS,
+  ...CATALOGO_EXTRAS_METROS,
+  ...CATALOGO_EXTRAS_CASAMENTO,
+]) {
   PRECO_POR_NOME.set(addon.nome.toLowerCase(), addon.valor);
 }
 PRECO_POR_NOME.set(ITEM_TAXA_PEGUE_ENTREGA.toLowerCase(), TAXA_PEGUE_ENTREGA);
@@ -51,7 +56,11 @@ export function calcularValorCatalogo(params: {
 }
 
 export function catalogoAddonsDisponiveis() {
-  return [...CATALOGO_ADDONS, ...CATALOGO_EXTRAS_METROS];
+  return [
+    ...CATALOGO_ADDONS,
+    ...CATALOGO_EXTRAS_METROS,
+    ...CATALOGO_EXTRAS_CASAMENTO,
+  ];
 }
 
 export function precoItemCatalogo(nome: string): number | null {

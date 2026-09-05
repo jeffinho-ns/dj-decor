@@ -76,6 +76,7 @@ enum TipoMidia {
 enum TipoCatalogoAddon {
   ADDON
   EXTRA_METROS
+  EXTRA_CASAMENTO
 }
 
 enum TipoMovimentacao {

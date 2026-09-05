@@ -7,14 +7,20 @@ export type CatalogoKitId =
   | "intermediaria"
   | "media"
   | "decoracao-4m"
-  | "decoracao-6m";
+  | "decoracao-6m"
+  | "casamento-trio-bj"
+  | "casamento-dupla-bj"
+  | "casamento-kit-bj"
+  | "pos-civil-p"
+  | "pos-civil-m";
 
 export type CatalogoCategoria =
   | "mesa"
   | "pocket"
   | "intermediaria"
   | "media"
-  | "metros";
+  | "metros"
+  | "casamento";
 
 export interface CatalogoKit {
   id: CatalogoKitId;
@@ -148,6 +154,87 @@ export const CATALOGO_KITS: CatalogoKit[] = [
       "Transporte",
     ],
   },
+  {
+    id: "casamento-trio-bj",
+    nome: "Casamento com Trio BJ",
+    categoria: "casamento",
+    descricaoCurta: "Tapete, arranjos, mini vazinhos e bandejas — trio BJ.",
+    valorEquipe: 680,
+    tamanhoSugerido: "M",
+    itens: [
+      "Tapete",
+      "2 Arranjos",
+      "6 Mini vazinhos",
+      "10 Bandejas",
+      "1 Arranjo de chão",
+    ],
+  },
+  {
+    id: "casamento-dupla-bj",
+    nome: "Casamento com Dupla BJ",
+    categoria: "casamento",
+    descricaoCurta: "Tapete, arranjos G/M, mini vazinhos e bandejas — dupla BJ.",
+    valorEquipe: 1200,
+    tamanhoSugerido: "G",
+    itens: [
+      "Tapete",
+      "2 Arranjos G",
+      "2 Arranjos M",
+      "12 Mini vazinhos",
+      "20 Bandejas",
+      "2 Arranjos de chão",
+    ],
+  },
+  {
+    id: "casamento-kit-bj",
+    nome: "Casamento Kit BJ",
+    categoria: "casamento",
+    descricaoCurta:
+      "Kit completo BJ com varal de lâmpadas âmbar e acabamento aéreo.",
+    valorEquipe: 1900,
+    tamanhoSugerido: "GG",
+    itens: [
+      "Tapete",
+      "4 Arranjos G",
+      "2 Arranjos M",
+      "18 Mini vazinhos",
+      "30 a 35 Bandejas",
+      "Par de Bandeja dupla para Bem Casados",
+      "Varal de Lâmpadas Âmbar",
+      "Acabamento Aéreo com folhagens",
+    ],
+  },
+  {
+    id: "pos-civil-p",
+    nome: "Pós Civil P",
+    categoria: "casamento",
+    descricaoCurta: "Arco ou fundo livre, mesinhas e arranjos — formato P.",
+    valorEquipe: 250,
+    tamanhoSugerido: "P",
+    itens: [
+      "1 Arco Romano vazado ou fundo livre",
+      "3 Mesinhas douradas ou uma mesa rústica e um tapete",
+      "4 Bandejas",
+      "2 Arranjos de flores",
+    ],
+  },
+  {
+    id: "pos-civil-m",
+    nome: "Pós Civil M",
+    categoria: "casamento",
+    descricaoCurta: "Mesas ou trio tendência, tapete e floreira — formato M.",
+    valorEquipe: 450,
+    tamanhoSugerido: "M",
+    itens: [
+      "2 Mesas ou Trio Tendência",
+      "Tapete",
+      "Dupla de Arranjos grandes",
+      "6 Mini vazinhos de flores",
+      "1 Floreira de chão",
+      "8 a 10 Bandejas",
+      "Fundo Livre ou Cortinado",
+    ],
+  },
 ];
 
 /** Add-ons gerais disponíveis para qualquer kit. */
@@ -180,12 +267,45 @@ export const CATALOGO_EXTRAS_METROS: CatalogoAddon[] = [
   },
 ];
 
+/**
+ * Extras exclusivos dos kits de casamento / pós civil.
+ * Só devem aparecer quando um desses kits estiver selecionado.
+ */
+export const CATALOGO_EXTRAS_CASAMENTO: CatalogoAddon[] = [
+  { id: "mesa-bem-casado", nome: "Mesa Bem Casado", valor: 180 },
+  {
+    id: "mesa-bem-casado-armario",
+    nome: "Mesa Bem Casado com Armário",
+    valor: 380,
+  },
+  {
+    id: "mesa-cerimonia-passarela",
+    nome: "Mesa Cerimônia com passarela de noiva",
+    valor: 180,
+  },
+];
+
 const EXTRA_METROS_IDS = new Set(CATALOGO_EXTRAS_METROS.map((item) => item.id));
+const EXTRA_CASAMENTO_IDS = new Set(
+  CATALOGO_EXTRAS_CASAMENTO.map((item) => item.id)
+);
 
 export function kitAceitaExtrasMetros(
   kitId: string | null | undefined
 ): boolean {
   return kitId === "decoracao-4m" || kitId === "decoracao-6m";
+}
+
+export function kitAceitaExtrasCasamento(
+  kitId: string | null | undefined
+): boolean {
+  return (
+    kitId === "casamento-trio-bj" ||
+    kitId === "casamento-dupla-bj" ||
+    kitId === "casamento-kit-bj" ||
+    kitId === "pos-civil-p" ||
+    kitId === "pos-civil-m"
+  );
 }
 
 export function getCatalogoKit(id: string | null | undefined): CatalogoKit | undefined {
@@ -207,18 +327,24 @@ export function valorDoKit(kit: CatalogoKit, pegueEMonte: boolean): number {
 
 export function getAddonsByIds(addonIds: string[]): CatalogoAddon[] {
   const set = new Set(addonIds);
-  return [...CATALOGO_ADDONS, ...CATALOGO_EXTRAS_METROS].filter((addon) =>
-    set.has(addon.id)
-  );
+  return [
+    ...CATALOGO_ADDONS,
+    ...CATALOGO_EXTRAS_METROS,
+    ...CATALOGO_EXTRAS_CASAMENTO,
+  ].filter((addon) => set.has(addon.id));
 }
 
-/** Remove extras de 4m/6m quando o kit selecionado não os permite. */
+/** Remove extras exclusivos quando o kit selecionado não os permite. */
 export function filtrarAddonsParaKit(
   addonIds: string[],
   kitId: string | null | undefined
 ): string[] {
-  if (kitAceitaExtrasMetros(kitId)) return addonIds;
-  return addonIds.filter((id) => !EXTRA_METROS_IDS.has(id));
+  return addonIds.filter((id) => {
+    if (EXTRA_METROS_IDS.has(id) && !kitAceitaExtrasMetros(kitId)) return false;
+    if (EXTRA_CASAMENTO_IDS.has(id) && !kitAceitaExtrasCasamento(kitId))
+      return false;
+    return true;
+  });
 }
 
 /** Taxa fixa quando montador leva e busca no modo pegue e monte. */
