@@ -273,12 +273,12 @@ export function MontagemGaleria({
 
         {canEdit ? (
           <>
+            {/* Sem capture= — no mobile abre o seletor (Galeria / Câmera / Arquivos). */}
             <input
               ref={inputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm"
               multiple
-              capture="environment"
               className="sr-only"
               disabled={pending || (!podeAddFoto && !podeAddVideo)}
               onChange={(e) => {
