@@ -288,19 +288,40 @@ export class AtendimentoService {
       );
     }
 
-    await prisma.mensagemCanal.create({
-      data: {
-        conversaId: conversa.id,
-        direcao: DirecaoMensagem.IN,
-        texto: params.texto ?? null,
-        midiaUrl: params.midiaUrl ?? null,
-        midiaMimeType: params.midiaMimeType ?? null,
-        providerMessageId: params.providerMessageId ?? null,
-        autorTipo: "CLIENTE",
-        criadoEm: params.timestamp ?? new Date(),
-        festaId: conversa.festaId,
-      },
-    });
+    try {
+      await prisma.mensagemCanal.create({
+        data: {
+          conversaId: conversa.id,
+          direcao: DirecaoMensagem.IN,
+          texto: params.texto ?? null,
+          midiaUrl: params.midiaUrl ?? null,
+          midiaMimeType: params.midiaMimeType ?? null,
+          providerMessageId: params.providerMessageId ?? null,
+          autorTipo: "CLIENTE",
+          criadoEm: params.timestamp ?? new Date(),
+          festaId: conversa.festaId,
+        },
+      });
+    } catch (err: any) {
+      // Corrida: outro worker já gravou o mesmo wamid
+      if (
+        params.providerMessageId &&
+        (err?.code === "P2002" ||
+          /unique|duplicate/i.test(String(err?.message || "")))
+      ) {
+        const existing = await prisma.mensagemCanal.findUnique({
+          where: { providerMessageId: params.providerMessageId },
+        });
+        if (existing) {
+          return {
+            conversa: await this.getById(existing.conversaId),
+            created: false,
+            shouldRunAgent: false,
+          };
+        }
+      }
+      throw err;
+    }
 
     await this.registrarEvento(conversa.id, TipoAtendimentoEvento.MENSAGEM, {
       direcao: "IN",
