@@ -2,6 +2,7 @@ import { CanalAtendimento, Role, StatusFesta, TamanhoDecoracao } from "@prisma/c
 import { z } from "zod";
 import { prisma } from "../prisma/client";
 import { atendimentoService } from "./atendimento.service";
+import { bolasService } from "./bolas.service";
 import { catalogoService } from "./catalogo.service";
 import { festasService } from "./festas.service";
 
@@ -176,9 +177,10 @@ export class IntegracoesIaService {
   }
 
   async listCatalogo() {
-    const [kits, addons] = await Promise.all([
+    const [kits, addons, bolas] = await Promise.all([
       catalogoService.listKits(true),
       catalogoService.listAddons(true),
+      bolasService.listCatalogo(true),
     ]);
     return {
       kits: kits.map((k) => ({
@@ -197,6 +199,12 @@ export class IntegracoesIaService {
         nome: a.nome,
         valor: Number(a.valor),
         tipo: a.tipo,
+      })),
+      bolas: bolas.map((b) => ({
+        id: b.id,
+        nome: b.nome,
+        descricao: b.descricao,
+        valorTabela: Number(b.valorTabela),
       })),
     };
   }
