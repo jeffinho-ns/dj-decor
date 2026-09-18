@@ -1,10 +1,11 @@
-import { CanalAtendimento, Role, StatusFesta, TamanhoDecoracao } from "@prisma/client";
+import { CanalAtendimento, Role, StatusFesta, TamanhoDecoracao, TipoMidia } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
 import { atendimentoService } from "./atendimento.service";
 import { bolasService } from "./bolas.service";
 import { catalogoService } from "./catalogo.service";
 import { festasService } from "./festas.service";
+import { buildPublicMidiaUrl } from "../utils/midia-public-url";
 
 function startOfDay(d: Date) {
   const x = new Date(d);
@@ -72,6 +73,18 @@ const outboundSchema = z.object({
   providerMessageId: z.string().max(200).nullable().optional(),
   autorTipo: z.enum(["AI", "HUMANO", "SISTEMA"]).optional().default("AI"),
 });
+
+const referenciasQuerySchema = z.object({
+  tema: z.string().min(1).max(120).optional(),
+  limite: z.coerce.number().int().min(1).max(6).optional().default(3),
+});
+
+const REF_TIPOS: TipoMidia[] = [
+  TipoMidia.REFERENCIA_FESTA,
+  TipoMidia.MONTAGEM_FINAL,
+  TipoMidia.MONTAGEM_FOTO,
+  TipoMidia.CLIENTE_REFERENCIA,
+];
 
 function digitsOnly(value: string): string {
   return value.replace(/\D/g, "");
@@ -451,6 +464,111 @@ export class IntegracoesIaService {
       festas: festas.map((f) => ({
         ...f,
         valor: Number(f.valor),
+      })),
+    };
+  }
+
+  /**
+   * Busca fotos de referência/montagem por tema (ou portfolio recente)
+   * para a Debysinha enviar no WhatsApp.
+   */
+  async buscarReferenciasVisuais(rawQuery: unknown) {
+    const query = referenciasQuerySchema.parse(rawQuery);
+    const limite = query.limite ?? 3;
+    const tema = query.tema?.trim() || "";
+
+    const tokens = tema
+      ? tema
+          .split(/[\s,;/|—\-]+/)
+          .map((t) => t.trim())
+          .filter((t) => t.length >= 3)
+          .slice(0, 5)
+      : [];
+
+    const festaTemaFilter =
+      tokens.length > 0
+        ? {
+            OR: tokens.map((tok) => ({
+              tema: { contains: tok, mode: "insensitive" as const },
+            })),
+          }
+        : undefined;
+
+    const midias = await prisma.midia.findMany({
+      where: {
+        tipo: { in: REF_TIPOS },
+        mimeType: { startsWith: "image/" },
+        OR: [{ data: { not: null } }, { storagePath: { not: null } }],
+        ...(festaTemaFilter
+          ? { festa: festaTemaFilter }
+          : { festaId: { not: null } }),
+      },
+      select: {
+        id: true,
+        tipo: true,
+        mimeType: true,
+        filename: true,
+        festaId: true,
+        criadoEm: true,
+        festa: { select: { id: true, tema: true, status: true } },
+      },
+      orderBy: { criadoEm: "desc" },
+      take: limite * 3,
+    });
+
+    // Dedup por festa (no máx. 1 foto por festa)
+    const seenFesta = new Set<string>();
+    const picked: typeof midias = [];
+    for (const m of midias) {
+      if (m.festaId) {
+        if (seenFesta.has(m.festaId)) continue;
+        seenFesta.add(m.festaId);
+      }
+      picked.push(m);
+      if (picked.length >= limite) break;
+    }
+
+    // Fallback: se tema não achou nada, portfolio recente
+    let resultados = picked;
+    let fallback = false;
+    if (resultados.length === 0 && tokens.length > 0) {
+      fallback = true;
+      resultados = await prisma.midia.findMany({
+        where: {
+          tipo: { in: REF_TIPOS },
+          mimeType: { startsWith: "image/" },
+          festaId: { not: null },
+          OR: [{ data: { not: null } }, { storagePath: { not: null } }],
+        },
+        select: {
+          id: true,
+          tipo: true,
+          mimeType: true,
+          filename: true,
+          festaId: true,
+          criadoEm: true,
+          festa: { select: { id: true, tema: true, status: true } },
+        },
+        orderBy: { criadoEm: "desc" },
+        take: limite,
+      });
+    }
+
+    return {
+      ok: true,
+      tema: tema || null,
+      fallback,
+      total: resultados.length,
+      imagens: resultados.map((m) => ({
+        id: m.id,
+        tipo: m.tipo,
+        mimeType: m.mimeType,
+        url: buildPublicMidiaUrl(m.id),
+        tema: m.festa?.tema ?? null,
+        festaId: m.festaId,
+        caption: m.festa?.tema
+          ? `Referência · ${m.festa.tema.trim()}`
+          : "Referência de decoração Débora Pimentel",
       })),
     };
   }

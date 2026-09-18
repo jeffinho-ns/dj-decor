@@ -73,6 +73,15 @@ export class IntegracoesIaController {
     }
   }
 
+  async referencias(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await integracoesIaService.buscarReferenciasVisuais(req.query);
+      res.status(200).json(data);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
   private handleError(error: unknown, res: Response, next: NextFunction) {
     if (error instanceof ZodError) {
       res.status(400).json({

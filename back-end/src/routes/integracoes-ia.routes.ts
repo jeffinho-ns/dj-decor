@@ -38,4 +38,8 @@ integracoesIaRoutes.post("/mensagens/outbound", (req, res, next) =>
   integracoesIaController.syncOutbound(req, res, next)
 );
 
+integracoesIaRoutes.get("/referencias", (req, res, next) =>
+  integracoesIaController.referencias(req, res, next)
+);
+
 export { integracoesIaRoutes };

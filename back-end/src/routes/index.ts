@@ -21,6 +21,7 @@ import { usersRoutes } from "./users.routes";
 import { webhooksRoutes } from "./webhooks.routes";
 import { whatsappRoutes } from "./whatsapp.routes";
 import { integracoesIaRoutes } from "./integracoes-ia.routes";
+import { publicMidiasRoutes } from "./public-midias.routes";
 
 const routes = Router();
 
@@ -28,7 +29,7 @@ routes.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
     service: "dj-decor-api",
-    version: "1.4.0",
+    version: "1.5.0",
     routes: [
       "festas",
       "clientes",
@@ -44,6 +45,7 @@ routes.get("/health", (_req, res) => {
       "webhooks/meta",
       "integracoes/ia",
       "bolas",
+      "public/midias",
     ],
   });
 });
@@ -51,6 +53,7 @@ routes.get("/health", (_req, res) => {
 routes.use("/auth", authRoutes);
 routes.use("/webhooks", webhooksRoutes);
 routes.use("/integracoes/ia", integracoesIaRoutes);
+routes.use("/public", publicMidiasRoutes);
 routes.use("/users", usersRoutes);
 routes.use("/configuracoes", configuracoesRoutes);
 routes.use("/catalogo", catalogoRoutes);
