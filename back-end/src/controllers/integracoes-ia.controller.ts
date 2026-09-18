@@ -44,6 +44,24 @@ export class IntegracoesIaController {
     }
   }
 
+  async syncInbound(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await integracoesIaService.syncInbound(req.body);
+      res.status(200).json(data);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
+  async syncOutbound(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await integracoesIaService.syncOutbound(req.body);
+      res.status(200).json(data);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
   private handleError(error: unknown, res: Response, next: NextFunction) {
     if (error instanceof ZodError) {
       res.status(400).json({

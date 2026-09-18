@@ -26,4 +26,12 @@ integracoesIaRoutes.get("/festas", (req, res, next) =>
   integracoesIaController.festasPorTelefone(req, res, next)
 );
 
+integracoesIaRoutes.post("/mensagens/inbound", (req, res, next) =>
+  integracoesIaController.syncInbound(req, res, next)
+);
+
+integracoesIaRoutes.post("/mensagens/outbound", (req, res, next) =>
+  integracoesIaController.syncOutbound(req, res, next)
+);
+
 export { integracoesIaRoutes };

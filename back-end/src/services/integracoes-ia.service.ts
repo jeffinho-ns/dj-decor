@@ -1,6 +1,7 @@
-import { Role, StatusFesta, TamanhoDecoracao } from "@prisma/client";
+import { CanalAtendimento, Role, StatusFesta, TamanhoDecoracao } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma/client";
+import { atendimentoService } from "./atendimento.service";
 import { catalogoService } from "./catalogo.service";
 import { festasService } from "./festas.service";
 
@@ -35,6 +36,27 @@ const criarOrcamentoSchema = z.object({
   itensExtras: z.array(z.string().min(1)).optional().default([]),
   observacoes: z.string().max(2000).nullable().optional(),
   vendedorId: z.string().min(1).optional(),
+  conversaId: z.string().min(1).optional(),
+});
+
+const inboundSchema = z.object({
+  waId: z.string().min(5),
+  texto: z.string().max(8000).nullable().optional(),
+  contatoNome: z.string().max(200).nullable().optional(),
+  providerMessageId: z.string().max(200).nullable().optional(),
+  timestamp: z.coerce.date().optional(),
+  canal: z
+    .nativeEnum(CanalAtendimento)
+    .optional()
+    .default(CanalAtendimento.WHATSAPP),
+});
+
+const outboundSchema = z.object({
+  waId: z.string().min(5),
+  texto: z.string().min(1).max(8000),
+  conversaId: z.string().min(1).optional(),
+  providerMessageId: z.string().max(200).nullable().optional(),
+  autorTipo: z.enum(["AI", "HUMANO", "SISTEMA"]).optional().default("AI"),
 });
 
 function digitsOnly(value: string): string {
@@ -42,6 +64,101 @@ function digitsOnly(value: string): string {
 }
 
 export class IntegracoesIaService {
+  /**
+   * Espelha mensagem do cliente (Meta → backend IA → CRM inbox).
+   * Não dispara o agente Groq do CRM — a Debysinha vive no backend de IA.
+   */
+  async syncInbound(raw: unknown) {
+    const data = inboundSchema.parse(raw);
+    const result = await atendimentoService.ingestInbound({
+      canal: data.canal,
+      externalThreadId: data.waId,
+      contatoExterno: data.waId,
+      contatoNome: data.contatoNome ?? null,
+      providerMessageId: data.providerMessageId ?? null,
+      texto: data.texto ?? null,
+      timestamp: data.timestamp,
+    });
+
+    return {
+      ok: true,
+      conversaId: result.conversa.id,
+      modo: result.conversa.modo,
+      status: result.conversa.status,
+      shouldRunAgent: result.shouldRunAgent,
+      handoffRecorrente: Boolean(result.handoffRecorrente),
+      sugerido: result.sugerido
+        ? {
+            vendedorId: result.sugerido.vendedorId,
+            vendedorNome: result.sugerido.vendedorNome,
+          }
+        : null,
+      cliente: result.conversa.cliente
+        ? {
+            id: result.conversa.cliente.id,
+            nome: result.conversa.cliente.nome,
+            telefone: result.conversa.cliente.telefone,
+          }
+        : null,
+      festaId: result.conversa.festaId,
+      created: result.created,
+    };
+  }
+
+  /**
+   * Espelha resposta já enviada pelo backend IA via Meta (sendToProvider=false).
+   */
+  async syncOutbound(raw: unknown) {
+    const data = outboundSchema.parse(raw);
+
+    let conversaId = data.conversaId;
+    if (!conversaId) {
+      const conversa = await prisma.conversa.findUnique({
+        where: {
+          canal_externalThreadId: {
+            canal: CanalAtendimento.WHATSAPP,
+            externalThreadId: data.waId,
+          },
+        },
+        select: { id: true },
+      });
+      if (!conversa) {
+        const created = await atendimentoService.ingestInbound({
+          canal: CanalAtendimento.WHATSAPP,
+          externalThreadId: data.waId,
+          contatoExterno: data.waId,
+          texto: null,
+        });
+        conversaId = created.conversa.id;
+      } else {
+        conversaId = conversa.id;
+      }
+    }
+
+    const mensagem = await atendimentoService.appendOutbound({
+      conversaId,
+      texto: data.texto,
+      autorTipo: data.autorTipo,
+      sendToProvider: false,
+    });
+
+    await prisma.mensagemCanal.update({
+      where: { id: mensagem.id },
+      data: {
+        ...(data.providerMessageId
+          ? { providerMessageId: data.providerMessageId }
+          : {}),
+        statusEnvio: "ENVIADA_VIA_IA",
+      },
+    });
+
+    return {
+      ok: true,
+      conversaId,
+      mensagemId: mensagem.id,
+    };
+  }
+
   async listCatalogo() {
     const [kits, addons] = await Promise.all([
       catalogoService.listKits(true),
@@ -100,7 +217,8 @@ export class IntegracoesIaService {
       const alvo = new Date(query.horarioMontagem).getTime();
       if (!Number.isNaN(alvo)) {
         conflitoProximo = festas.some(
-          (f) => Math.abs(f.horarioMontagem.getTime() - alvo) < 3 * 60 * 60 * 1000
+          (f) =>
+            Math.abs(f.horarioMontagem.getTime() - alvo) < 3 * 60 * 60 * 1000
         );
       }
     }
@@ -126,8 +244,7 @@ export class IntegracoesIaService {
 
   async criarOrcamento(rawBody: unknown) {
     const data = criarOrcamentoSchema.parse(rawBody);
-    const vendedorId =
-      data.vendedorId ?? (await this.resolveVendedorPadrao());
+    const vendedorId = data.vendedorId ?? (await this.resolveVendedorPadrao());
 
     const festa = await festasService.create(
       {
@@ -150,6 +267,17 @@ export class IntegracoesIaService {
       },
       vendedorId
     );
+
+    if (data.conversaId) {
+      try {
+        await atendimentoService.vincularFesta(data.conversaId, festa.id);
+      } catch (err) {
+        console.error(
+          "[integracoes-ia] falha ao vincular festa na conversa",
+          err
+        );
+      }
+    }
 
     return {
       ok: true,
