@@ -20,6 +20,7 @@ import { qrRoutes } from "./qr.routes";
 import { usersRoutes } from "./users.routes";
 import { webhooksRoutes } from "./webhooks.routes";
 import { whatsappRoutes } from "./whatsapp.routes";
+import { integracoesIaRoutes } from "./integracoes-ia.routes";
 
 const routes = Router();
 
@@ -41,6 +42,7 @@ routes.get("/health", (_req, res) => {
       "configuracoes",
       "catalogo",
       "webhooks/meta",
+      "integracoes/ia",
       "bolas",
     ],
   });
@@ -48,6 +50,7 @@ routes.get("/health", (_req, res) => {
 
 routes.use("/auth", authRoutes);
 routes.use("/webhooks", webhooksRoutes);
+routes.use("/integracoes/ia", integracoesIaRoutes);
 routes.use("/users", usersRoutes);
 routes.use("/configuracoes", configuracoesRoutes);
 routes.use("/catalogo", catalogoRoutes);

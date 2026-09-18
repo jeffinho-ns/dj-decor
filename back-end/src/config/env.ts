@@ -38,6 +38,8 @@ const envSchema = z.object({
   META_APP_SECRET: z.union([z.string().min(1), z.literal("")]).optional(),
   META_VERIFY_TOKEN: z.union([z.string().min(1), z.literal("")]).optional(),
   META_IG_PAGE_ID: z.union([z.string().min(1), z.literal("")]).optional(),
+  /** Token compartilhado com o backend de IA (server-to-server). */
+  IA_SERVICE_TOKEN: z.union([z.string().min(16), z.literal("")]).optional(),
   /** Firebase Storage (galeria de montagem). Opcionais — upload falha se ausentes. */
   FIREBASE_PROJECT_ID: z.union([z.string().min(1), z.literal("")]).optional(),
   FIREBASE_STORAGE_BUCKET: z.union([z.string().min(1), z.literal("")]).optional(),
@@ -55,6 +57,7 @@ type Env = z.infer<typeof envSchema> & {
   META_APP_SECRET?: string;
   META_VERIFY_TOKEN?: string;
   META_IG_PAGE_ID?: string;
+  IA_SERVICE_TOKEN?: string;
   FIREBASE_PROJECT_ID?: string;
   FIREBASE_STORAGE_BUCKET?: string;
   FIREBASE_SERVICE_ACCOUNT_JSON?: string;
@@ -91,6 +94,7 @@ function loadEnv(): Env {
     META_APP_SECRET: optionalStr(data.META_APP_SECRET),
     META_VERIFY_TOKEN: optionalStr(data.META_VERIFY_TOKEN),
     META_IG_PAGE_ID: optionalStr(data.META_IG_PAGE_ID),
+    IA_SERVICE_TOKEN: optionalStr(data.IA_SERVICE_TOKEN),
     FIREBASE_PROJECT_ID: optionalStr(data.FIREBASE_PROJECT_ID),
     FIREBASE_STORAGE_BUCKET: optionalStr(data.FIREBASE_STORAGE_BUCKET),
     FIREBASE_SERVICE_ACCOUNT_JSON: optionalStr(
