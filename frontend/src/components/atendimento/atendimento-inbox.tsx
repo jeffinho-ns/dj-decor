@@ -129,8 +129,16 @@ export function AtendimentoInbox({ token, viewerId }: AtendimentoInboxProps) {
 
   useEffect(() => {
     void carregarLista();
-    const timer = window.setInterval(() => void carregarLista(), 15000);
-    return () => window.clearInterval(timer);
+    const timer = window.setInterval(() => void carregarLista(), 5000);
+    const onFocus = () => void carregarLista();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") onFocus();
+    });
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [carregarLista]);
 
   useEffect(() => {
@@ -139,7 +147,10 @@ export function AtendimentoInbox({ token, viewerId }: AtendimentoInboxProps) {
       return;
     }
     void carregarDetalhe(selectedId);
-    const timer = window.setInterval(() => void carregarDetalhe(selectedId), 8000);
+    const timer = window.setInterval(
+      () => void carregarDetalhe(selectedId),
+      3000
+    );
     return () => window.clearInterval(timer);
   }, [selectedId, carregarDetalhe]);
 
