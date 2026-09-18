@@ -120,28 +120,33 @@ export function FestaDataEditor({
 
   if (!editing) {
     return (
-      <div className="flex items-start justify-between gap-2">
-        <span className="min-w-0">
-          {labelMontagem}{" "}
-          <span className="font-medium text-foreground">
-            {format(parseISO(festa.horarioMontagem), "dd/MM HH:mm")}
+      <div className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Data da festa
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <span className="min-w-0 text-sm text-muted-foreground">
+            {labelMontagem}{" "}
+            <span className="font-medium text-foreground">
+              {format(parseISO(festa.horarioMontagem), "dd/MM HH:mm")}
+            </span>
+            <span className="text-muted-foreground/60"> · </span>
+            {labelEvento}{" "}
+            <span className="font-medium text-foreground">
+              {format(parseISO(festa.dataEvento), "dd/MM HH:mm")}
+            </span>
           </span>
-          <span className="text-muted-foreground/60"> · </span>
-          {labelEvento}{" "}
-          <span className="font-medium text-foreground">
-            {format(parseISO(festa.dataEvento), "dd/MM HH:mm")}
-          </span>
-        </span>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="h-7 shrink-0 gap-1 px-2 text-xs"
-          onClick={() => setEditing(true)}
-        >
-          <Pencil className="size-3.5" />
-          Alterar data
-        </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-9 w-full shrink-0 gap-1.5 sm:w-auto"
+            onClick={() => setEditing(true)}
+          >
+            <Pencil className="size-3.5" />
+            Alterar data
+          </Button>
+        </div>
       </div>
     );
   }

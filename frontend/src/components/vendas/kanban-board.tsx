@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { DescontoBadge } from "@/components/vendas/desconto-badge";
 import { CompraEstoqueBadge } from "@/components/vendas/compra-estoque-badge";
 import { FestaContratoPanel } from "@/components/vendas/festa-contrato-panel";
+import { FestaDataEditor } from "@/components/vendas/festa-data-editor";
 import { FestaDetalheModal } from "@/components/vendas/festa-detalhe-modal";
 import { FestaItensEditor } from "@/components/vendas/festa-itens-editor";
 import { FestaBolasResumo } from "@/components/vendas/festa-bolas-resumo";
@@ -207,6 +208,13 @@ function FestaCard({
           className="mt-3 border-t border-border/50 pt-3"
           onClick={(event) => event.stopPropagation()}
         >
+          <div className="mb-4 border-b border-border/50 pb-3">
+            <FestaDataEditor
+              festa={festa}
+              token={token}
+              onUpdated={onFestaUpdate}
+            />
+          </div>
           <div className="mb-4 border-b border-border/50 pb-3">
             <FestaItensEditor
               festa={festa}
@@ -590,8 +598,8 @@ export function KanbanBoard({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Funil por status — expanda o card para itens, pagamentos e contrato.
-          Na tabela, clique na linha para o modal.
+          Funil por status — expanda o card para alterar data, itens, pagamentos
+          e contrato. Na tabela, clique na linha para o modal.
         </p>
         <div className="flex gap-1 rounded-2xl neo-inset p-0.5">
           <Button
