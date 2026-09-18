@@ -26,6 +26,10 @@ integracoesIaRoutes.get("/festas", (req, res, next) =>
   integracoesIaController.festasPorTelefone(req, res, next)
 );
 
+integracoesIaRoutes.get("/conversas/:id", (req, res, next) =>
+  integracoesIaController.getConversa(req, res, next)
+);
+
 integracoesIaRoutes.post("/mensagens/inbound", (req, res, next) =>
   integracoesIaController.syncInbound(req, res, next)
 );

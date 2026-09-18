@@ -5,6 +5,7 @@ import {
   integracoesIaService,
 } from "../services/integracoes-ia.service";
 import { FestaValidationError } from "../services/festas.service";
+import { ConversaNotFoundError } from "../services/atendimento.service";
 
 export class IntegracoesIaController {
   async catalogo(_req: Request, res: Response, next: NextFunction) {
@@ -44,6 +45,16 @@ export class IntegracoesIaController {
     }
   }
 
+  async getConversa(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id ?? "");
+      const data = await integracoesIaService.getConversa(id);
+      res.status(200).json(data);
+    } catch (error) {
+      this.handleError(error, res, next);
+    }
+  }
+
   async syncInbound(req: Request, res: Response, next: NextFunction) {
     try {
       const data = await integracoesIaService.syncInbound(req.body);
@@ -68,6 +79,10 @@ export class IntegracoesIaController {
         message: "Payload inválido",
         issues: error.flatten(),
       });
+      return;
+    }
+    if (error instanceof ConversaNotFoundError) {
+      res.status(404).json({ message: error.message });
       return;
     }
     if (

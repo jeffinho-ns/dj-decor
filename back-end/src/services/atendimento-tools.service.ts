@@ -130,6 +130,12 @@ export const AGENT_TOOL_DEFINITIONS = [
           pegueEMonte: { type: "boolean" },
           itensExtras: { type: "array", items: { type: "string" } },
           observacoes: { type: "string" },
+          notasInternas: { type: "string" },
+          foraParacambi: {
+            type: "boolean",
+            description:
+              "true se o endereço for fora de Paracambi (afeta comissão Suellem)",
+          },
           confirmadoPeloCliente: { type: "boolean" },
         },
         required: [
@@ -428,6 +434,13 @@ export class AtendimentoToolsService {
         const vendedorId = conversa.vendedorId ?? fallbackVendedorId;
         const tamanho = (String(args.tamanhoDecoracao ?? "M") ||
           "M") as TamanhoDecoracao;
+        const endereco = String(args.endereco);
+        const pegueEMonte = Boolean(args.pegueEMonte);
+        const foraParacambi =
+          Boolean(args.foraParacambi) ||
+          (!pegueEMonte &&
+            endereco.length >= 5 &&
+            !endereco.toLowerCase().includes("paracambi"));
         const festa = await festasService.create(
           {
             nomeCliente: String(args.nomeCliente),
@@ -435,17 +448,21 @@ export class AtendimentoToolsService {
             tema: String(args.tema),
             dataEvento: String(args.dataEvento),
             horarioMontagem: String(args.horarioMontagem),
-            endereco: String(args.endereco),
+            endereco,
             valor: Number(args.valor),
             tamanhoDecoracao: tamanho,
             kitCatalogo: args.kitCatalogo ? String(args.kitCatalogo) : null,
-            pegueEMonte: Boolean(args.pegueEMonte),
+            pegueEMonte,
             itensExtras: Array.isArray(args.itensExtras)
               ? args.itensExtras.map(String)
               : [],
             observacoes: args.observacoes
               ? String(args.observacoes)
               : "Criado pelo atendimento IA",
+            notasInternas: args.notasInternas
+              ? String(args.notasInternas)
+              : null,
+            foraParacambi,
             status: StatusFesta.ORCAMENTO,
             origem: conversa.canal === "INSTAGRAM" ? "Instagram" : "WhatsApp",
             vendedorId,

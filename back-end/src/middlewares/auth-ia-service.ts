@@ -39,6 +39,16 @@ export function authIaService(
         break;
       }
     }
+    const around = (value: string, at: number | null) => {
+      if (at == null || !value) return null;
+      const start = Math.max(0, at - 4);
+      const end = Math.min(value.length, at + 5);
+      return {
+        slice: value.slice(start, end),
+        charAt: value[at] ?? null,
+        code: value[at] != null ? value.charCodeAt(at) : null,
+      };
+    };
     res.status(401).json({
       message: "Token de integração IA inválido",
       hint: {
@@ -49,6 +59,8 @@ export function authIaService(
         receivedTail: token ? token.slice(-4) : null,
         expectedTail: expected.slice(-4),
         diffAt,
+        receivedAround: around(token, diffAt),
+        expectedAround: around(expected, diffAt),
       },
     });
     return;

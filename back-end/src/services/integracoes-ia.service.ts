@@ -35,8 +35,16 @@ const criarOrcamentoSchema = z.object({
   pegueEMonte: z.boolean().optional().default(false),
   itensExtras: z.array(z.string().min(1)).optional().default([]),
   observacoes: z.string().max(2000).nullable().optional(),
+  notasInternas: z.string().max(4000).nullable().optional(),
+  /** Fora de Paracambi → split Suellem 30% quando aplicável. */
+  foraParacambi: z.boolean().optional().default(false),
+  origem: z.string().max(80).nullable().optional(),
   vendedorId: z.string().min(1).optional(),
   conversaId: z.string().min(1).optional(),
+  montadorEquipeId: z.string().min(1).nullable().optional(),
+  desmontadorEquipeId: z.string().min(1).nullable().optional(),
+  montadorCarroProprio: z.boolean().optional(),
+  desmontadorCarroProprio: z.boolean().optional(),
 });
 
 const inboundSchema = z.object({
@@ -242,9 +250,62 @@ export class IntegracoesIaService {
     };
   }
 
+  async getConversa(conversaId: string) {
+    const conversa = await atendimentoService.getById(conversaId);
+    return {
+      ok: true,
+      conversa: {
+        id: conversa.id,
+        canal: conversa.canal,
+        modo: conversa.modo,
+        status: conversa.status,
+        contatoNome: conversa.contatoNome,
+        contatoExterno: conversa.contatoExterno,
+        externalThreadId: conversa.externalThreadId,
+        clienteId: conversa.clienteId,
+        festaId: conversa.festaId,
+        vendedorId: conversa.vendedorId,
+        vendedor: conversa.vendedor
+          ? { id: conversa.vendedor.id, nome: conversa.vendedor.nome }
+          : null,
+        cliente: conversa.cliente
+          ? {
+              id: conversa.cliente.id,
+              nome: conversa.cliente.nome,
+              telefone: conversa.cliente.telefone,
+            }
+          : null,
+        notasInternas: conversa.notasInternas,
+        mensagens: conversa.mensagens.slice(-30).map((m) => ({
+          direcao: m.direcao,
+          autorTipo: m.autorTipo,
+          texto: m.texto,
+          criadoEm: m.criadoEm,
+        })),
+      },
+    };
+  }
+
   async criarOrcamento(rawBody: unknown) {
     const data = criarOrcamentoSchema.parse(rawBody);
-    const vendedorId = data.vendedorId ?? (await this.resolveVendedorPadrao());
+
+    let vendedorId = data.vendedorId;
+    if (!vendedorId && data.conversaId) {
+      try {
+        const conversa = await atendimentoService.getById(data.conversaId);
+        vendedorId = conversa.vendedorId ?? undefined;
+      } catch {
+        /* conversa opcional */
+      }
+    }
+    vendedorId = vendedorId ?? (await this.resolveVendedorPadrao());
+
+    const endereco = data.endereco.trim();
+    const foraParacambi =
+      data.foraParacambi ||
+      (!data.pegueEMonte &&
+        endereco.length >= 5 &&
+        !endereco.toLowerCase().includes("paracambi"));
 
     const festa = await festasService.create(
       {
@@ -253,7 +314,7 @@ export class IntegracoesIaService {
         tema: data.tema,
         dataEvento: data.dataEvento,
         horarioMontagem: data.horarioMontagem,
-        endereco: data.endereco,
+        endereco,
         valor: data.valor,
         tamanhoDecoracao: data.tamanhoDecoracao,
         kitCatalogo: data.kitCatalogo ?? null,
@@ -262,8 +323,15 @@ export class IntegracoesIaService {
         observacoes:
           data.observacoes?.trim() ||
           "Criado pelo backend de atendimento IA",
+        notasInternas: data.notasInternas?.trim() || null,
+        foraParacambi,
+        origem: data.origem?.trim() || "WhatsApp",
         status: StatusFesta.ORCAMENTO,
         vendedorId,
+        montadorEquipeId: data.montadorEquipeId ?? null,
+        desmontadorEquipeId: data.desmontadorEquipeId ?? null,
+        montadorCarroProprio: data.montadorCarroProprio,
+        desmontadorCarroProprio: data.desmontadorCarroProprio,
       },
       vendedorId
     );
@@ -288,9 +356,17 @@ export class IntegracoesIaService {
         valor: Number(festa.valor),
         dataEvento: festa.dataEvento,
         horarioMontagem: festa.horarioMontagem,
+        endereco: festa.endereco,
+        foraParacambi: festa.foraParacambi,
+        tamanhoDecoracao: festa.tamanhoDecoracao,
+        vendedorId: festa.vendedorId,
+        vendedor: festa.vendedor
+          ? { id: festa.vendedor.id, nome: festa.vendedor.nome }
+          : null,
         cliente: festa.cliente,
         kitCatalogo: festa.kitCatalogo,
         pegueEMonte: festa.pegueEMonte,
+        itensExtras: festa.itensExtras,
       },
     };
   }
