@@ -45,6 +45,11 @@ const criarOrcamentoSchema = z.object({
   desmontadorEquipeId: z.string().min(1).nullable().optional(),
   montadorCarroProprio: z.boolean().optional(),
   desmontadorCarroProprio: z.boolean().optional(),
+  /**
+   * Se true, após criar em ORCAMENTO avança para FECHADO
+   * (pegue-e-monte ou quando equipe já veio no payload).
+   */
+  fechar: z.boolean().optional().default(false),
 });
 
 const inboundSchema = z.object({
@@ -313,11 +318,9 @@ export class IntegracoesIaService {
     const endereco = data.endereco.trim();
     const foraParacambi =
       data.foraParacambi ||
-      (!data.pegueEMonte &&
-        endereco.length >= 5 &&
-        !endereco.toLowerCase().includes("paracambi"));
+      (endereco.length >= 5 && !endereco.toLowerCase().includes("paracambi"));
 
-    const festa = await festasService.create(
+    let festa = await festasService.create(
       {
         nomeCliente: data.nomeCliente,
         telefone: data.telefone,
@@ -357,6 +360,19 @@ export class IntegracoesIaService {
       }
     }
 
+    if (data.fechar) {
+      try {
+        festa = await festasService.updateStatus(festa.id, {
+          status: StatusFesta.FECHADO,
+        });
+      } catch (err) {
+        console.error(
+          "[integracoes-ia] festa criada, mas falha ao fechar:",
+          err
+        );
+      }
+    }
+
     return {
       ok: true,
       festa: {
@@ -369,6 +385,8 @@ export class IntegracoesIaService {
         endereco: festa.endereco,
         foraParacambi: festa.foraParacambi,
         tamanhoDecoracao: festa.tamanhoDecoracao,
+        observacoes: festa.observacoes,
+        notasInternas: festa.notasInternas,
         vendedorId: festa.vendedorId,
         vendedor: festa.vendedor
           ? { id: festa.vendedor.id, nome: festa.vendedor.nome }
@@ -402,9 +420,16 @@ export class IntegracoesIaService {
         tema: true,
         status: true,
         dataEvento: true,
+        horarioMontagem: true,
+        endereco: true,
         valor: true,
         kitCatalogo: true,
         pegueEMonte: true,
+        foraParacambi: true,
+        observacoes: true,
+        notasInternas: true,
+        tamanhoDecoracao: true,
+        itensExtras: true,
         cliente: { select: { id: true, nome: true, telefone: true } },
         vendedor: { select: { id: true, nome: true } },
       },
