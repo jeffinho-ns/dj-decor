@@ -3,6 +3,7 @@ import type { TamanhoDecoracao } from "@/types/festa";
 export type CatalogoKitId =
   | "festa-mesa"
   | "festa-mesa-com-mesa"
+  | "festa-mesa-mesa-bolas"
   | "pocket"
   | "intermediaria"
   | "media"
@@ -43,23 +44,53 @@ export interface CatalogoAddon {
 export const CATALOGO_KITS: CatalogoKit[] = [
   {
     id: "festa-mesa",
-    nome: "Kit Festa na Mesa",
+    nome: "Festa na Mesa (Padrão)",
     categoria: "mesa",
-    descricaoCurta: "Painel pequeno, bandejas e cachepô — ideal para mesa de bolo.",
-    valorEquipe: 80,
-    valorPegueEMonte: 80,
+    descricaoCurta:
+      "Painel personalizado, mini arco, bandejas e cachepô — pegue e monte no depósito.",
+    valorEquipe: 100,
+    valorPegueEMonte: 100,
     tamanhoSugerido: "P",
-    itens: ["Painel 50x50", "3 bandejas", "Cachepô"],
+    itens: [
+      "1 painel personalizado",
+      "1 mini arco de balões",
+      "3 bandejas",
+      "1 cachepô com bola de grama ou arranjo floral",
+    ],
   },
   {
     id: "festa-mesa-com-mesa",
-    nome: "Kit Festa na Mesa (+ mesa)",
+    nome: "Festa na Mesa (Com Mesa)",
     categoria: "mesa",
-    descricaoCurta: "Mesmo kit + mesa inclusa.",
+    descricaoCurta: "Kit padrão + mesa inclusa — retirada e devolução no depósito.",
     valorEquipe: 130,
     valorPegueEMonte: 130,
     tamanhoSugerido: "P",
-    itens: ["Painel 50x50", "3 bandejas", "Cachepô", "Mesa"],
+    itens: [
+      "1 painel personalizado",
+      "1 mini arco de balões",
+      "3 bandejas",
+      "1 cachepô com bola de grama ou arranjo floral",
+      "Mesa",
+    ],
+  },
+  {
+    id: "festa-mesa-mesa-bolas",
+    nome: "Festa na Mesa (Com Mesa e Bolas na frente da mesa)",
+    categoria: "mesa",
+    descricaoCurta:
+      "Kit com mesa + bolas na frente — pegue e monte no depósito.",
+    valorEquipe: 160,
+    valorPegueEMonte: 160,
+    tamanhoSugerido: "P",
+    itens: [
+      "1 painel personalizado",
+      "1 mini arco de balões",
+      "3 bandejas",
+      "1 cachepô com bola de grama ou arranjo floral",
+      "Mesa",
+      "Bolas na frente da mesa",
+    ],
   },
   {
     id: "pocket",

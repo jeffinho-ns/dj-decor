@@ -311,25 +311,56 @@ async function seedConfigECatalogoVendas() {
   }> = [
     {
       id: "festa-mesa",
-      nome: "Kit Festa na Mesa",
+      nome: "Festa na Mesa (Padrão)",
       categoria: "mesa",
-      descricaoCurta: "Painel pequeno, bandejas e cachepô — ideal para mesa de bolo.",
-      valorEquipe: 80,
-      valorPegueEMonte: 80,
+      descricaoCurta:
+        "Painel personalizado, mini arco, bandejas e cachepô — pegue e monte no depósito.",
+      valorEquipe: 100,
+      valorPegueEMonte: 100,
       tamanhoSugerido: TamanhoDecoracao.P,
-      itens: ["Painel 50x50", "3 bandejas", "Cachepô"],
+      itens: [
+        "1 painel personalizado",
+        "1 mini arco de balões",
+        "3 bandejas",
+        "1 cachepô com bola de grama ou arranjo floral",
+      ],
       ordem: 1,
     },
     {
       id: "festa-mesa-com-mesa",
-      nome: "Kit Festa na Mesa (+ mesa)",
+      nome: "Festa na Mesa (Com Mesa)",
       categoria: "mesa",
-      descricaoCurta: "Mesmo kit + mesa inclusa.",
+      descricaoCurta: "Kit padrão + mesa inclusa — retirada e devolução no depósito.",
       valorEquipe: 130,
       valorPegueEMonte: 130,
       tamanhoSugerido: TamanhoDecoracao.P,
-      itens: ["Painel 50x50", "3 bandejas", "Cachepô", "Mesa"],
+      itens: [
+        "1 painel personalizado",
+        "1 mini arco de balões",
+        "3 bandejas",
+        "1 cachepô com bola de grama ou arranjo floral",
+        "Mesa",
+      ],
       ordem: 2,
+    },
+    {
+      id: "festa-mesa-mesa-bolas",
+      nome: "Festa na Mesa (Com Mesa e Bolas na frente da mesa)",
+      categoria: "mesa",
+      descricaoCurta:
+        "Kit com mesa + bolas na frente — pegue e monte no depósito.",
+      valorEquipe: 160,
+      valorPegueEMonte: 160,
+      tamanhoSugerido: TamanhoDecoracao.P,
+      itens: [
+        "1 painel personalizado",
+        "1 mini arco de balões",
+        "3 bandejas",
+        "1 cachepô com bola de grama ou arranjo floral",
+        "Mesa",
+        "Bolas na frente da mesa",
+      ],
+      ordem: 3,
     },
     {
       id: "pocket",
@@ -346,7 +377,7 @@ async function seedConfigECatalogoVendas() {
         "Cachepô",
         "Tapete",
       ],
-      ordem: 3,
+      ordem: 4,
     },
     {
       id: "intermediaria",
@@ -365,7 +396,7 @@ async function seedConfigECatalogoVendas() {
         "Tapete",
         "Escadinha/cabideiro",
       ],
-      ordem: 4,
+      ordem: 5,
     },
     {
       id: "media",
@@ -384,7 +415,7 @@ async function seedConfigECatalogoVendas() {
         "Tapete 3M",
         "Escadinha/cabideiro",
       ],
-      ordem: 5,
+      ordem: 6,
     },
     {
       id: "decoracao-4m",
@@ -405,7 +436,7 @@ async function seedConfigECatalogoVendas() {
         "Montagem pela equipe",
         "Transporte",
       ],
-      ordem: 6,
+      ordem: 7,
     },
     {
       id: "decoracao-6m",
@@ -427,7 +458,7 @@ async function seedConfigECatalogoVendas() {
         "Montagem pela equipe",
         "Transporte",
       ],
-      ordem: 7,
+      ordem: 8,
     },
     {
       id: "casamento-trio-bj",
@@ -443,7 +474,7 @@ async function seedConfigECatalogoVendas() {
         "10 Bandejas",
         "1 Arranjo de chão",
       ],
-      ordem: 8,
+      ordem: 9,
     },
     {
       id: "casamento-dupla-bj",
@@ -460,7 +491,7 @@ async function seedConfigECatalogoVendas() {
         "20 Bandejas",
         "2 Arranjos de chão",
       ],
-      ordem: 9,
+      ordem: 10,
     },
     {
       id: "casamento-kit-bj",
@@ -480,7 +511,7 @@ async function seedConfigECatalogoVendas() {
         "Varal de Lâmpadas Âmbar",
         "Acabamento Aéreo com folhagens",
       ],
-      ordem: 10,
+      ordem: 11,
     },
     {
       id: "pos-civil-p",
@@ -495,7 +526,7 @@ async function seedConfigECatalogoVendas() {
         "4 Bandejas",
         "2 Arranjos de flores",
       ],
-      ordem: 11,
+      ordem: 12,
     },
     {
       id: "pos-civil-m",
@@ -513,7 +544,7 @@ async function seedConfigECatalogoVendas() {
         "8 a 10 Bandejas",
         "Fundo Livre ou Cortinado",
       ],
-      ordem: 12,
+      ordem: 13,
     },
   ];
 

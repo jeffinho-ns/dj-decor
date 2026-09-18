@@ -44,7 +44,12 @@ export const INVENTARIO_CATALOGO: InventarioItemDef[] = [
     categoria: "Painéis",
     valorAluguel: 90,
     quantidadePadrao: 4,
-    aliases: ["painel redondo/romano", "painel redondo", "painel romano"],
+    aliases: [
+      "painel redondo/romano",
+      "painel redondo",
+      "painel romano",
+      "painel personalizado",
+    ],
   },
   {
     chave: "painel-extra",
@@ -135,7 +140,14 @@ export const INVENTARIO_CATALOGO: InventarioItemDef[] = [
     categoria: "Acessórios",
     valorAluguel: 15,
     quantidadePadrao: 12,
-    aliases: ["cachepo", "cachepô", "cachepos", "cachepôs"],
+    aliases: [
+      "cachepo",
+      "cachepô",
+      "cachepos",
+      "cachepôs",
+      "cachepo com bola de grama ou arranjo floral",
+      "cachepô com bola de grama ou arranjo floral",
+    ],
   },
   {
     chave: "tapete",
@@ -175,7 +187,13 @@ export const INVENTARIO_CATALOGO: InventarioItemDef[] = [
     categoria: "Balões",
     valorAluguel: 90,
     quantidadePadrao: 3,
-    aliases: ["arco de bola c", "arco de baloes", "arco de balões"],
+    aliases: [
+      "arco de bola c",
+      "arco de baloes",
+      "arco de balões",
+      "mini arco de baloes",
+      "mini arco de balões",
+    ],
   },
   {
     chave: "balao-lateral",
@@ -183,7 +201,12 @@ export const INVENTARIO_CATALOGO: InventarioItemDef[] = [
     categoria: "Balões",
     valorAluguel: 180,
     quantidadePadrao: 2,
-    aliases: ["balao lateral", "balão lateral"],
+    aliases: [
+      "balao lateral",
+      "balão lateral",
+      "bolas na frente da mesa",
+      "bolas na frente",
+    ],
   },
   {
     chave: "baloes-organico",

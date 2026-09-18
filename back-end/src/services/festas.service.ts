@@ -418,6 +418,9 @@ export class FestasService {
           : blocoCompra ?? (semMarcador || null);
     }
 
+    const dataMudou =
+      data.dataEvento !== undefined || data.horarioMontagem !== undefined;
+
     const updated = await prisma.festa.update({
       where: { id },
       data: {
@@ -464,6 +467,20 @@ export class FestasService {
       include: festaInclude,
     });
 
+    if (dataMudou) {
+      await prisma.reservaEstoque.updateMany({
+        where: { festaId: id },
+        data: { inicio, fim },
+      });
+      await prisma.pedidoBolas.updateMany({
+        where: { festaId: id },
+        data: {
+          dataEvento: fim,
+          horarioMontagem: inicio,
+        },
+      });
+    }
+
     await osService.syncEquipeFromFesta(id);
 
     try {
@@ -481,7 +498,7 @@ export class FestasService {
       });
     }
 
-    if (itensMudaram || valorMudou) {
+    if (itensMudaram || valorMudou || dataMudou) {
       try {
         await pdfAdapter.gerarContratoLocacao(id);
       } catch (error) {

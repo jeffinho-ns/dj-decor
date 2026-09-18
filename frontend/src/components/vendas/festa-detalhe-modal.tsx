@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import {
   Clock3,
   MapPin,
@@ -13,10 +11,13 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
 import { CompraEstoqueBadge } from "@/components/vendas/compra-estoque-badge";
 import { DescontoBadge } from "@/components/vendas/desconto-badge";
+import { FestaDataEditor } from "@/components/vendas/festa-data-editor";
 import { FestaItensEditor } from "@/components/vendas/festa-itens-editor";
 import { FestaGaleriaEditor } from "@/components/vendas/festa-galeria-editor";
 import { FestaBolasResumo } from "@/components/vendas/festa-bolas-resumo";
@@ -161,21 +162,31 @@ export function FestaDetalheModal({
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-start gap-2">
               <Clock3 className="mt-0.5 size-4 shrink-0 text-balloon-sky" />
-              <span className="min-w-0">
-                Montagem{" "}
-                <span className="font-medium text-foreground">
-                  {format(parseISO(current.horarioMontagem), "dd/MM HH:mm", {
-                    locale: ptBR,
-                  })}
+              {canEdit && token ? (
+                <div className="min-w-0 flex-1">
+                  <FestaDataEditor
+                    festa={current}
+                    token={token}
+                    onUpdated={handleUpdated}
+                  />
+                </div>
+              ) : (
+                <span className="min-w-0">
+                  {current.pegueEMonte ? "Retirada" : "Montagem"}{" "}
+                  <span className="font-medium text-foreground">
+                    {format(parseISO(current.horarioMontagem), "dd/MM HH:mm", {
+                      locale: ptBR,
+                    })}
+                  </span>
+                  <span className="text-muted-foreground/60"> · </span>
+                  {current.pegueEMonte ? "Devolução/festa" : "Festa"}{" "}
+                  <span className="font-medium text-foreground">
+                    {format(parseISO(current.dataEvento), "dd/MM HH:mm", {
+                      locale: ptBR,
+                    })}
+                  </span>
                 </span>
-                <span className="text-muted-foreground/60"> · </span>
-                Festa{" "}
-                <span className="font-medium text-foreground">
-                  {format(parseISO(current.dataEvento), "dd/MM HH:mm", {
-                    locale: ptBR,
-                  })}
-                </span>
-              </span>
+              )}
             </li>
             <li className="flex items-center gap-2">
               <Phone className="size-4 shrink-0 text-balloon-mint" />
