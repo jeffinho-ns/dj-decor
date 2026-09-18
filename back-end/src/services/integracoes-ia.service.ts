@@ -108,7 +108,10 @@ export class IntegracoesIaService {
             telefone: result.conversa.cliente.telefone,
           }
         : null,
-      festaId: result.conversa.festaId,
+      festaId:
+        result.conversa.festa?.status === StatusFesta.CANCELADO
+          ? null
+          : result.conversa.festaId,
       created: result.created,
     };
   }
@@ -276,6 +279,13 @@ export class IntegracoesIaService {
             }
           : null,
         notasInternas: conversa.notasInternas,
+        festa: conversa.festa
+          ? {
+              id: conversa.festa.id,
+              status: conversa.festa.status,
+              tema: conversa.festa.tema,
+            }
+          : null,
         mensagens: conversa.mensagens.slice(-30).map((m) => ({
           direcao: m.direcao,
           autorTipo: m.autorTipo,
