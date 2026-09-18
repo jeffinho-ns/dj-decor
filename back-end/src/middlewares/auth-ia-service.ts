@@ -31,13 +31,24 @@ export function authIaService(
   const token = normalizeToken(bearer || headerToken);
 
   if (!token || token !== expected) {
+    let diffAt: number | null = null;
+    const max = Math.max(token.length, expected.length);
+    for (let i = 0; i < max; i++) {
+      if (token[i] !== expected[i]) {
+        diffAt = i;
+        break;
+      }
+    }
     res.status(401).json({
       message: "Token de integração IA inválido",
       hint: {
         receivedLen: token?.length ?? 0,
         expectedLen: expected.length,
+        receivedHead: token ? token.slice(0, 4) : null,
+        expectedHead: expected.slice(0, 4),
         receivedTail: token ? token.slice(-4) : null,
         expectedTail: expected.slice(-4),
+        diffAt,
       },
     });
     return;
