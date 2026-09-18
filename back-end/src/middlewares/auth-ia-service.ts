@@ -13,7 +13,7 @@ export function authIaService(
   res: Response,
   next: NextFunction
 ): void {
-  const expected = env.IA_SERVICE_TOKEN;
+  const expected = normalizeToken(env.IA_SERVICE_TOKEN);
   if (!expected) {
     res.status(503).json({
       message:
@@ -25,15 +25,32 @@ export function authIaService(
   const headerAuth = req.headers.authorization;
   const bearer =
     headerAuth && headerAuth.toLowerCase().startsWith("bearer ")
-      ? headerAuth.slice(headerAuth.indexOf(" ") + 1).trim()
+      ? headerAuth.slice(headerAuth.indexOf(" ") + 1)
       : null;
-  const headerToken = String(req.headers["x-ia-token"] ?? "").trim();
-  const token = bearer || headerToken;
+  const headerToken = String(req.headers["x-ia-token"] ?? "");
+  const token = normalizeToken(bearer || headerToken);
 
   if (!token || token !== expected) {
-    res.status(401).json({ message: "Token de integração IA inválido" });
+    res.status(401).json({
+      message: "Token de integração IA inválido",
+      hint: {
+        receivedLen: token?.length ?? 0,
+        expectedLen: expected.length,
+        receivedTail: token ? token.slice(-4) : null,
+        expectedTail: expected.slice(-4),
+      },
+    });
     return;
   }
 
   next();
+}
+
+function normalizeToken(value: string | undefined | null): string {
+  if (!value) return "";
+  return value
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .replace(/^["']|["']$/g, "")
+    .trim();
 }

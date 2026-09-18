@@ -68,7 +68,13 @@ function optionalUrl(value: string | undefined): string | undefined {
 }
 
 function optionalStr(value: string | undefined): string | undefined {
-  return value && value.length > 0 ? value : undefined;
+  if (!value || value.length === 0) return undefined;
+  const normalized = value
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .replace(/^["']|["']$/g, "")
+    .trim();
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 function loadEnv(): Env {
