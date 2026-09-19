@@ -615,10 +615,34 @@
   }
 }
 
+/*
+ * Transição entre telas — só opacity + transform (GPU), sem filtro nem
+ * blur. Leve o bastante para celular antigo; o `backwards` garante que o
+ * transform some ao terminar (senão vira bloco de contenção e quebra CTAs
+ * com position: fixed).
+ */
 @keyframes page-enter {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes page-leave {
+  to {
+    opacity: 0.35;
+    transform: translateY(-6px) scale(0.992);
+  }
+}
+
+@keyframes page-title-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -626,17 +650,23 @@
   }
 }
 
-/*
- * Entrada curta a cada troca de tela — dá continuidade ao movimento.
- * `backwards` (e não `both`) para o transform não sobrar no fim: transform
- * persistente vira bloco de contenção e quebraria os CTAs `position: fixed`.
- */
 .page-enter {
-  animation: page-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation: page-enter 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.page-leave {
+  animation: page-leave 0.18s ease forwards;
+  pointer-events: none;
+}
+
+.page-title-enter {
+  animation: page-title-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-enter {
+  .page-enter,
+  .page-leave,
+  .page-title-enter {
     animation: none;
   }
 }
@@ -646,16 +676,16 @@
   0% {
     transform: translateX(-100%);
   }
-  60% {
-    transform: translateX(-18%);
+  55% {
+    transform: translateX(-22%);
   }
   100% {
-    transform: translateX(-6%);
+    transform: translateX(-8%);
   }
 }
 
 .rota-progresso {
-  animation: rota-progresso 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: rota-progresso 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* --- Tela de abertura do app --- */

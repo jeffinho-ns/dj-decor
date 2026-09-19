@@ -1,7 +1,9 @@
 import { ConteudoPrincipal } from "@/components/layout/conteudo-principal";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { NavegacaoProgresso } from "@/components/layout/navegacao-progresso";
 import { Sidebar } from "@/components/layout/sidebar";
+import { TituloAnimado } from "@/components/layout/titulo-animado";
 import type { User } from "@/types/auth";
 
 interface DashboardShellProps {
@@ -21,6 +23,8 @@ export function DashboardShell({
 }: DashboardShellProps) {
   return (
     <div className="relative z-10 flex min-h-dvh">
+      <NavegacaoProgresso />
+
       <div className="sticky top-0 hidden h-dvh md:block">
         <Sidebar user={user} />
       </div>
@@ -31,24 +35,7 @@ export function DashboardShell({
           style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))" }}
         >
           <div className="flex items-start justify-between gap-2 px-4 py-3 md:gap-3 md:px-5 md:py-4">
-            <div className="min-w-0 flex-1">
-              <div className="mb-1 flex items-center gap-1.5 md:hidden">
-                <span className="balloon-dot bg-balloon-pink" />
-                <span className="balloon-dot bg-balloon-sky" />
-                <span className="balloon-dot bg-balloon-sun" />
-                <p className="ml-1 font-display text-xs font-semibold text-balloon-pink">
-                  DJ festas
-                </p>
-              </div>
-              <h1 className="truncate font-display text-xl tracking-tight text-foreground sm:text-2xl">
-                {title}
-              </h1>
-              {description ? (
-                <p className="mt-0.5 line-clamp-2 hidden text-sm text-muted-foreground sm:block">
-                  {description}
-                </p>
-              ) : null}
-            </div>
+            <TituloAnimado title={title} description={description} />
             <div className="flex max-w-[55%] shrink-0 flex-wrap items-center justify-end gap-1.5 sm:max-w-none sm:gap-2">
               {actions}
               <LogoutButton />

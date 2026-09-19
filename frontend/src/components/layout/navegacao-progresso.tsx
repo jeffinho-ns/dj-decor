@@ -4,23 +4,16 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 /**
- * Área de conteúdo do shell.
- *
- * - Ao tocar num link interno, o conteúdo atual amolece (sai) enquanto a
- *   próxima tela ainda não chegou — cobre o "vazio seco" entre as páginas.
- * - Quando a rota muda, o `key` remonta a região e dispara a entrada suave.
+ * Barra fina no topo enquanto a próxima tela carrega.
+ * Só CSS + um flag — sem biblioteca, não pesa em celular antigo.
  */
-export function ConteudoPrincipal({ children }: { children: React.ReactNode }) {
+export function NavegacaoProgresso() {
   const pathname = usePathname();
-  const [saindo, setSaindo] = useState(false);
-  const [rotaVisto, setRotaVisto] = useState(pathname);
+  const [ativo, setAtivo] = useState(false);
 
-  // Ajusta o estado no mesmo render da troca de rota — senão a tela nova
-  // nasceria com a classe de saída por um frame.
-  if (rotaVisto !== pathname) {
-    setRotaVisto(pathname);
-    setSaindo(false);
-  }
+  useEffect(() => {
+    setAtivo(false);
+  }, [pathname]);
 
   useEffect(() => {
     function aoClicar(evento: MouseEvent) {
@@ -50,23 +43,22 @@ export function ConteudoPrincipal({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setSaindo(true);
+      setAtivo(true);
     }
 
     document.addEventListener("click", aoClicar, true);
     return () => document.removeEventListener("click", aoClicar, true);
   }, []);
 
+  if (!ativo) return null;
+
   return (
-    <main
-      key={pathname}
-      className={
-        saindo
-          ? "page-leave relative z-10 min-w-0 flex-1 overflow-x-hidden px-3 py-4 pb-nav sm:px-4 md:px-8 md:py-6 md:pb-6"
-          : "page-enter relative z-10 min-w-0 flex-1 overflow-x-hidden px-3 py-4 pb-nav sm:px-4 md:px-8 md:py-6 md:pb-6"
-      }
+    <div
+      className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[2.5px] overflow-hidden"
+      aria-hidden="true"
+      role="presentation"
     >
-      {children}
-    </main>
+      <div className="rota-progresso h-full w-full origin-left rounded-r-full bg-gradient-to-r from-balloon-pink via-balloon-sky to-balloon-sun" />
+    </div>
   );
 }
