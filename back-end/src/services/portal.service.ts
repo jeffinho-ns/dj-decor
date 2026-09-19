@@ -253,7 +253,6 @@ export class PortalService {
         pegueEMonte: true,
         assinaturaClienteEm: true,
         avaliacaoNota: true,
-        pegueEMonte: true,
         separacaoConcluidaEm: true,
         prontoRetiradaEm: true,
         retiradoClienteEm: true,
