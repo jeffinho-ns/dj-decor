@@ -1256,7 +1256,10 @@ export class OsService {
 
     const atualizada = await prisma.ordemServico.update({
       where: { id: osId },
-      data: { montagemLocalConcluida: true },
+      data: {
+        montagemLocalConcluida: true,
+        montagemLocalConcluidaEm: new Date(),
+      },
       include: osInclude,
     });
 

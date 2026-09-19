@@ -62,6 +62,22 @@ export class OsController {
     }
   }
 
+  async processarAlertaDesmontagem(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const { alertaDesmontagemService } = await import(
+        "../services/alerta-desmontagem.service"
+      );
+      const result = await alertaDesmontagemService.processar();
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async listMine(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) {

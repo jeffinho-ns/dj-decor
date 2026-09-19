@@ -82,6 +82,12 @@ osRoutes.get(
   (req, res, next) => osController.listOperacao(req, res, next)
 );
 
+osRoutes.post(
+  "/alerta-desmontagem/processar",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => osController.processarAlertaDesmontagem(req, res, next)
+);
+
 osRoutes.get(
   "/today",
   requireRoles(...montagemRoles),

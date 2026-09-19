@@ -91,6 +91,31 @@ export function buildMensagemSugerida(
         `— Equipe DJ festas`
       );
 
+    case "alerta_desmontagem_equipe": {
+      const cliente = String(payload.clienteNome ?? "cliente");
+      const horarioFmt = String(
+        payload.horarioMontagemFmt ?? "horário da montagem"
+      );
+      const horas = Number(payload.horasAposMontagem ?? 4);
+      const desmontador =
+        typeof payload.desmontadorNome === "string" && payload.desmontadorNome
+          ? payload.desmontadorNome
+          : "não atribuído";
+      const destinatario =
+        typeof payload.destinatarioNome === "string" && payload.destinatarioNome
+          ? `${payload.destinatarioNome}, `
+          : "";
+      return (
+        `⏰ Alerta desmontagem — DJ festas\n\n` +
+        `${destinatario}a festa "${tema}" de ${cliente} ` +
+        `(montagem ${horarioFmt}) já passou cerca de ${horas}h. ` +
+        `Pode estar acabando — vale checar se já podem ir desmontar.\n\n` +
+        `Endereço: ${endereco}\n` +
+        `Desmontador: ${desmontador}\n\n` +
+        `— Sistema DJ festas`
+      );
+    }
+
     case "upsell_extras": {
       const itens = Array.isArray(payload.itensExtras)
         ? (payload.itensExtras as string[])
@@ -141,6 +166,7 @@ export function enrichWhatsAppPayload(
  * - `upsell_extras` — após pagamento confirmado
  * - `equipe_a_caminho` — após concluir romaneio / OS EM_TRANSITO
  * - `montagem_finalizada` — após foto final / OS FINALIZADA
+ * - `alerta_desmontagem_equipe` — ~4h após horário de montagem (festa ainda na rua)
  * - `pos_venda_avaliacao` — após festa CONCLUIDO / foto final
  *
  * Ordem de envio: Meta Cloud API (se configurada) → WHATSAPP_IA_WEBHOOK_URL (legado).

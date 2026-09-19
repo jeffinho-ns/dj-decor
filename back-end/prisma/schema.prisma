@@ -416,9 +416,13 @@ model OrdemServico {
   checkinAt         DateTime? @map("checkin_at")
   romaneioConcluido         Boolean   @default(false) @map("romaneio_concluido")
   montagemLocalConcluida    Boolean   @default(false) @map("montagem_local_concluida")
+  /** Quando a montagem no local foi marcada como concluída. */
+  montagemLocalConcluidaEm  DateTime? @map("montagem_local_concluida_em")
   /** Checklist de retorno ao depósito concluído. */
   retornoConcluido          Boolean   @default(false) @map("retorno_concluido")
   retornoConcluidoEm        DateTime? @map("retorno_concluido_em")
+  /** Alerta WhatsApp à equipe (festa pode estar acabando / desmontar). */
+  alertaDesmontagemEnviadoEm DateTime? @map("alerta_desmontagem_enviado_em")
   criadoEm                  DateTime  @default(now()) @map("criado_em")
 
   festaId String @unique @map("festa_id")
