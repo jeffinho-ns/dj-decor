@@ -2,7 +2,16 @@ import type { Metadata, Viewport } from "next";
 import { Fredoka, Nunito } from "next/font/google";
 
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
+import {
+  SPLASH_INIT_SCRIPT,
+  SplashAbertura,
+} from "@/components/pwa/splash-abertura";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import {
+  arquivoSplash,
+  mediaSplash,
+  SPLASHES_IOS,
+} from "@/lib/splash-ios";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -67,11 +76,23 @@ export default function RootLayout({
           depende da tag legada para abrir em tela cheia quando instalado.
         */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        {SPLASHES_IOS.map((tela) => (
+          <link
+            key={arquivoSplash(tela) + tela.densidade}
+            rel="apple-touch-startup-image"
+            media={mediaSplash(tela)}
+            href={arquivoSplash(tela)}
+          />
+        ))}
         <script
           dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
         />
+        <script
+          dangerouslySetInnerHTML={{ __html: SPLASH_INIT_SCRIPT }}
+        />
       </head>
       <body className="relative z-0 antialiased">
+        <SplashAbertura />
         <ThemeProvider>{children}</ThemeProvider>
         <ServiceWorkerRegister />
       </body>

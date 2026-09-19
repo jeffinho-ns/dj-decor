@@ -10,12 +10,19 @@
  * do reenvio das ações dos montadores.
  */
 
-const VERSAO = "v1";
+const VERSAO = "v2";
 const CACHE_ESTATICO = `dj-festas-estatico-${VERSAO}`;
 const CACHE_PAGINAS = `dj-festas-paginas-${VERSAO}`;
 const ROTA_OFFLINE = "/offline";
 
-const PRECACHE = [ROTA_OFFLINE, "/icons/icon-192.png", "/icons/icon-512.png"];
+// A logo entra aqui para a abertura funcionar mesmo sem sinal.
+const PRECACHE = [
+  ROTA_OFFLINE,
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/icons/logo-baloes.png",
+  "/icons/logo-nome.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

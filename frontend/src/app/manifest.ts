@@ -13,8 +13,10 @@ export default function manifest(): MetadataRoute.Manifest {
     // standalone = abre sem barra do navegador, em tela cheia.
     display: "standalone",
     orientation: "portrait",
-    background_color: "#e9edf5",
-    theme_color: "#ff5c8a",
+    // Fundo da abertura no Android — casa com a tela animada e com as
+    // imagens de abertura do iOS.
+    background_color: "#16100a",
+    theme_color: "#e9edf5",
     categories: ["business", "productivity"],
     icons: [
       {

@@ -657,3 +657,135 @@
 .rota-progresso {
   animation: rota-progresso 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
+
+/* --- Tela de abertura do app --- */
+
+#splash-abertura {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, #33271a 0%, #16100a 100%);
+  /* Cobre a área do notch quando instalado em tela cheia. */
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+}
+
+/* O script no <head> decide antes da primeira pintura — sem piscada. */
+html[data-splash="0"] #splash-abertura {
+  display: none;
+}
+
+.splash-conteudo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.25rem;
+}
+
+.splash-baloes {
+  width: min(42vw, 190px);
+  height: auto;
+  animation:
+    splash-baloes-entra 0.8s cubic-bezier(0.16, 1, 0.3, 1) both,
+    splash-flutua 3.4s ease-in-out 0.8s infinite;
+}
+
+/*
+ * A máscara com a própria logo faz o brilho existir só dentro das letras.
+ * Sem ela o reflexo vira uma faixa retangular por cima do fundo escuro.
+ */
+.splash-nome-area {
+  position: relative;
+  display: block;
+  -webkit-mask-image: url("/icons/logo-nome.png");
+  mask-image: url("/icons/logo-nome.png");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  animation: splash-nome-entra 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+}
+
+.splash-nome {
+  display: block;
+  width: min(62vw, 280px);
+  height: auto;
+}
+
+.splash-brilho {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* `screen` acende o dourado em vez de cobri-lo com uma camada clara. */
+  mix-blend-mode: screen;
+  background: linear-gradient(
+    100deg,
+    transparent 34%,
+    rgba(255, 252, 240, 1) 50%,
+    transparent 66%
+  );
+  animation: splash-brilho 1.15s ease-in-out 0.85s both;
+}
+
+@keyframes splash-baloes-entra {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes splash-flutua {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@keyframes splash-nome-entra {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes splash-brilho {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(120%);
+  }
+}
+
+#splash-abertura.splash-saindo {
+  animation: splash-sai 0.46s ease forwards;
+}
+
+@keyframes splash-sai {
+  to {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-baloes,
+  .splash-nome-area,
+  .splash-brilho,
+  #splash-abertura.splash-saindo {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+  }
+}
