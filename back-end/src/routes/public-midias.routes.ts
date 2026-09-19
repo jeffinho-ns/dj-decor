@@ -4,11 +4,19 @@ import {
   getFirebaseSignedUrl,
   isFirebaseConfigured,
 } from "../integrations/firebase-storage";
+import {
+  ContratoNotFoundError,
+  ContratoPdfNotAvailableError,
+  contratosService,
+} from "../services/contratos.service";
 import { midiasService, MidiaNotFoundError } from "../services/midias.service";
-import { verifyPublicMidiaSig } from "../utils/midia-public-url";
+import {
+  verifyPublicContratoSig,
+  verifyPublicMidiaSig,
+} from "../utils/midia-public-url";
 
 /**
- * URLs públicas assinadas para a Meta/WhatsApp baixar imagens de referência.
+ * URLs públicas assinadas para a Meta/WhatsApp baixar mídia/PDF.
  * Sem auth de usuário — validação por HMAC (exp + sig).
  */
 const publicMidiasRoutes = Router();
@@ -58,6 +66,36 @@ publicMidiasRoutes.get("/midias/:id", async (req, res, next) => {
     res.send(Buffer.from(midia.data));
   } catch (error) {
     if (error instanceof MidiaNotFoundError) {
+      res.status(404).json({ message: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+publicMidiasRoutes.get("/contratos/:id", async (req, res, next) => {
+  try {
+    const id = String(req.params.id || "");
+    const exp = String(req.query.exp || "");
+    const sig = String(req.query.sig || "");
+    if (!id || !verifyPublicContratoSig(id, exp, sig)) {
+      res.status(403).json({ message: "Link inválido ou expirado" });
+      return;
+    }
+
+    const pdf = await contratosService.getPdfByContratoId(id);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="contrato-${id.slice(0, 8)}.pdf"`
+    );
+    res.setHeader("Cache-Control", "private, max-age=300");
+    res.send(pdf);
+  } catch (error) {
+    if (
+      error instanceof ContratoNotFoundError ||
+      error instanceof ContratoPdfNotAvailableError
+    ) {
       res.status(404).json({ message: error.message });
       return;
     }

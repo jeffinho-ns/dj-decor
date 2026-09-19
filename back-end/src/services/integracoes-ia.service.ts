@@ -5,7 +5,9 @@ import { atendimentoService } from "./atendimento.service";
 import { bolasService } from "./bolas.service";
 import { catalogoService } from "./catalogo.service";
 import { festasService } from "./festas.service";
-import { buildPublicMidiaUrl } from "../utils/midia-public-url";
+import { buildPublicContratoUrl, buildPublicMidiaUrl } from "../utils/midia-public-url";
+import { pdfAdapter } from "../integrations/pdf";
+import { portalService } from "./portal.service";
 
 function startOfDay(d: Date) {
   const x = new Date(d);
@@ -394,6 +396,31 @@ export class IntegracoesIaService {
       }
     }
 
+    let portal: { url: string; token: string } | null = null;
+    let contrato: {
+      id: string;
+      pdfUrl: string;
+      geradoEm: Date;
+    } | null = null;
+
+    if (festa.status === StatusFesta.FECHADO || data.fechar) {
+      try {
+        portal = await portalService.buildPortalLink(festa.id);
+      } catch (err) {
+        console.error("[integracoes-ia] falha ao gerar portal:", err);
+      }
+      try {
+        const c = await pdfAdapter.gerarContratoLocacao(festa.id);
+        contrato = {
+          id: c.id,
+          pdfUrl: buildPublicContratoUrl(c.id, 60 * 60 * 24),
+          geradoEm: c.geradoEm,
+        };
+      } catch (err) {
+        console.error("[integracoes-ia] falha ao gerar contrato:", err);
+      }
+    }
+
     return {
       ok: true,
       festa: {
@@ -417,6 +444,8 @@ export class IntegracoesIaService {
         pegueEMonte: festa.pegueEMonte,
         itensExtras: festa.itensExtras,
       },
+      portal,
+      contrato,
     };
   }
 

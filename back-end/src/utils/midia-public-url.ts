@@ -53,3 +53,37 @@ export function verifyPublicMidiaSig(
     return false;
   }
 }
+
+/** URL pública do PDF do contrato (Meta/WhatsApp). */
+export function buildPublicContratoUrl(
+  contratoId: string,
+  ttlSec = DEFAULT_TTL_SEC
+): string {
+  const exp = Math.floor(Date.now() / 1000) + ttlSec;
+  const payload = `contrato:${contratoId}:${exp}`;
+  const sig = createHmac("sha256", signingSecret())
+    .update(payload)
+    .digest("hex");
+  return `${publicApiBaseUrl()}/api/public/contratos/${contratoId}?exp=${exp}&sig=${sig}`;
+}
+
+export function verifyPublicContratoSig(
+  contratoId: string,
+  expRaw: string,
+  sig: string
+): boolean {
+  const exp = Number(expRaw);
+  if (!Number.isFinite(exp) || exp * 1000 < Date.now()) return false;
+  const payload = `contrato:${contratoId}:${exp}`;
+  const expected = createHmac("sha256", signingSecret())
+    .update(payload)
+    .digest("hex");
+  try {
+    const a = Buffer.from(expected, "utf8");
+    const b = Buffer.from(String(sig || ""), "utf8");
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
