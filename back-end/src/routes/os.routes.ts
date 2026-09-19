@@ -175,6 +175,12 @@ osRoutes.post(
 );
 
 osRoutes.post(
+  "/:id/retorno/concluir",
+  requireRoles(...montagemRoles),
+  (req, res, next) => osController.concluirRetorno(req, res, next)
+);
+
+osRoutes.post(
   "/:id/finalizar",
   requireRoles(...montagemRoles),
   (req, res, next) => osController.finalizar(req, res, next)

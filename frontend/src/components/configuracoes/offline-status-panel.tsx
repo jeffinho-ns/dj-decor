@@ -26,6 +26,9 @@ function buildExecutor(token: string): OfflineQueueExecutor {
       updateFestaChecklist(festaId, itensExtrasConcluidos, token).then(
         () => undefined
       ),
+    osAction: async () => {
+      throw new Error("Use o banner de Montagem para reenviar ações de OS");
+    },
     generic: async () => {
       throw new Error("Ação genérica offline sem handler registrado");
     },
@@ -44,6 +47,7 @@ export function OfflineStatusPanel({ token }: OfflineStatusPanelProps) {
       getOfflineQueue().map((e) => {
         if (e.type === "romaneio_toggle") return "Item de romaneio";
         if (e.type === "festa_checklist") return "Checklist de festa";
+        if (e.type === "os_action") return e.label ?? e.action;
         return e.label ?? e.actionKey;
       })
     );

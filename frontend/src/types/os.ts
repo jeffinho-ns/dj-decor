@@ -28,6 +28,7 @@ export interface ItemRomaneio {
   carregado: boolean;
   conferido: boolean;
   montado: boolean;
+  retornado?: boolean;
   osId: string;
   unidadeId: string | null;
   fotoMidiaId: string | null;
@@ -42,6 +43,9 @@ export interface OrdemServico {
   checkinAt: string | null;
   romaneioConcluido: boolean;
   montagemLocalConcluida: boolean;
+  /** Checklist de retorno ao depósito. */
+  retornoConcluido?: boolean;
+  retornoConcluidoEm?: string | null;
   /** Presente quando a foto da montagem já foi enviada. */
   fotoFinalMidiaId?: string | null;
   criadoEm: string;
@@ -77,6 +81,7 @@ export interface UpdateRomaneioItemPayload {
   carregado?: boolean;
   conferido?: boolean;
   montado?: boolean;
+  retornado?: boolean;
   fotoMidiaId?: string | null;
 }
 
@@ -117,10 +122,16 @@ export interface OperacaoPainelItem {
   faseLabel: string;
   itensPendentes: number;
   totalItens: number;
+  itensRetornoPendentes?: number;
   prontoRetiradaEm: string | null;
   retiradoClienteEm: string | null;
   montadorNome: string | null;
   desmontadorNome: string | null;
+  montadorId?: string | null;
+  desmontadorId?: string | null;
+  atrasado?: boolean;
+  slaSeparacaoEstourado?: boolean;
+  slaLimiteEm?: string | null;
 }
 
 /** Status público do portal do cliente. */
@@ -184,6 +195,7 @@ export interface PortalFestaStatus {
   pegueEMonte?: boolean;
   prontoRetirada?: boolean;
   retiradoClienteEm?: string | null;
+  retiradaNome?: string | null;
   podeConfirmarRetirada?: boolean;
   galeria?: PortalGaleriaItem[];
   podeAssinar?: boolean;

@@ -11,6 +11,7 @@ const updateConfigSchema = z.object({
   diariaDesmontador: z.coerce.number().min(0).optional(),
   diariaMontadorCarroEmpresa: z.coerce.number().min(0).optional(),
   diariaDesmontadorCarroEmpresa: z.coerce.number().min(0).optional(),
+  slaSeparacaoHoras: z.coerce.number().int().min(0).max(72).optional(),
   frequenciaPagamentoEquipe: z.nativeEnum(FrequenciaPagamentoEquipe).optional(),
   markupBolasPercentual: z.coerce.number().min(0).max(100).optional(),
   clausulasContrato: z.string().max(20000).nullable().optional(),
@@ -87,6 +88,9 @@ export class ConfiguracoesService {
           ? {
               diariaDesmontadorCarroEmpresa: data.diariaDesmontadorCarroEmpresa,
             }
+          : {}),
+        ...(data.slaSeparacaoHoras !== undefined
+          ? { slaSeparacaoHoras: data.slaSeparacaoHoras }
           : {}),
         ...(data.frequenciaPagamentoEquipe !== undefined
           ? { frequenciaPagamentoEquipe: data.frequenciaPagamentoEquipe }

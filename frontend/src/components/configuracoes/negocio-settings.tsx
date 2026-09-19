@@ -188,6 +188,25 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
               }
             />
           </div>
+          <div className="space-y-1">
+            <Label>SLA de separação (horas antes)</Label>
+            <Input
+              type="number"
+              min={0}
+              max={72}
+              value={String(config.slaSeparacaoHoras ?? 3)}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  slaSeparacaoHoras: e.target.value,
+                })
+              }
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Alerta se a lista não estiver separada até X horas antes da
+              montagem.
+            </p>
+          </div>
           <div className="space-y-1 sm:col-span-2">
             <Label>Pagamento da equipe (diárias)</Label>
             <div className="grid grid-cols-3 gap-2">
@@ -267,6 +286,7 @@ export function NegocioSettings({ token }: NegocioSettingsProps) {
                   diariaDesmontadorCarroEmpresa: Number(
                     config.diariaDesmontadorCarroEmpresa ?? 80
                   ),
+                  slaSeparacaoHoras: Number(config.slaSeparacaoHoras ?? 3),
                   frequenciaPagamentoEquipe:
                     config.frequenciaPagamentoEquipe ?? "QUINZENAL",
                   clausulasContrato: config.clausulasContrato,

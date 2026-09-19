@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import {
   checkinOs,
   concluirMontagemLocal,
+  concluirRetorno,
   concluirRomaneio,
   finalizarOs,
   seedRomaneio,
@@ -28,8 +29,12 @@ import {
   uploadItemFotoRomaneio,
 } from "@/lib/api";
 import { OfflineQueueSync } from "@/components/layout/offline-queue-sync";
+import { MontagemEquipeRapida } from "@/components/montagem/montagem-equipe-rapida";
 import { MontagemGaleria } from "@/components/montagem/montagem-galeria";
-import { enqueueRomaneioToggle } from "@/lib/offline-queue";
+import {
+  enqueueOsAction,
+  enqueueRomaneioToggle,
+} from "@/lib/offline-queue";
 import { cn } from "@/lib/utils";
 import type { OrdemServico, StatusOS } from "@/types/os";
 import type { User } from "@/types/auth";
@@ -119,8 +124,15 @@ export function MontagemOsDetalhe({
 
   const canEdit =
     user.role === "ADMIN" ||
+    user.role === "GERENTE" ||
     !os.montadorId ||
-    os.montadorId === user.id;
+    os.montadorId === user.id ||
+    os.desmontadorId === user.id;
+
+  const canAssignEquipe =
+    user.role === "ADMIN" ||
+    user.role === "GERENTE" ||
+    user.role === "VENDEDOR";
 
   const festa = os.festa;
   const itens = os.itensRomaneio;
@@ -132,6 +144,13 @@ export function MontagemOsDetalhe({
   const montagemOk = os.montagemLocalConcluida;
   const fotoOk = Boolean(os.fotoFinalMidiaId);
   const saidaOk = os.status === "FINALIZADA";
+  const retornoOk = Boolean(os.retornoConcluido);
+
+  const mostrarRetorno =
+    romaneioOk &&
+    (pegueEMonte
+      ? clienteRetirou
+      : montagemOk || saidaOk || Boolean(os.desmontadorId));
 
   const etapaAtiva: Etapa = useMemo(() => {
     if (!romaneioOk) return "romaneio";
@@ -145,19 +164,13 @@ export function MontagemOsDetalhe({
 
   const todosItensSeparados =
     itens.length > 0 &&
-    itens.every((i) => i.carregado && i.conferido) &&
-    itens.every(
-      (i) =>
-        !i.unidade?.produto?.requerQr || Boolean(i.fotoMidiaId)
-    );
+    itens.every((i) => i.carregado && i.conferido);
 
   const todosItensMontados =
-    itens.length > 0 &&
-    itens.every((i) => i.montado) &&
-    itens.every(
-      (i) =>
-        !i.unidade?.produto?.requerQr || Boolean(i.fotoMidiaId)
-    );
+    itens.length > 0 && itens.every((i) => i.montado);
+
+  const todosItensRetornados =
+    itens.length > 0 && itens.every((i) => Boolean(i.retornado));
 
   const itensFaltaEstoque = festa.itensFaltaEstoque ?? [];
 
@@ -167,7 +180,7 @@ export function MontagemOsDetalhe({
 
   async function toggleItem(
     itemId: string,
-    campo: "carregado" | "conferido" | "montado",
+    campo: "carregado" | "conferido" | "montado" | "retornado",
     valor: boolean
   ) {
     setErro(null);
@@ -234,8 +247,11 @@ export function MontagemOsDetalhe({
         const atualizada = await concluirRomaneio(os.id, token);
         setOs(atualizada);
       } catch (err) {
+        enqueueOsAction(os.id, "concluir_romaneio", "Concluir separação");
         setErro(
-          err instanceof Error ? err.message : "Não foi possível concluir"
+          err instanceof Error
+            ? `${err.message} — ação salva offline.`
+            : "Não foi possível concluir — salvo offline"
         );
       }
     });
@@ -269,10 +285,28 @@ export function MontagemOsDetalhe({
         const atualizada = await concluirMontagemLocal(os.id, token);
         setOs(atualizada);
       } catch (err) {
+        enqueueOsAction(os.id, "concluir_montagem", "Concluir montagem");
         setErro(
           err instanceof Error
-            ? err.message
-            : "Não foi possível concluir a montagem"
+            ? `${err.message} — ação salva offline.`
+            : "Não foi possível concluir a montagem — salvo offline"
+        );
+      }
+    });
+  }
+
+  function concluirRetornoHandler() {
+    setErro(null);
+    startTransition(async () => {
+      try {
+        const atualizada = await concluirRetorno(os.id, token);
+        setOs(atualizada);
+      } catch (err) {
+        enqueueOsAction(os.id, "concluir_retorno", "Concluir retorno");
+        setErro(
+          err instanceof Error
+            ? `${err.message} — ação salva offline.`
+            : "Não foi possível concluir o retorno — salvo offline"
         );
       }
     });
@@ -300,8 +334,14 @@ export function MontagemOsDetalhe({
             );
             setOs(atualizada);
           } catch (err) {
+            enqueueOsAction(os.id, "checkin", "Check-in", {
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+            });
             setErro(
-              err instanceof Error ? err.message : "Check-in falhou"
+              err instanceof Error
+                ? `${err.message} — check-in salvo offline.`
+                : "Check-in falhou — salvo offline"
             );
           }
         });
@@ -338,6 +378,15 @@ export function MontagemOsDetalhe({
   return (
     <div className="relative mx-auto max-w-lg space-y-5 pb-sticky-above-nav sm:space-y-6 md:pb-8">
       <OfflineQueueSync token={token} />
+
+      {canAssignEquipe ? (
+        <MontagemEquipeRapida
+          os={os}
+          token={token}
+          canEdit
+          onUpdated={setOs}
+        />
+      ) : null}
       <Link
         href="/montagem"
         className="inline-flex items-center gap-1.5 text-sm text-balloon-sky transition-colors hover:text-balloon-sky/80"
@@ -524,7 +573,7 @@ export function MontagemOsDetalhe({
                         }}
                       >
                         <Camera className="size-3.5" />
-                        Foto obrigatória
+                        Foto (opcional)
                       </Button>
                     )}
                   </div>
@@ -716,7 +765,7 @@ export function MontagemOsDetalhe({
                           }}
                         >
                           <Camera className="size-3.5" />
-                          Foto obrigatória
+                          Foto (opcional)
                         </Button>
                       )}
                     </div>
@@ -812,6 +861,68 @@ export function MontagemOsDetalhe({
         )}
       </section>
       </>
+      ) : null}
+
+      {mostrarRetorno ? (
+        <section className="rounded-2xl p-4 sm:p-5 neo-sm ring-2 ring-balloon-lilac/30">
+          <div className="flex items-center gap-2">
+            {retornoOk ? (
+              <CheckCircle2 className="size-5 text-balloon-mint" />
+            ) : (
+              <PackageCheck className="size-5 text-balloon-lilac" />
+            )}
+            <h3 className="font-display text-lg text-foreground">
+              Checklist de retorno
+            </h3>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Confira cada item que voltou ao depósito após a festa.
+          </p>
+          {retornoOk ? (
+            <p className="mt-3 text-xs text-balloon-mint">
+              Retorno concluído
+              {os.retornoConcluidoEm
+                ? ` às ${safeTime(os.retornoConcluidoEm)}`
+                : ""}
+            </p>
+          ) : (
+            <>
+              <ul className="mt-4 space-y-3">
+                {itens.map((item) => (
+                  <li key={item.id} className="rounded-xl p-3 neo-inset">
+                    <p className="text-sm font-medium text-foreground">
+                      {item.descricao ??
+                        item.unidade?.produto?.nome ??
+                        "Item sem descrição"}
+                    </p>
+                    <div className="mt-2">
+                      <ToggleChip
+                        label="Retornou"
+                        checked={Boolean(item.retornado)}
+                        disabled={!canEdit || pending}
+                        onChange={(v) =>
+                          void toggleItem(item.id, "retornado", v)
+                        }
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                type="button"
+                className="mt-4 w-full"
+                disabled={!todosItensRetornados || pending || !canEdit}
+                onClick={concluirRetornoHandler}
+              >
+                {pending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  "Tudo retornou ao depósito"
+                )}
+              </Button>
+            </>
+          )}
+        </section>
       ) : null}
 
       {erro ? (

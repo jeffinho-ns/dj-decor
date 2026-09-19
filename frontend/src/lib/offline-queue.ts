@@ -1,6 +1,6 @@
 /**
  * Fila offline — persiste ações falhas em localStorage e reenvia quando online.
- * Suporta: toggle romaneio, checklist de festas e retry genérico.
+ * Suporta: toggle romaneio, checklist de festas, ações de OS e retry genérico.
  */
 
 const STORAGE_KEY = "dj-decor-offline-queue";
@@ -9,6 +9,7 @@ export const OFFLINE_QUEUE_CHANGED = "dj-decor-offline-queue-changed";
 export type OfflineQueueEntryType =
   | "romaneio_toggle"
   | "festa_checklist"
+  | "os_action"
   | "generic";
 
 interface OfflineQueueEntryBase {
@@ -22,13 +23,33 @@ export interface RomaneioToggleEntry extends OfflineQueueEntryBase {
   type: "romaneio_toggle";
   osId: string;
   itemId: string;
-  payload: { carregado?: boolean; conferido?: boolean; montado?: boolean };
+  payload: {
+    carregado?: boolean;
+    conferido?: boolean;
+    montado?: boolean;
+    retornado?: boolean;
+  };
 }
 
 export interface FestaChecklistEntry extends OfflineQueueEntryBase {
   type: "festa_checklist";
   festaId: string;
   itensExtrasConcluidos: string[];
+}
+
+export type OsOfflineAction =
+  | "concluir_romaneio"
+  | "checkin"
+  | "concluir_montagem"
+  | "concluir_retorno"
+  | "finalizar";
+
+export interface OsActionEntry extends OfflineQueueEntryBase {
+  type: "os_action";
+  osId: string;
+  action: OsOfflineAction;
+  payload?: Record<string, unknown>;
+  label?: string;
 }
 
 export interface GenericRetryEntry extends OfflineQueueEntryBase {
@@ -41,17 +62,28 @@ export interface GenericRetryEntry extends OfflineQueueEntryBase {
 export type OfflineQueueEntry =
   | RomaneioToggleEntry
   | FestaChecklistEntry
+  | OsActionEntry
   | GenericRetryEntry;
 
 export interface OfflineQueueExecutor {
   romaneioToggle?: (
     osId: string,
     itemId: string,
-    payload: { carregado?: boolean; conferido?: boolean; montado?: boolean }
+    payload: {
+      carregado?: boolean;
+      conferido?: boolean;
+      montado?: boolean;
+      retornado?: boolean;
+    }
   ) => Promise<void>;
   festaChecklist?: (
     festaId: string,
     itensExtrasConcluidos: string[]
+  ) => Promise<void>;
+  osAction?: (
+    osId: string,
+    action: OsOfflineAction,
+    payload?: Record<string, unknown>
   ) => Promise<void>;
   generic?: (actionKey: string, payload: Record<string, unknown>) => Promise<void>;
 }
@@ -92,17 +124,32 @@ function newId(suffix: string): string {
 export function enqueueRomaneioToggle(
   osId: string,
   itemId: string,
-  payload: { carregado?: boolean; conferido?: boolean; montado?: boolean }
+  payload: {
+    carregado?: boolean;
+    conferido?: boolean;
+    montado?: boolean;
+    retornado?: boolean;
+  }
 ): void {
-  enqueue({
-    id: newId(itemId),
-    type: "romaneio_toggle",
-    osId,
-    itemId,
-    payload,
-    createdAt: new Date().toISOString(),
-    retries: 0,
+  // Coalesce: keep only latest toggle for same item+campo
+  const keys = Object.keys(payload);
+  const queue = readQueue().filter((e) => {
+    if (e.type !== "romaneio_toggle") return true;
+    if (e.osId !== osId || e.itemId !== itemId) return true;
+    return !keys.some((k) => k in e.payload);
   });
+  writeQueue([
+    ...queue,
+    {
+      id: newId(itemId),
+      type: "romaneio_toggle",
+      osId,
+      itemId,
+      payload,
+      createdAt: new Date().toISOString(),
+      retries: 0,
+    },
+  ]);
 }
 
 export function enqueueFestaChecklist(
@@ -117,6 +164,30 @@ export function enqueueFestaChecklist(
     createdAt: new Date().toISOString(),
     retries: 0,
   });
+}
+
+export function enqueueOsAction(
+  osId: string,
+  action: OsOfflineAction,
+  label?: string,
+  payload?: Record<string, unknown>
+): void {
+  const queue = readQueue().filter(
+    (e) => !(e.type === "os_action" && e.osId === osId && e.action === action)
+  );
+  writeQueue([
+    ...queue,
+    {
+      id: newId(action),
+      type: "os_action",
+      osId,
+      action,
+      label,
+      payload,
+      createdAt: new Date().toISOString(),
+      retries: 0,
+    },
+  ]);
 }
 
 export function enqueueGenericRetry(
@@ -156,11 +227,7 @@ async function executeEntry(
       if (!executor.romaneioToggle) {
         throw new Error("Executor romaneio_toggle não configurado");
       }
-      await executor.romaneioToggle(
-        entry.osId,
-        entry.itemId,
-        entry.payload
-      );
+      await executor.romaneioToggle(entry.osId, entry.itemId, entry.payload);
       break;
     }
     case "festa_checklist": {
@@ -171,6 +238,13 @@ async function executeEntry(
         entry.festaId,
         entry.itensExtrasConcluidos
       );
+      break;
+    }
+    case "os_action": {
+      if (!executor.osAction) {
+        throw new Error("Executor os_action não configurado");
+      }
+      await executor.osAction(entry.osId, entry.action, entry.payload);
       break;
     }
     case "generic": {

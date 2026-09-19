@@ -62,6 +62,7 @@ export interface PortalFestaStatus {
   /** Pegue e Monte: pronto para o cliente retirar. */
   prontoRetirada: boolean;
   retiradoClienteEm: string | null;
+  retiradaNome: string | null;
   podeConfirmarRetirada: boolean;
   galeria: PortalGaleriaItem[];
   podeAssinar: boolean;
@@ -256,6 +257,8 @@ export class PortalService {
         separacaoConcluidaEm: true,
         prontoRetiradaEm: true,
         retiradoClienteEm: true,
+        retiradaNome: true,
+        retiradaAssinaturaEm: true,
         cliente: { select: { nome: true } },
         ordemServico: {
           select: {
@@ -343,6 +346,7 @@ export class PortalService {
           !festa.retiradoClienteEm
       ),
       retiradoClienteEm: festa.retiradoClienteEm?.toISOString() ?? null,
+      retiradaNome: festa.retiradaNome ?? null,
       podeConfirmarRetirada: Boolean(
         festa.pegueEMonte &&
           festa.prontoRetiradaEm &&
@@ -373,7 +377,18 @@ export class PortalService {
   }
 
   /** Cliente confirma no portal: retirou o Pegue e Monte (itens na rua). */
-  async confirmarRetiradaPegueMonte(token: string) {
+  async confirmarRetiradaPegueMonte(
+    token: string,
+    opts: { nome: string; file: Express.Multer.File }
+  ) {
+    const nome = opts.nome.trim();
+    if (nome.length < 2) {
+      throw new MidiaValidationError("Informe o nome de quem está retirando");
+    }
+    if (!opts.file) {
+      throw new MidiaValidationError("Envie a assinatura da retirada");
+    }
+
     const festa = await prisma.festa.findUnique({
       where: { portalToken: token },
       select: {
@@ -397,9 +412,20 @@ export class PortalService {
       return this.getFestaStatusByToken(token);
     }
 
+    const validated = midiasService.validateFile(opts.file);
+    const agora = new Date();
+    await midiasService.create(
+      validated,
+      { tipo: TipoMidia.ASSINATURA_RETIRADA, festaId: festa.id },
+      null
+    );
     await prisma.festa.update({
       where: { id: festa.id },
-      data: { retiradoClienteEm: new Date() },
+      data: {
+        retiradoClienteEm: agora,
+        retiradaNome: nome,
+        retiradaAssinaturaEm: agora,
+      },
     });
 
     return this.getFestaStatusByToken(token);

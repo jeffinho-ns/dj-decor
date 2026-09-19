@@ -721,13 +721,17 @@ export async function avaliarPortal(
   return handleResponse<PortalFestaStatus>(response);
 }
 
-/** Cliente confirma retirada do Pegue e Monte no depósito. */
+/** Cliente confirma retirada do Pegue e Monte no depósito (nome + assinatura). */
 export async function confirmarRetiradaPegueMonte(
-  token: string
+  token: string,
+  payload: { nome: string; file: File }
 ): Promise<PortalFestaStatus> {
+  const formData = new FormData();
+  formData.append("nome", payload.nome);
+  formData.append("file", payload.file);
   const response = await fetch(
     `${getBaseUrl()}/api/portal/${encodeURIComponent(token)}/retirar-pegue-monte`,
-    { method: "POST" }
+    { method: "POST", body: formData }
   );
   return handleResponse<PortalFestaStatus>(response);
 }
@@ -1277,6 +1281,21 @@ export async function concluirRomaneio(
 ): Promise<OrdemServico> {
   const response = await fetch(
     `${getBaseUrl()}/api/os/${osId}/romaneio/concluir`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+    }
+  );
+  return handleResponse<OrdemServico>(response);
+}
+
+/** Checklist de retorno ao depósito (POST /api/os/:id/retorno/concluir). */
+export async function concluirRetorno(
+  osId: string,
+  token: string
+): Promise<OrdemServico> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/os/${osId}/retorno/concluir`,
     {
       method: "POST",
       headers: authHeaders(token),

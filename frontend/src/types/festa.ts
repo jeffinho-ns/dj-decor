@@ -43,6 +43,8 @@ export interface Festa {
   separacaoConcluidaEm?: string | null;
   prontoRetiradaEm?: string | null;
   retiradoClienteEm?: string | null;
+  retiradaNome?: string | null;
+  retiradaAssinaturaEm?: string | null;
   observacoes?: string | null;
   notasInternas?: string | null;
   endereco: string;

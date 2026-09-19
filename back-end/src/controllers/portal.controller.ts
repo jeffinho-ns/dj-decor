@@ -141,7 +141,17 @@ export class PortalController {
   async confirmarRetirada(req: Request, res: Response, next: NextFunction) {
     try {
       const token = req.params.token as string;
-      const status = await portalService.confirmarRetiradaPegueMonte(token);
+      const nome =
+        typeof req.body?.nome === "string" ? req.body.nome : "";
+      const file = req.file;
+      if (!file) {
+        res.status(400).json({ message: "Envie a assinatura da retirada" });
+        return;
+      }
+      const status = await portalService.confirmarRetiradaPegueMonte(token, {
+        nome,
+        file,
+      });
       res.status(200).json(status);
     } catch (error) {
       if (error instanceof PortalFestaNotFoundError) {

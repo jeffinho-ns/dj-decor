@@ -74,6 +74,8 @@ enum TipoMidia {
   LOGO_EMPRESA
   CATALOGO_ITEM
   ASSINATURA_CLIENTE
+  /** Assinatura na retirada do Pegue e Monte no depósito. */
+  ASSINATURA_RETIRADA
   REFERENCIA_BOLAS
 }
 
@@ -253,6 +255,10 @@ model Festa {
   prontoRetiradaEm      DateTime?         @map("pronto_retirada_em")
   /** Cliente confirmou retirada no portal (itens “na rua”). */
   retiradoClienteEm     DateTime?         @map("retirado_cliente_em")
+  /** Nome de quem retirou o Pegue e Monte. */
+  retiradaNome          String?           @map("retirada_nome")
+  /** Momento da assinatura na retirada. */
+  retiradaAssinaturaEm  DateTime?         @map("retirada_assinatura_em")
   avaliacaoNota         Int?              @map("avaliacao_nota")
   avaliacaoComentario   String?           @map("avaliacao_comentario") @db.Text
   avaliacaoEm           DateTime?         @map("avaliacao_em")
@@ -410,6 +416,9 @@ model OrdemServico {
   checkinAt         DateTime? @map("checkin_at")
   romaneioConcluido         Boolean   @default(false) @map("romaneio_concluido")
   montagemLocalConcluida    Boolean   @default(false) @map("montagem_local_concluida")
+  /** Checklist de retorno ao depósito concluído. */
+  retornoConcluido          Boolean   @default(false) @map("retorno_concluido")
+  retornoConcluidoEm        DateTime? @map("retorno_concluido_em")
   criadoEm                  DateTime  @default(now()) @map("criado_em")
 
   festaId String @unique @map("festa_id")
@@ -435,6 +444,8 @@ model ItemRomaneio {
   carregado  Boolean @default(false)
   conferido  Boolean @default(false)
   montado    Boolean @default(false) @map("montado")
+  /** Item voltou ao depósito (checklist de desmontagem/retorno). */
+  retornado  Boolean @default(false) @map("retornado")
 
   osId String       @map("os_id")
   os   OrdemServico @relation(fields: [osId], references: [id], onDelete: Cascade)
@@ -551,6 +562,8 @@ model ConfiguracaoNegocio {
   diariaDesmontador       Decimal  @default(130) @map("diaria_desmontador") @db.Decimal(10, 2)
   diariaMontadorCarroEmpresa     Decimal @default(130) @map("diaria_montador_carro_empresa") @db.Decimal(10, 2)
   diariaDesmontadorCarroEmpresa  Decimal @default(80) @map("diaria_desmontador_carro_empresa") @db.Decimal(10, 2)
+  /** Horas antes do horário de montagem para concluir a separação (SLA). */
+  slaSeparacaoHoras       Int      @default(3) @map("sla_separacao_horas")
   /** Ritmo de pagamento das diárias (dá para mudar a qualquer momento). */
   frequenciaPagamentoEquipe FrequenciaPagamentoEquipe @default(QUINZENAL) @map("frequencia_pagamento_equipe")
   /** % em cima da tabela do profissional de bolas (cliente paga tabela × (1 + markup/100)). */

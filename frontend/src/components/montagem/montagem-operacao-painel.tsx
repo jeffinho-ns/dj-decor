@@ -1,25 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
+  AlertTriangle,
   ChevronRight,
+  Clock,
   Loader2,
   Package,
   Radio,
   Truck,
+  Users,
 } from "lucide-react";
 
-import { listOsOperacao } from "@/lib/api";
+import { assignMontadorOs, listMontadores, listOsOperacao } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import type { Montador } from "@/types/equipe";
 import type { FaseOperacao, OperacaoPainelItem } from "@/types/os";
 
-const FASE_STYLE: Record<
-  FaseOperacao,
-  { badge: string; dot: string }
-> = {
+const FASE_STYLE: Record<FaseOperacao, { badge: string; dot: string }> = {
   separar: {
     badge: "bg-balloon-pink/12 text-balloon-pink",
     dot: "bg-balloon-pink",
@@ -50,8 +51,9 @@ const FASE_STYLE: Record<
   },
 };
 
-const FILTROS: { id: "todas" | FaseOperacao; label: string }[] = [
+const FILTROS: { id: "todas" | "alertas" | FaseOperacao; label: string }[] = [
   { id: "todas", label: "Todas" },
+  { id: "alertas", label: "Alertas" },
   { id: "separar", label: "Separar" },
   { id: "pronto_retirada", label: "Retirada" },
   { id: "na_rua", label: "Na rua" },
@@ -79,19 +81,23 @@ function safeDay(value: string | null | undefined): string {
 
 interface MontagemOperacaoPainelProps {
   token: string;
-  /** Snapshot inicial do SSR (opcional). */
   inicial?: OperacaoPainelItem[];
+  podeTrocarEquipe?: boolean;
 }
 
 export function MontagemOperacaoPainel({
   token,
   inicial = [],
+  podeTrocarEquipe = false,
 }: MontagemOperacaoPainelProps) {
   const [itens, setItens] = useState<OperacaoPainelItem[]>(inicial);
-  const [filtro, setFiltro] = useState<"todas" | FaseOperacao>("todas");
+  const [filtro, setFiltro] = useState<"todas" | "alertas" | FaseOperacao>(
+    "todas"
+  );
   const [loading, setLoading] = useState(inicial.length === 0);
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [pessoas, setPessoas] = useState<Montador[]>([]);
 
   const carregar = useCallback(async () => {
     try {
@@ -124,6 +130,21 @@ export function MontagemOperacaoPainel({
     };
   }, [carregar]);
 
+  useEffect(() => {
+    if (!podeTrocarEquipe) return;
+    let cancelled = false;
+    void listMontadores(token)
+      .then((lista) => {
+        if (!cancelled) setPessoas(lista);
+      })
+      .catch(() => {
+        if (!cancelled) setPessoas([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [podeTrocarEquipe, token]);
+
   const contagens = useMemo(() => {
     const map: Partial<Record<FaseOperacao, number>> = {};
     for (const item of itens) {
@@ -132,8 +153,17 @@ export function MontagemOperacaoPainel({
     return map;
   }, [itens]);
 
+  const alertasCount = useMemo(
+    () =>
+      itens.filter((i) => i.atrasado || i.slaSeparacaoEstourado).length,
+    [itens]
+  );
+
   const filtrados = useMemo(() => {
     if (filtro === "todas") return itens;
+    if (filtro === "alertas") {
+      return itens.filter((i) => i.atrasado || i.slaSeparacaoEstourado);
+    }
     return itens.filter((i) => i.fase === filtro);
   }, [itens, filtro]);
 
@@ -156,13 +186,18 @@ export function MontagemOperacaoPainel({
             </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Separação, Pegue e Monte na rua e desmontagem — atualiza a cada 5s
+            Separação, Pegue e Monte, retorno e desmontagem — a cada 5s
             {atualizadoEm
               ? ` · ${format(atualizadoEm, "HH:mm:ss")}`
               : null}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+          {alertasCount > 0 ? (
+            <span className="rounded-lg bg-destructive/12 px-2 py-1 text-destructive">
+              {alertasCount} alerta{alertasCount > 1 ? "s" : ""}
+            </span>
+          ) : null}
           <span className="rounded-lg bg-balloon-pink/12 px-2 py-1 text-balloon-pink">
             {separar} separar
           </span>
@@ -178,7 +213,11 @@ export function MontagemOperacaoPainel({
       <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
         {FILTROS.map((f) => {
           const count =
-            f.id === "todas" ? itens.length : (contagens[f.id] ?? 0);
+            f.id === "todas"
+              ? itens.length
+              : f.id === "alertas"
+                ? alertasCount
+                : (contagens[f.id] ?? 0);
           const active = filtro === f.id;
           return (
             <button
@@ -213,9 +252,16 @@ export function MontagemOperacaoPainel({
           Nada nesta fila no momento.
         </p>
       ) : (
-        <ul className="mt-3 max-h-80 space-y-2 overflow-y-auto">
+        <ul className="mt-3 max-h-96 space-y-2 overflow-y-auto">
           {filtrados.map((item) => (
-            <OperacaoLinha key={item.festaId} item={item} />
+            <OperacaoLinha
+              key={item.festaId}
+              item={item}
+              token={token}
+              pessoas={pessoas}
+              podeTrocarEquipe={podeTrocarEquipe}
+              onRefresh={() => void carregar()}
+            />
           ))}
         </ul>
       )}
@@ -223,81 +269,195 @@ export function MontagemOperacaoPainel({
   );
 }
 
-function OperacaoLinha({ item }: { item: OperacaoPainelItem }) {
+function OperacaoLinha({
+  item,
+  token,
+  pessoas,
+  podeTrocarEquipe,
+  onRefresh,
+}: {
+  item: OperacaoPainelItem;
+  token: string;
+  pessoas: Montador[];
+  podeTrocarEquipe: boolean;
+  onRefresh: () => void;
+}) {
   const style = FASE_STYLE[item.fase];
   const progresso =
     item.totalItens > 0 ? item.totalItens - item.itensPendentes : 0;
+  const [pending, startTransition] = useTransition();
+  const [erroEquipe, setErroEquipe] = useState<string | null>(null);
+
+  function trocar(
+    campo: "montadorId" | "desmontadorId",
+    value: string | null
+  ) {
+    if (!item.osId) return;
+    setErroEquipe(null);
+    startTransition(async () => {
+      try {
+        await assignMontadorOs(item.osId!, { [campo]: value }, token);
+        onRefresh();
+      } catch (err) {
+        setErroEquipe(
+          err instanceof Error ? err.message : "Falha ao trocar equipe"
+        );
+      }
+    });
+  }
 
   const body = (
-    <div className="flex items-start gap-3 rounded-xl p-3 neo-inset transition-all hover:ring-2 hover:ring-balloon-sky/20">
-      <span
-        className={cn("mt-1.5 size-2 shrink-0 rounded-full", style.dot)}
-        aria-hidden
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-medium text-foreground">
-            {item.clienteNome}
-          </p>
-          <span
-            className={cn(
-              "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-              style.badge
-            )}
+    <div
+      className={cn(
+        "rounded-xl p-3 neo-inset transition-all",
+        (item.atrasado || item.slaSeparacaoEstourado) &&
+          "ring-1 ring-destructive/40"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className={cn("mt-1.5 size-2 shrink-0 rounded-full", style.dot)}
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          {item.osId ? (
+            <Link href={`/montagem/${item.osId}`} className="block">
+              <OperacaoLinhaCabecalho item={item} style={style} progresso={progresso} />
+            </Link>
+          ) : (
+            <OperacaoLinhaCabecalho item={item} style={style} progresso={progresso} />
+          )}
+
+          {podeTrocarEquipe && item.osId && pessoas.length > 0 ? (
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <Users className="size-3 shrink-0" />
+                <select
+                  className="h-8 min-w-0 flex-1 rounded-lg border-0 bg-[var(--neo-bg)] px-2 text-[11px] shadow-[var(--shadow-neo-inset)]"
+                  value={item.montadorId ?? ""}
+                  disabled={pending}
+                  onChange={(e) =>
+                    trocar("montadorId", e.target.value || null)
+                  }
+                >
+                  <option value="">Montador…</option>
+                  {pessoas.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <Users className="size-3 shrink-0" />
+                <select
+                  className="h-8 min-w-0 flex-1 rounded-lg border-0 bg-[var(--neo-bg)] px-2 text-[11px] shadow-[var(--shadow-neo-inset)]"
+                  value={item.desmontadorId ?? ""}
+                  disabled={pending}
+                  onChange={(e) =>
+                    trocar("desmontadorId", e.target.value || null)
+                  }
+                >
+                  <option value="">Desmontador…</option>
+                  {pessoas.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {erroEquipe ? (
+                <p className="text-[10px] text-destructive sm:col-span-2">
+                  {erroEquipe}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        {item.osId ? (
+          <Link
+            href={`/montagem/${item.osId}`}
+            className="mt-1 shrink-0 text-muted-foreground"
+            aria-label="Abrir OS"
           >
-            {item.faseLabel}
-          </span>
-          {item.pegueEMonte ? (
-            <span className="rounded-md bg-balloon-lilac/12 px-1.5 py-0.5 text-[10px] font-medium text-balloon-lilac">
-              Pegue e Monte
-            </span>
-          ) : null}
-        </div>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {item.tema}
-        </p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-          <span className="capitalize">
-            {safeDay(item.horarioMontagem)} · {safeTime(item.horarioMontagem)}
-          </span>
-          {item.totalItens > 0 ? (
-            <span className="inline-flex items-center gap-1">
-              <Package className="size-3" />
-              {progresso}/{item.totalItens}
-            </span>
-          ) : null}
-          {item.fase === "na_rua" && item.retiradoClienteEm ? (
-            <span className="inline-flex items-center gap-1 text-balloon-sun">
-              <Truck className="size-3" />
-              Retirou {safeTime(item.retiradoClienteEm)}
-            </span>
-          ) : null}
-          {item.fase === "pronto_retirada" && item.prontoRetiradaEm ? (
-            <span>Pronto desde {safeTime(item.prontoRetiradaEm)}</span>
-          ) : null}
-          {item.desmontadorNome && item.fase === "desmontar" ? (
-            <span>Desmont.: {item.desmontadorNome}</span>
-          ) : null}
-          {item.montadorNome && item.fase !== "desmontar" ? (
-            <span>{item.montadorNome}</span>
-          ) : null}
-        </div>
+            <ChevronRight className="size-4" />
+          </Link>
+        ) : null}
       </div>
-      {item.osId ? (
-        <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground" />
-      ) : null}
     </div>
   );
 
-  if (item.osId) {
-    return (
-      <li>
-        <Link href={`/montagem/${item.osId}`} className="block">
-          {body}
-        </Link>
-      </li>
-    );
-  }
-
   return <li>{body}</li>;
+}
+
+function OperacaoLinhaCabecalho({
+  item,
+  style,
+  progresso,
+}: {
+  item: OperacaoPainelItem;
+  style: { badge: string; dot: string };
+  progresso: number;
+}) {
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-sm font-medium text-foreground">{item.clienteNome}</p>
+        <span
+          className={cn(
+            "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
+            style.badge
+          )}
+        >
+          {item.faseLabel}
+        </span>
+        {item.pegueEMonte ? (
+          <span className="rounded-md bg-balloon-lilac/12 px-1.5 py-0.5 text-[10px] font-medium text-balloon-lilac">
+            Pegue e Monte
+          </span>
+        ) : null}
+        {item.slaSeparacaoEstourado ? (
+          <span className="inline-flex items-center gap-0.5 rounded-md bg-destructive/12 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
+            <Clock className="size-3" />
+            SLA separação
+          </span>
+        ) : null}
+        {item.atrasado ? (
+          <span className="inline-flex items-center gap-0.5 rounded-md bg-destructive/12 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
+            <AlertTriangle className="size-3" />
+            Atrasado
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.tema}</p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        <span className="capitalize">
+          {safeDay(item.horarioMontagem)} · {safeTime(item.horarioMontagem)}
+        </span>
+        {item.totalItens > 0 ? (
+          <span className="inline-flex items-center gap-1">
+            <Package className="size-3" />
+            {item.fase === "desmontar"
+              ? `${(item.totalItens ?? 0) - (item.itensRetornoPendentes ?? 0)}/${item.totalItens} retorno`
+              : `${progresso}/${item.totalItens}`}
+          </span>
+        ) : null}
+        {item.fase === "na_rua" && item.retiradoClienteEm ? (
+          <span className="inline-flex items-center gap-1 text-balloon-sun">
+            <Truck className="size-3" />
+            Retirou {safeTime(item.retiradoClienteEm)}
+          </span>
+        ) : null}
+        {item.fase === "pronto_retirada" && item.prontoRetiradaEm ? (
+          <span>Pronto desde {safeTime(item.prontoRetiradaEm)}</span>
+        ) : null}
+        {item.desmontadorNome && item.fase === "desmontar" ? (
+          <span>Desmont.: {item.desmontadorNome}</span>
+        ) : null}
+        {item.montadorNome && item.fase !== "desmontar" ? (
+          <span>{item.montadorNome}</span>
+        ) : null}
+      </div>
+    </>
+  );
 }

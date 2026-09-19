@@ -85,7 +85,15 @@ export default async function MontagemPage() {
         </div>
       ) : (
         <div className="mx-auto max-w-lg space-y-5">
-          <MontagemOperacaoPainel token={token} inicial={operacao} />
+          <MontagemOperacaoPainel
+            token={token}
+            inicial={operacao}
+            podeTrocarEquipe={
+              user.role === "ADMIN" ||
+              user.role === "GERENTE" ||
+              user.role === "VENDEDOR"
+            }
+          />
           <MontagemHoje
             itens={itens}
             token={token}

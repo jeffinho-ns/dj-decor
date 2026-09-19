@@ -112,6 +112,10 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
   const [pending, startTransition] = useTransition();
   const [nota, setNota] = useState(5);
   const [comentario, setComentario] = useState("");
+  const [retiradaNome, setRetiradaNome] = useState("");
+  const [retiradaAssinatura, setRetiradaAssinatura] = useState<File | null>(
+    null
+  );
   const [actionMsg, setActionMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -253,12 +257,16 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
   }
 
   function onConfirmarRetirada() {
-    if (!activeToken) return;
+    if (!activeToken || !retiradaAssinatura) return;
     setActionMsg(null);
     startTransition(async () => {
       try {
-        const next = await confirmarRetiradaPegueMonte(activeToken);
+        const next = await confirmarRetiradaPegueMonte(activeToken, {
+          nome: retiradaNome.trim(),
+          file: retiradaAssinatura,
+        });
         setData(next);
+        setRetiradaAssinatura(null);
         setActionMsg("Retirada confirmada! Bom uso da decoração 💛");
       } catch (err) {
         setActionMsg(
@@ -348,13 +356,46 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
             Pegue e Monte pronto para retirar
           </p>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Seu material já está separado no depósito. Quando buscar, confirme
-            aqui para a gente saber que os itens saíram.
+            Seu material já está separado no depósito. Ao buscar, informe quem
+            retirou e envie uma foto da assinatura para confirmarmos.
           </p>
+          <div className="space-y-2">
+            <Label htmlFor="retirada-nome">Nome de quem retira</Label>
+            <Input
+              id="retirada-nome"
+              value={retiradaNome}
+              onChange={(e) => setRetiradaNome(e.target.value)}
+              placeholder="Seu nome completo"
+              disabled={pending}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="retirada-assinatura">Assinatura (foto)</Label>
+            <Input
+              id="retirada-assinatura"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              disabled={pending}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setRetiradaAssinatura(file);
+              }}
+            />
+            {retiradaAssinatura ? (
+              <p className="text-[11px] text-muted-foreground">
+                Arquivo: {retiradaAssinatura.name}
+              </p>
+            ) : null}
+          </div>
           <Button
             type="button"
             className="w-full"
-            disabled={pending}
+            disabled={
+              pending ||
+              retiradaNome.trim().length < 2 ||
+              !retiradaAssinatura
+            }
             onClick={onConfirmarRetirada}
           >
             {pending ? (
@@ -373,6 +414,11 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
           {format(parseISO(data.retiradoClienteEm), "dd/MM/yyyy HH:mm", {
             locale: ptBR,
           })}
+          {data.retiradaNome ? (
+            <span className="mt-1 block text-foreground">
+              Por: {data.retiradaNome}
+            </span>
+          ) : null}
         </section>
       ) : null}
 

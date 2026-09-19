@@ -29,6 +29,7 @@ const updateRomaneioItemSchema = z.object({
   carregado: z.boolean().optional(),
   conferido: z.boolean().optional(),
   montado: z.boolean().optional(),
+  retornado: z.boolean().optional(),
   fotoMidiaId: z.string().min(1).nullable().optional(),
 });
 
@@ -226,10 +227,16 @@ export interface OperacaoPainelItem {
   faseLabel: string;
   itensPendentes: number;
   totalItens: number;
+  itensRetornoPendentes: number;
   prontoRetiradaEm: string | null;
   retiradoClienteEm: string | null;
   montadorNome: string | null;
   desmontadorNome: string | null;
+  montadorId: string | null;
+  desmontadorId: string | null;
+  atrasado: boolean;
+  slaSeparacaoEstourado: boolean;
+  slaLimiteEm: string | null;
 }
 
 const FASE_LABEL: Record<FaseOperacao, string> = {
@@ -242,28 +249,28 @@ const FASE_LABEL: Record<FaseOperacao, string> = {
   desmontar: "Desmontar",
 };
 
+/** Horas antes do horário de montagem para concluir a separação. */
+const SLA_SEPARACAO_HORAS_PADRAO = 3;
+
 function resolverFaseOperacao(params: {
   pegueEMonte: boolean;
   romaneioConcluido: boolean;
   checkinAt: Date | null;
   montagemLocalConcluida: boolean;
+  retornoConcluido: boolean;
   statusOs: StatusOS | null;
   statusFesta: StatusFesta;
   prontoRetiradaEm: Date | null;
   retiradoClienteEm: Date | null;
   dataEvento: Date;
-}): FaseOperacao {
+}): FaseOperacao | null {
+  if (params.retornoConcluido) return null;
+
   const eventoPassou = params.dataEvento.getTime() < startOfToday().getTime();
 
   if (params.pegueEMonte) {
     if (params.retiradoClienteEm) {
-      if (
-        eventoPassou &&
-        params.statusFesta !== StatusFesta.CONCLUIDO
-      ) {
-        return "desmontar";
-      }
-      if (params.statusFesta === StatusFesta.CONCLUIDO) {
+      if (eventoPassou || params.statusFesta === StatusFesta.CONCLUIDO) {
         return "desmontar";
       }
       return "na_rua";
@@ -547,6 +554,13 @@ export class OsService {
   async listOperacaoPainel(): Promise<OperacaoPainelItem[]> {
     const inicio = startOfDaysAgo(3);
     const fim = endOfHorizon(7);
+    const agora = new Date();
+
+    const config = await prisma.configuracaoNegocio.findUnique({
+      where: { id: "default" },
+      select: { slaSeparacaoHoras: true },
+    });
+    const slaHoras = config?.slaSeparacaoHoras ?? SLA_SEPARACAO_HORAS_PADRAO;
 
     const festas = await prisma.festa.findMany({
       where: {
@@ -575,10 +589,14 @@ export class OsService {
         cliente: { select: { nome: true } },
         ordemServico: {
           include: {
-            montador: { select: { nome: true } },
-            desmontador: { select: { nome: true } },
+            montador: { select: { id: true, nome: true } },
+            desmontador: { select: { id: true, nome: true } },
             itensRomaneio: {
-              select: { carregado: true, conferido: true },
+              select: {
+                carregado: true,
+                conferido: true,
+                retornado: true,
+              },
             },
           },
         },
@@ -590,16 +608,20 @@ export class OsService {
 
     for (const festa of festas) {
       const os = festa.ordemServico;
+      if (os?.retornoConcluido) continue;
+
       const romaneioItens = os?.itensRomaneio ?? [];
       const pendentes = romaneioItens.filter(
         (i) => !i.carregado || !i.conferido
       ).length;
+      const retornoPendentes = romaneioItens.filter((i) => !i.retornado).length;
 
       const fase = resolverFaseOperacao({
         pegueEMonte: festa.pegueEMonte,
         romaneioConcluido: os?.romaneioConcluido ?? false,
         checkinAt: os?.checkinAt ?? null,
         montagemLocalConcluida: os?.montagemLocalConcluida ?? false,
+        retornoConcluido: os?.retornoConcluido ?? false,
         statusOs: os?.status ?? null,
         statusFesta: festa.status,
         prontoRetiradaEm: festa.prontoRetiradaEm,
@@ -607,7 +629,8 @@ export class OsService {
         dataEvento: festa.dataEvento,
       });
 
-      // CONCLUIDO sem material "na rua" e evento antigo → fora do painel
+      if (!fase) continue;
+
       if (
         festa.status === StatusFesta.CONCLUIDO &&
         fase === "desmontar" &&
@@ -625,6 +648,22 @@ export class OsService {
         continue;
       }
 
+      const slaLimite = new Date(festa.horarioMontagem);
+      slaLimite.setHours(slaLimite.getHours() - slaHoras);
+      const slaSeparacaoEstourado =
+        !os?.romaneioConcluido && agora.getTime() > slaLimite.getTime();
+
+      const eventoPassou =
+        festa.dataEvento.getTime() < startOfToday().getTime();
+      const atrasado =
+        eventoPassou &&
+        (fase === "na_rua" ||
+          fase === "pronto_retirada" ||
+          fase === "desmontar" ||
+          fase === "separar" ||
+          fase === "a_caminho" ||
+          fase === "montada");
+
       itens.push({
         festaId: festa.id,
         osId: os?.id ?? null,
@@ -638,10 +677,16 @@ export class OsService {
         faseLabel: FASE_LABEL[fase],
         itensPendentes: pendentes,
         totalItens: romaneioItens.length,
+        itensRetornoPendentes: retornoPendentes,
         prontoRetiradaEm: festa.prontoRetiradaEm?.toISOString() ?? null,
         retiradoClienteEm: festa.retiradoClienteEm?.toISOString() ?? null,
         montadorNome: os?.montador?.nome ?? null,
         desmontadorNome: os?.desmontador?.nome ?? null,
+        montadorId: os?.montador?.id ?? null,
+        desmontadorId: os?.desmontador?.id ?? null,
+        atrasado,
+        slaSeparacaoEstourado,
+        slaLimiteEm: slaLimite.toISOString(),
       });
     }
 
@@ -656,6 +701,10 @@ export class OsService {
     };
 
     return itens.sort((a, b) => {
+      if (a.atrasado !== b.atrasado) return a.atrasado ? -1 : 1;
+      if (a.slaSeparacaoEstourado !== b.slaSeparacaoEstourado) {
+        return a.slaSeparacaoEstourado ? -1 : 1;
+      }
       const df = ordemFase[a.fase] - ordemFase[b.fase];
       if (df !== 0) return df;
       return (
@@ -800,6 +849,7 @@ export class OsService {
         ...(data.carregado !== undefined ? { carregado: data.carregado } : {}),
         ...(data.conferido !== undefined ? { conferido: data.conferido } : {}),
         ...(data.montado !== undefined ? { montado: data.montado } : {}),
+        ...(data.retornado !== undefined ? { retornado: data.retornado } : {}),
         ...(data.fotoMidiaId !== undefined
           ? { fotoMidiaId: data.fotoMidiaId }
           : {}),
@@ -834,17 +884,6 @@ export class OsService {
     if (pendentes.length > 0) {
       throw new OsValidationError(
         "Todos os itens devem estar carregados e conferidos"
-      );
-    }
-
-    const altoValorSemFoto = os.itensRomaneio.filter(
-      (item) =>
-        item.unidade?.produto.requerQr === true && !item.fotoMidiaId
-    );
-
-    if (altoValorSemFoto.length > 0) {
-      throw new OsValidationError(
-        "Itens de alto valor exigem foto antes de concluir o romaneio"
       );
     }
 
@@ -1211,15 +1250,6 @@ export class OsService {
       );
     }
 
-    const criticoSemFoto = os.itensRomaneio.filter(
-      (item) => item.unidade?.produto.requerQr === true && !item.fotoMidiaId
-    );
-    if (criticoSemFoto.length > 0) {
-      throw new OsValidationError(
-        "Itens críticos (QR) exigem foto antes de concluir a montagem"
-      );
-    }
-
     if (os.montagemLocalConcluida) {
       return os;
     }
@@ -1227,6 +1257,42 @@ export class OsService {
     const atualizada = await prisma.ordemServico.update({
       where: { id: osId },
       data: { montagemLocalConcluida: true },
+      include: osInclude,
+    });
+
+    return this.withFotoFinal(atualizada);
+  }
+
+  /** Checklist de retorno: todos os itens voltaram ao depósito. */
+  async concluirRetorno(osId: string) {
+    const os = await this.getById(osId);
+
+    if (!os.romaneioConcluido) {
+      throw new OsValidationError(
+        "Conclua a separação antes do checklist de retorno"
+      );
+    }
+    if (os.itensRomaneio.length === 0) {
+      throw new OsValidationError("Romaneio vazio");
+    }
+
+    const pendentes = os.itensRomaneio.filter((item) => !item.retornado);
+    if (pendentes.length > 0) {
+      throw new OsValidationError(
+        "Marque todos os itens como retornados antes de concluir"
+      );
+    }
+
+    if (os.retornoConcluido) {
+      return this.withFotoFinal(os);
+    }
+
+    const atualizada = await prisma.ordemServico.update({
+      where: { id: osId },
+      data: {
+        retornoConcluido: true,
+        retornoConcluidoEm: new Date(),
+      },
       include: osInclude,
     });
 

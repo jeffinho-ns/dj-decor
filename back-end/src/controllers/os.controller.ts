@@ -429,6 +429,27 @@ export class OsController {
     }
   }
 
+  async concluirRetorno(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      await assertPodeEditarOs(req, req.params.id as string);
+      const os = await osService.concluirRetorno(req.params.id as string);
+      res.status(200).json(os);
+    } catch (error) {
+      if (
+        error instanceof OsNotFoundError ||
+        error instanceof OsValidationError
+      ) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
   async finalizar(
     req: AuthenticatedRequest,
     res: Response,
