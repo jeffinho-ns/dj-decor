@@ -59,6 +59,10 @@ export interface PortalFestaStatus {
   itensExtras: string[];
   kitCatalogo: string | null;
   pegueEMonte: boolean;
+  /** Pegue e Monte: pronto para o cliente retirar. */
+  prontoRetirada: boolean;
+  retiradoClienteEm: string | null;
+  podeConfirmarRetirada: boolean;
   galeria: PortalGaleriaItem[];
   podeAssinar: boolean;
   assinaturaClienteEm: string | null;
@@ -249,6 +253,10 @@ export class PortalService {
         pegueEMonte: true,
         assinaturaClienteEm: true,
         avaliacaoNota: true,
+        pegueEMonte: true,
+        separacaoConcluidaEm: true,
+        prontoRetiradaEm: true,
+        retiradoClienteEm: true,
         cliente: { select: { nome: true } },
         ordemServico: {
           select: {
@@ -330,6 +338,17 @@ export class PortalService {
       itensExtras: festa.itensExtras,
       kitCatalogo: festa.kitCatalogo,
       pegueEMonte: festa.pegueEMonte,
+      prontoRetirada: Boolean(
+        festa.pegueEMonte &&
+          festa.prontoRetiradaEm &&
+          !festa.retiradoClienteEm
+      ),
+      retiradoClienteEm: festa.retiradoClienteEm?.toISOString() ?? null,
+      podeConfirmarRetirada: Boolean(
+        festa.pegueEMonte &&
+          festa.prontoRetiradaEm &&
+          !festa.retiradoClienteEm
+      ),
       galeria: festa.midias,
       podeAssinar:
         !festa.assinaturaClienteEm &&
@@ -352,6 +371,39 @@ export class PortalService {
         })),
       },
     };
+  }
+
+  /** Cliente confirma no portal: retirou o Pegue e Monte (itens na rua). */
+  async confirmarRetiradaPegueMonte(token: string) {
+    const festa = await prisma.festa.findUnique({
+      where: { portalToken: token },
+      select: {
+        id: true,
+        pegueEMonte: true,
+        prontoRetiradaEm: true,
+        retiradoClienteEm: true,
+        status: true,
+      },
+    });
+    if (!festa) throw new PortalFestaNotFoundError(token);
+    if (!festa.pegueEMonte) {
+      throw new MidiaValidationError("Esta festa não é Pegue e Monte");
+    }
+    if (!festa.prontoRetiradaEm) {
+      throw new MidiaValidationError(
+        "Ainda não há material separado para retirada"
+      );
+    }
+    if (festa.retiradoClienteEm) {
+      return this.getFestaStatusByToken(token);
+    }
+
+    await prisma.festa.update({
+      where: { id: festa.id },
+      data: { retiradoClienteEm: new Date() },
+    });
+
+    return this.getFestaStatusByToken(token);
   }
 
   async getMidiaForToken(token: string, midiaId: string) {

@@ -637,41 +637,76 @@ export class OsService {
       );
     }
 
+    const pegueEMonte = Boolean(os.festa.pegueEMonte);
+    const agora = new Date();
+
     const osAtualizada = await prisma.$transaction(async (tx) => {
       const updated = await tx.ordemServico.update({
         where: { id: osId },
         data: {
           romaneioConcluido: true,
-          status: StatusOS.EM_TRANSITO,
+          // Pegue e Monte: fica no depósito (não "a caminho")
+          status: pegueEMonte ? StatusOS.ROMANEIO : StatusOS.EM_TRANSITO,
         },
         include: osInclude,
       });
 
-      const festaStatus = os.festa.status;
-      if (
-        festaStatus === StatusFesta.FECHADO ||
-        festaStatus === StatusFesta.PAGO
-      ) {
+      if (pegueEMonte) {
         await tx.festa.update({
           where: { id: os.festaId },
-          data: { status: StatusFesta.EM_MONTAGEM },
+          data: {
+            separacaoConcluidaEm: agora,
+            prontoRetiradaEm: agora,
+          },
         });
-        updated.festa.status = StatusFesta.EM_MONTAGEM;
+      } else {
+        const festaStatus = os.festa.status;
+        if (
+          festaStatus === StatusFesta.FECHADO ||
+          festaStatus === StatusFesta.PAGO
+        ) {
+          await tx.festa.update({
+            where: { id: os.festaId },
+            data: { status: StatusFesta.EM_MONTAGEM },
+          });
+          updated.festa.status = StatusFesta.EM_MONTAGEM;
+        }
       }
 
       return updated;
     });
 
-    dispatchWhatsAppSafe({
-      template: "equipe_a_caminho",
-      telefone: osAtualizada.festa.cliente.telefone,
-      festaId: osAtualizada.festaId,
-      payload: {
-        tema: osAtualizada.festa.tema,
-        data: osAtualizada.festa.dataEvento.toISOString(),
-        endereco: osAtualizada.festa.endereco,
-      },
-    });
+    if (pegueEMonte) {
+      let portalUrl = "";
+      try {
+        const { portalService } = await import("./portal.service");
+        const link = await portalService.buildPortalLink(os.festaId);
+        portalUrl = link.url;
+      } catch (err) {
+        console.warn("[os] portal link pegue e monte:", err);
+      }
+      dispatchWhatsAppSafe({
+        template: "pegue_monte_pronto",
+        telefone: osAtualizada.festa.cliente.telefone,
+        festaId: osAtualizada.festaId,
+        payload: {
+          tema: osAtualizada.festa.tema,
+          data: osAtualizada.festa.dataEvento.toISOString(),
+          portalUrl,
+        },
+      });
+    } else {
+      dispatchWhatsAppSafe({
+        template: "equipe_a_caminho",
+        telefone: osAtualizada.festa.cliente.telefone,
+        festaId: osAtualizada.festaId,
+        payload: {
+          tema: osAtualizada.festa.tema,
+          data: osAtualizada.festa.dataEvento.toISOString(),
+          endereco: osAtualizada.festa.endereco,
+        },
+      });
+    }
 
     return this.withFotoFinal(osAtualizada);
   }
@@ -739,24 +774,45 @@ export class OsService {
   async prepararMontagemParaFesta(festaId: string) {
     const os = await this.ensureForFesta(festaId);
 
-    await estoqueService.prepararReservaFesta(festaId);
+    try {
+      await estoqueService.prepararReservaFesta(festaId);
+    } catch (error) {
+      // Reserva pode falhar (sem estoque cadastrado) — a listagem do pedido
+      // ainda precisa existir para o montador separar / pegue e monte.
+      console.warn(
+        "[os] prepararReservaFesta falhou; seguindo com linhas do kit:",
+        festaId,
+        error
+      );
+    }
     await this.seedRomaneioFromReservas(os.id);
 
     const osAtual = await this.getById(os.id);
 
     const festa = await prisma.festa.findUnique({
       where: { id: festaId },
-      select: { kitCatalogo: true, itensExtras: true },
+      select: {
+        kitCatalogo: true,
+        itensExtras: true,
+        tema: true,
+        pegueEMonte: true,
+      },
     });
 
     const linhasPedido: string[] = [...(festa?.itensExtras ?? [])];
     if (festa?.kitCatalogo) {
       const kit = await prisma.catalogoKit.findUnique({
         where: { id: festa.kitCatalogo },
-        select: { itens: true },
+        select: { itens: true, nome: true },
       });
       if (kit) {
         linhasPedido.unshift(...kit.itens);
+        // Garante ao menos uma linha identificável do kit
+        if (kit.itens.length === 0 && kit.nome) {
+          linhasPedido.unshift(kit.nome);
+        }
+      } else {
+        linhasPedido.unshift(`Kit: ${festa.kitCatalogo}`);
       }
     }
 
@@ -768,29 +824,33 @@ export class OsService {
 
     const linhasParaCriar: string[] = [];
 
-    for (const linha of linhasPedido) {
+    const tentarAdicionar = (linha: string, forcar = false) => {
       const trimmed = linha.trim();
-      if (!trimmed || isItemServico(trimmed)) continue;
+      if (!trimmed) return;
+      if (!forcar && isItemServico(trimmed)) return;
 
       const norm = normalizarTexto(trimmed);
-      if (descricoesExistentes.has(norm)) continue;
+      if (descricoesExistentes.has(norm)) return;
 
-      const parsed = parseLinhaInventario(trimmed);
-      if (parsed) {
-        const def = encontrarDefInventario(parsed.texto);
-        if (def) {
-          const cobertoPorReserva = osAtual.itensRomaneio.some((item) => {
-            if (!item.unidade) return false;
-            const pn = normalizarTexto(item.unidade.produto.nome);
-            const aliases = [
-              normalizarTexto(def.nome),
-              ...def.aliases.map(normalizarTexto),
-            ];
-            return aliases.some(
-              (alias) => pn === alias || pn.includes(alias) || alias.includes(pn)
-            );
-          });
-          if (cobertoPorReserva) continue;
+      if (!forcar) {
+        const parsed = parseLinhaInventario(trimmed);
+        if (parsed) {
+          const def = encontrarDefInventario(parsed.texto);
+          if (def) {
+            const cobertoPorReserva = osAtual.itensRomaneio.some((item) => {
+              if (!item.unidade) return false;
+              const pn = normalizarTexto(item.unidade.produto.nome);
+              const aliases = [
+                normalizarTexto(def.nome),
+                ...def.aliases.map(normalizarTexto),
+              ];
+              return aliases.some(
+                (alias) =>
+                  pn === alias || pn.includes(alias) || alias.includes(pn)
+              );
+            });
+            if (cobertoPorReserva) return;
+          }
         }
       }
 
@@ -798,6 +858,31 @@ export class OsService {
         linhasParaCriar.push(trimmed);
         descricoesExistentes.add(norm);
       }
+    };
+
+    for (const linha of linhasPedido) {
+      tentarAdicionar(linha, false);
+    }
+
+    // Se ainda não há nada para separar, força linhas do kit/extras
+    // (cenário típico: estoque vazio + itens filtrados demais).
+    const totalAtual =
+      osAtual.itensRomaneio.length + linhasParaCriar.length;
+    if (totalAtual === 0) {
+      for (const linha of linhasPedido) {
+        tentarAdicionar(linha, true);
+      }
+    }
+    if (
+      osAtual.itensRomaneio.length + linhasParaCriar.length === 0 &&
+      festa?.tema
+    ) {
+      tentarAdicionar(
+        festa.pegueEMonte
+          ? `Materiais Pegue e Monte — ${festa.tema}`
+          : `Materiais da festa — ${festa.tema}`,
+        true
+      );
     }
 
     if (linhasParaCriar.length > 0) {

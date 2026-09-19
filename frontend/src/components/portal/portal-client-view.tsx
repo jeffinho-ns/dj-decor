@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import {
   assinarPortal,
   avaliarPortal,
+  confirmarRetiradaPegueMonte,
   getPortalMidiaUrl,
   getPortalStatus,
   resolvePortalLegacyLink,
@@ -251,6 +252,22 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
     });
   }
 
+  function onConfirmarRetirada() {
+    if (!activeToken) return;
+    setActionMsg(null);
+    startTransition(async () => {
+      try {
+        const next = await confirmarRetiradaPegueMonte(activeToken);
+        setData(next);
+        setActionMsg("Retirada confirmada! Bom uso da decoração 💛");
+      } catch (err) {
+        setActionMsg(
+          err instanceof Error ? err.message : "Falha ao confirmar retirada"
+        );
+      }
+    });
+  }
+
   if (!activeToken && !loading && !erro) {
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-5 py-16 text-center">
@@ -324,6 +341,40 @@ export function PortalClientView({ token, legacyId }: PortalPageProps) {
           </button>
         </div>
       </header>
+
+      {data.pegueEMonte && data.podeConfirmarRetirada ? (
+        <section className="neo relative mt-6 space-y-3 rounded-2xl border border-balloon-sky/30 bg-balloon-sky/5 p-5">
+          <p className="text-sm font-medium text-foreground">
+            Pegue e Monte pronto para retirar
+          </p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Seu material já está separado no depósito. Quando buscar, confirme
+            aqui para a gente saber que os itens saíram.
+          </p>
+          <Button
+            type="button"
+            className="w-full"
+            disabled={pending}
+            onClick={onConfirmarRetirada}
+          >
+            {pending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Check className="size-4" />
+            )}
+            Retirei os itens do Pegue e Monte
+          </Button>
+        </section>
+      ) : null}
+
+      {data.pegueEMonte && data.retiradoClienteEm ? (
+        <section className="neo relative mt-6 rounded-2xl p-4 text-center text-sm text-muted-foreground">
+          Retirada confirmada em{" "}
+          {format(parseISO(data.retiradoClienteEm), "dd/MM/yyyy HH:mm", {
+            locale: ptBR,
+          })}
+        </section>
+      ) : null}
 
       <article className="neo relative mt-8 space-y-4 rounded-2xl p-5">
         <div>

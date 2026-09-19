@@ -26,5 +26,8 @@ portalRoutes.post("/:token/assinar", portalUpload, (req, res, next) =>
 portalRoutes.post("/:token/avaliar", (req, res, next) =>
   portalController.avaliar(req, res, next)
 );
+portalRoutes.post("/:token/retirar-pegue-monte", (req, res, next) =>
+  portalController.confirmarRetirada(req, res, next)
+);
 
 export { portalRoutes };

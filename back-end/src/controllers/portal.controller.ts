@@ -137,6 +137,24 @@ export class PortalController {
       next(error);
     }
   }
+
+  async confirmarRetirada(req: Request, res: Response, next: NextFunction) {
+    try {
+      const token = req.params.token as string;
+      const status = await portalService.confirmarRetiradaPegueMonte(token);
+      res.status(200).json(status);
+    } catch (error) {
+      if (error instanceof PortalFestaNotFoundError) {
+        res.status(404).json({ message: error.message });
+        return;
+      }
+      if (error instanceof MidiaValidationError) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
 }
 
 export const portalController = new PortalController();

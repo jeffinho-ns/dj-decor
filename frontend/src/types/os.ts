@@ -149,6 +149,9 @@ export interface PortalFestaStatus {
   itensExtras?: string[];
   kitCatalogo?: string | null;
   pegueEMonte?: boolean;
+  prontoRetirada?: boolean;
+  retiradoClienteEm?: string | null;
+  podeConfirmarRetirada?: boolean;
   galeria?: PortalGaleriaItem[];
   podeAssinar?: boolean;
   assinaturaClienteEm?: string | null;

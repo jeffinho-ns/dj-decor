@@ -72,6 +72,18 @@ export function buildMensagemSugerida(
         `Qualquer dúvida, estamos à disposição. — DJ festas`
       );
 
+    case "pegue_monte_pronto": {
+      const portal = typeof payload.portalUrl === "string" ? payload.portalUrl : "";
+      return (
+        `Olá! 📦 Seu Pegue e Monte da festa "${tema}" (${dataFmt}) ` +
+        `já está separado e pronto para retirar no depósito. ` +
+        (portal
+          ? `Acompanhe pelo link: ${portal} — quando retirar, confirme no portal. `
+          : "Quando retirar, confirme no seu link do portal. ") +
+        `— Débora Pimentel Decoradora`
+      );
+    }
+
     case "montagem_finalizada":
       return (
         `Tudo pronto! ✨ A montagem da decoração "${tema}" foi finalizada ` +

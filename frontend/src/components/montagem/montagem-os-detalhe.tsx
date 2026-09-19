@@ -246,7 +246,7 @@ export function MontagemOsDetalhe({
         setOs(atualizada);
         if ((atualizada.itensRomaneio ?? []).length === 0) {
           setErro(
-            "O pedido não tem itens de material para separar. Peça ao gerente para revisar o kit ou os extras."
+            "Ainda sem itens na listagem. Confira se a festa tem kit/extras no CRM e tente de novo — ou peça ao gerente para revisar o pedido."
           );
         }
       } catch (err) {

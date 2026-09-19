@@ -710,6 +710,17 @@ export async function avaliarPortal(
   return handleResponse<PortalFestaStatus>(response);
 }
 
+/** Cliente confirma retirada do Pegue e Monte no depósito. */
+export async function confirmarRetiradaPegueMonte(
+  token: string
+): Promise<PortalFestaStatus> {
+  const response = await fetch(
+    `${getBaseUrl()}/api/portal/${encodeURIComponent(token)}/retirar-pegue-monte`,
+    { method: "POST" }
+  );
+  return handleResponse<PortalFestaStatus>(response);
+}
+
 /** Link compartilhável do portal (POST /api/festas/:id/portal-link). */
 export async function getPortalLink(
   festaId: string,
