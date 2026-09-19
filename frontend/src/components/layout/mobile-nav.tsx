@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ComponentType } from "react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,
@@ -10,6 +10,7 @@ import {
   Hammer,
   Headphones,
   LayoutGrid,
+  Loader2,
   Package,
   PartyPopper,
   PlusCircle,
@@ -26,6 +27,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { vibrar } from "@/lib/haptics";
 import { isNavActive } from "@/components/layout/sidebar";
 import type { User } from "@/types/auth";
 
@@ -164,6 +166,54 @@ function splitNavItems(items: NavItem[], role: User["role"]) {
   return { primary, overflow };
 }
 
+/**
+ * Conteúdo do item da barra inferior.
+ *
+ * `useLinkStatus` avisa no mesmo instante do toque que a navegação começou,
+ * antes de o servidor responder. Sem isso o item só acende quando a tela
+ * nova chega — é exatamente a demora que faz o sistema parecer site.
+ */
+function NavItemConteudo({
+  Icon,
+  label,
+  active,
+}: {
+  Icon: ComponentType<{ className?: string }>;
+  label: string;
+  active: boolean;
+}) {
+  const { pending } = useLinkStatus();
+  const destacado = active || pending;
+
+  return (
+    <>
+      <span
+        className={cn(
+          "flex size-9 items-center justify-center rounded-xl transition-transform duration-150",
+          destacado && "neo-pink text-white",
+          pending && "scale-110"
+        )}
+      >
+        {pending ? (
+          <Loader2 className="size-5 shrink-0 animate-spin" />
+        ) : (
+          <Icon
+            className={cn("size-5 shrink-0", destacado && "stroke-[2.25]")}
+          />
+        )}
+      </span>
+      <span
+        className={cn(
+          "max-w-full truncate leading-none transition-colors",
+          destacado ? "text-balloon-pink" : "text-muted-foreground"
+        )}
+      >
+        {label}
+      </span>
+    </>
+  );
+}
+
 interface MobileNavProps {
   user: User;
 }
@@ -206,23 +256,14 @@ export function MobileNav({ user }: MobileNavProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch
+                onClick={() => vibrar("leve")}
                 className={cn(
                   "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1.5 text-[11px] font-semibold transition-all",
-                  "min-h-[var(--touch-min,44px)]",
-                  active
-                    ? "text-balloon-pink"
-                    : "text-muted-foreground active:text-foreground"
+                  "min-h-[var(--touch-min,44px)]"
                 )}
               >
-                <span
-                  className={cn(
-                    "flex size-9 items-center justify-center rounded-xl",
-                    active && "neo-pink text-white"
-                  )}
-                >
-                  <Icon className={cn("size-5 shrink-0", active && "stroke-[2.25]")} />
-                </span>
-                <span className="max-w-full truncate leading-none">{label}</span>
+                <NavItemConteudo Icon={Icon} label={label} active={active} />
               </Link>
             );
           })}
@@ -230,7 +271,10 @@ export function MobileNav({ user }: MobileNavProps) {
           {hasOverflow ? (
             <button
               type="button"
-              onClick={() => setMoreOpen(true)}
+              onClick={() => {
+                vibrar("leve");
+                setMoreOpen(true);
+              }}
               aria-expanded={moreOpen}
               aria-haspopup="dialog"
               className={cn(
@@ -305,7 +349,11 @@ export function MobileNav({ user }: MobileNavProps) {
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      onClick={() => setMoreOpen(false)}
+                      prefetch
+                      onClick={() => {
+                        vibrar("leve");
+                        setMoreOpen(false);
+                      }}
                       className={cn(
                         "flex min-h-[var(--touch-min,44px)] items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all",
                         active

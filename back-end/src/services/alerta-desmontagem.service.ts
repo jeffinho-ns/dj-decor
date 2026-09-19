@@ -1,6 +1,7 @@
 import { StatusFesta } from "@prisma/client";
 import { dispatchWhatsAppSafe } from "../integrations/whatsapp";
 import { prisma } from "../prisma/client";
+import { notificarDesmontagemPendente } from "./notificacoes.service";
 
 /** Horas após o horário de montagem para avisar a equipe sobre desmontagem. */
 export const ALERTA_DESMONTAGEM_HORAS = 4;
@@ -108,6 +109,16 @@ export class AlertaDesmontagemService {
           },
         });
       }
+
+      // Além do WhatsApp, avisa no aparelho de quem vai à rua.
+      notificarDesmontagemPendente({
+        osId: os.id,
+        festaId: festa.id,
+        tema: festa.tema,
+        clienteNome: festa.cliente.nome,
+        desmontadorId: os.desmontadorId,
+        montadorId: os.montadorId,
+      });
 
       await prisma.ordemServico.update({
         where: { id: os.id },

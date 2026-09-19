@@ -20,6 +20,7 @@ const PROTECTED_PREFIXES = [
   "/lixeira",
   "/comissoes",
   "/atendimento",
+  "/teste-app",
 ];
 const VENDEDOR_ONLY_PREFIXES = ["/vendas", "/clientes", "/comissoes", "/atendimento"];
 const MONTADOR_BLOCKED_PREFIXES = ["/follow-ups", "/atendimento"];
@@ -27,7 +28,12 @@ const GESTAO_ONLY_PREFIXES = ["/estoque", "/equipe", "/aprovacoes"];
 const GESTAO_FINANCEIRO_PREFIXES = ["/financeiro"];
 const ADMIN_ONLY_PREFIXES: string[] = [];
 const BOLISTA_AREA_PREFIXES = ["/bolas"];
-const BOLISTA_ALLOWED_PREFIXES = ["/bolas", "/perfil", "/configuracoes"];
+const BOLISTA_ALLOWED_PREFIXES = [
+  "/bolas",
+  "/perfil",
+  "/configuracoes",
+  "/teste-app",
+];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
@@ -194,6 +200,7 @@ export const config = {
     "/lixeira/:path*",
     "/comissoes",
     "/comissoes/:path*",
+    "/teste-app",
     "/login",
   ],
 };

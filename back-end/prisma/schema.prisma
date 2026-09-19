@@ -206,6 +206,7 @@ model User {
   eventosAtendimento        AtendimentoEvento[]  @relation("AtendimentoEventoAutor")
   pedidosBolas              PedidoBolas[]      @relation("PedidoBolasBolista")
   catalogoBolasCriados      CatalogoBola[]     @relation("CatalogoBolaCriadoPor")
+  pushSubscriptions         PushSubscription[] @relation("PushSubscriptionUser")
 
   @@map("users")
 }
@@ -803,4 +804,31 @@ model PedidoBolasCompra {
 
   @@index([pedidoId, comprado])
   @@map("pedido_bolas_compras")
+}
+
+/**
+ * Inscrição de Web Push (PWA instalado no celular do colaborador).
+ * Um usuário pode ter várias — uma por aparelho/navegador.
+ */
+model PushSubscription {
+  id        String   @id @default(cuid())
+  /** Endpoint único do serviço de push (FCM / Apple Push). */
+  endpoint  String   @unique @db.Text
+  /** Chaves de criptografia da inscrição (padrão Web Push). */
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  /** Identificação do aparelho, só para a pessoa reconhecer na lista. */
+  aparelho  String?
+  /** Plataforma detectada no cadastro: ios | android | desktop. */
+  plataforma String?
+  criadoEm       DateTime  @default(now()) @map("criado_em")
+  ultimoEnvioEm  DateTime? @map("ultimo_envio_em")
+  /** Contador de falhas consecutivas — limpa inscrições mortas. */
+  falhas    Int      @default(0)
+
+  userId String @map("user_id")
+  user   User   @relation("PushSubscriptionUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

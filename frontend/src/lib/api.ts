@@ -36,6 +36,12 @@ import type {
   UpdateClientePayload,
 } from "@/types/cliente";
 import type { Midia, TipoMidia } from "@/types/midia";
+import type {
+  PushChavePublica,
+  PushEnvioResultado,
+  PushInscreverPayload,
+  PushInscricao,
+} from "@/types/push";
 import type { Contrato, MensagemWhatsApp } from "@/types/contrato";
 import type { FestaDescontoPendente, SolicitarDescontoPayload } from "@/types/desconto";
 import type {
@@ -2556,4 +2562,62 @@ export async function removePedidoBolasCompra(
   if (!response.ok && response.status !== 204) {
     await handleResponse(response);
   }
+}
+
+// --- Web Push (notificações do app no celular) ---
+
+export async function getPushChavePublica(
+  token: string
+): Promise<PushChavePublica> {
+  const response = await fetch(`${getBaseUrl()}/api/push/chave-publica`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<PushChavePublica>(response);
+}
+
+export async function listPushInscricoes(
+  token: string
+): Promise<PushInscricao[]> {
+  const response = await fetch(`${getBaseUrl()}/api/push/inscricoes`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse<PushInscricao[]>(response);
+}
+
+export async function inscreverPush(
+  payload: PushInscreverPayload,
+  token: string
+): Promise<PushInscricao> {
+  const response = await fetch(`${getBaseUrl()}/api/push/inscrever`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<PushInscricao>(response);
+}
+
+export async function cancelarPush(
+  endpoint: string,
+  token: string
+): Promise<void> {
+  const response = await fetch(`${getBaseUrl()}/api/push/cancelar`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ endpoint }),
+  });
+  if (!response.ok && response.status !== 204) {
+    await handleResponse(response);
+  }
+}
+
+export async function enviarPushTeste(
+  token: string
+): Promise<PushEnvioResultado> {
+  const response = await fetch(`${getBaseUrl()}/api/push/teste`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+  return handleResponse<PushEnvioResultado>(response);
 }

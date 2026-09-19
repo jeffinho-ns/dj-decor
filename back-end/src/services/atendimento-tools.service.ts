@@ -12,6 +12,10 @@ import { portalService } from "./portal.service";
 import { pdfAdapter } from "../integrations/pdf";
 import { prisma } from "../prisma/client";
 import { atendimentoService } from "./atendimento.service";
+import {
+  notificarConversaAtribuida,
+  notificarHandoffAtendimento,
+} from "./notificacoes.service";
 import { env } from "../config/env";
 
 function startOfDay(d: Date) {
@@ -546,6 +550,9 @@ export class AtendimentoToolsService {
           { vendedorId },
           fallbackVendedorId
         );
+        void notificarConversaAtribuida(conversaId, vendedorId).catch(() => {
+          // idem: a atribuição já foi gravada.
+        });
         return {
           ok: true,
           vendedorId,
@@ -576,11 +583,15 @@ export class AtendimentoToolsService {
             status: "AGUARDANDO",
           },
         });
+        const motivo = String(args.motivo ?? "escalar_humano");
         await atendimentoService.registrarEvento(
           conversaId,
           TipoAtendimentoEvento.HANDOFF,
-          { motivo: String(args.motivo ?? "escalar_humano") }
+          { motivo }
         );
+        void notificarHandoffAtendimento(conversaId, motivo).catch(() => {
+          // Push é acessório: a conversa já está marcada para humano.
+        });
         return { ok: true, modo: "HUMANO", status: "AGUARDANDO" };
       }
 

@@ -16,6 +16,7 @@ import { osRoutes } from "./os.routes";
 import { pagamentosRoutes } from "./pagamentos.routes";
 import { portalRoutes } from "./portal.routes";
 import { produtosRoutes } from "./produtos.routes";
+import { pushRoutes } from "./push.routes";
 import { qrRoutes } from "./qr.routes";
 import { usersRoutes } from "./users.routes";
 import { webhooksRoutes } from "./webhooks.routes";
@@ -46,6 +47,7 @@ routes.get("/health", (_req, res) => {
       "integracoes/ia",
       "bolas",
       "public/midias",
+      "push",
     ],
   });
 });
@@ -69,6 +71,7 @@ routes.use("/estoque", estoqueRoutes);
 routes.use("/midias", midiasRoutes);
 routes.use("/os", osRoutes);
 routes.use("/portal", portalRoutes);
+routes.use("/push", pushRoutes);
 routes.use("/qr", qrRoutes);
 routes.use(pagamentosRoutes);
 routes.use(contratosRoutes);

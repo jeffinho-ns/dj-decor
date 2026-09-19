@@ -1,3 +1,4 @@
+import { ConteudoPrincipal } from "@/components/layout/conteudo-principal";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -55,9 +56,7 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="relative z-10 min-w-0 flex-1 overflow-x-hidden px-3 py-4 pb-nav sm:px-4 md:px-8 md:py-6 md:pb-6">
-          {children}
-        </main>
+        <ConteudoPrincipal>{children}</ConteudoPrincipal>
 
         <MobileNav user={user} />
       </div>

@@ -12,6 +12,7 @@ import {
   ShoppingBag,
   UserPlus,
   PhoneForwarded,
+  Smartphone,
 } from "lucide-react";
 
 import type { Role } from "@/types/auth";
@@ -176,12 +177,21 @@ function atalhosParaRole(role: Role): Atalho[] {
   ];
 }
 
+/** Disponível para todos: instalar o app e ligar os alertas do aparelho. */
+const APP_NO_CELULAR: Atalho = {
+  href: "/teste-app",
+  label: "App no celular",
+  description: "Instalar e ligar alertas",
+  icon: Smartphone,
+  tone: "text-balloon-sky",
+};
+
 interface PerfilAtalhosProps {
   role: Role;
 }
 
 export function PerfilAtalhos({ role }: PerfilAtalhosProps) {
-  const itens = atalhosParaRole(role);
+  const itens = [...atalhosParaRole(role), APP_NO_CELULAR];
 
   return (
     <section className="rounded-2xl p-5 sm:p-6 neo-sm">

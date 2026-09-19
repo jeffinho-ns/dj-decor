@@ -46,6 +46,11 @@ const envSchema = z.object({
   FIREBASE_SERVICE_ACCOUNT_JSON: z
     .union([z.string().min(1), z.literal("")])
     .optional(),
+  /** Web Push (PWA). Gerar com: npx web-push generate-vapid-keys */
+  VAPID_PUBLIC_KEY: z.union([z.string().min(1), z.literal("")]).optional(),
+  VAPID_PRIVATE_KEY: z.union([z.string().min(1), z.literal("")]).optional(),
+  /** Contato exigido pelo protocolo Web Push (mailto: ou https:). */
+  VAPID_SUBJECT: z.string().default("mailto:contato@djfestas.com.br"),
 });
 
 type Env = z.infer<typeof envSchema> & {
@@ -61,6 +66,8 @@ type Env = z.infer<typeof envSchema> & {
   FIREBASE_PROJECT_ID?: string;
   FIREBASE_STORAGE_BUCKET?: string;
   FIREBASE_SERVICE_ACCOUNT_JSON?: string;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
 };
 
 function optionalUrl(value: string | undefined): string | undefined {
@@ -106,6 +113,8 @@ function loadEnv(): Env {
     FIREBASE_SERVICE_ACCOUNT_JSON: optionalStr(
       data.FIREBASE_SERVICE_ACCOUNT_JSON
     ),
+    VAPID_PUBLIC_KEY: optionalStr(data.VAPID_PUBLIC_KEY),
+    VAPID_PRIVATE_KEY: optionalStr(data.VAPID_PRIVATE_KEY),
   };
 }
 
