@@ -143,8 +143,18 @@ function scoreTemaMatch(
   if (!tema || !q) return 0;
   if (tema.includes(q) || q.includes(tema)) return 100;
 
-  const tokens = tokenizeTema(query);
-  if (!tokens.length) return 0;
+  // hashtag colada
+  if (tema.replace(/\s/g, "").includes(q.replace(/\s/g, ""))) return 100;
+
+  const tokens = tokenizeTema(query).filter((t) => t.length >= 4);
+  if (!tokens.length) {
+    // query curta: só palavra inteira
+    const re = new RegExp(
+      `(?:^|[^a-z0-9])${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:[^a-z0-9]|$)`,
+      "i"
+    );
+    return re.test(tema) ? 90 : 0;
+  }
 
   let hits = 0;
   for (const tok of tokens) {
@@ -154,8 +164,15 @@ function scoreTemaMatch(
     );
     if (re.test(tema)) hits++;
   }
-  if (hits === tokens.length) return 85;
-  if (hits > 0 && hits >= Math.ceil(tokens.length * 0.6)) return 40;
+  // Exige TODOS os tokens longos (fundo) — "mar" sozinho não entra
+  if (hits === tokens.length && tokens.length > 0) return 85;
+
+  // Sinônimos fortes
+  if (/fundo\s+do\s+mar|sereia|oceano|nemo|marinho/i.test(q)) {
+    if (/fundo\s+do\s+mar|sereia|oceano|nemo|marinho|fundodomar/i.test(tema)) {
+      return 95;
+    }
+  }
   return 0;
 }
 
@@ -625,7 +642,7 @@ export class IntegracoesIaService {
         m,
         score: tema ? scoreTemaMatch(m.festa?.tema, tema) : 50,
       }))
-      .filter((x) => (tema ? x.score >= 40 : true))
+      .filter((x) => (tema ? x.score >= 85 : true))
       .sort(
         (a, b) =>
           b.score - a.score || b.m.criadoEm.getTime() - a.m.criadoEm.getTime()
