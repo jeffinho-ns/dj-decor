@@ -88,6 +88,77 @@ const REF_TIPOS: TipoMidia[] = [
   TipoMidia.CLIENTE_REFERENCIA,
 ];
 
+const TEMA_STOPWORDS = new Set([
+  "do",
+  "da",
+  "de",
+  "dos",
+  "das",
+  "e",
+  "com",
+  "o",
+  "a",
+  "os",
+  "as",
+  "um",
+  "uma",
+  "para",
+  "pra",
+  "no",
+  "na",
+  "em",
+  "por",
+  "tema",
+  "festa",
+  "kit",
+  "media",
+  "média",
+  "medio",
+  "médio",
+]);
+
+function normalizeTemaText(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function tokenizeTema(tema: string): string[] {
+  return normalizeTemaText(tema)
+    .split(/[\s,;/|—\-_/]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 3 && !TEMA_STOPWORDS.has(t));
+}
+
+/** Score 0–100: evita "mar" casar com "marrom". */
+function scoreTemaMatch(
+  festaTema: string | null | undefined,
+  query: string
+): number {
+  const tema = normalizeTemaText(festaTema || "");
+  const q = normalizeTemaText(query);
+  if (!tema || !q) return 0;
+  if (tema.includes(q) || q.includes(tema)) return 100;
+
+  const tokens = tokenizeTema(query);
+  if (!tokens.length) return 0;
+
+  let hits = 0;
+  for (const tok of tokens) {
+    const re = new RegExp(
+      `(?:^|[^a-z0-9])${tok.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:[^a-z0-9]|$)`,
+      "i"
+    );
+    if (re.test(tema)) hits++;
+  }
+  if (hits === tokens.length) return 85;
+  if (hits > 0 && hits >= Math.ceil(tokens.length * 0.6)) return 40;
+  return 0;
+}
+
 function digitsOnly(value: string): string {
   return value.replace(/\D/g, "");
 }
@@ -505,32 +576,36 @@ export class IntegracoesIaService {
     const query = referenciasQuerySchema.parse(rawQuery);
     const limite = query.limite ?? 3;
     const tema = query.tema?.trim() || "";
+    const tokens = tokenizeTema(tema);
+    const phrase = normalizeTemaText(tema);
 
-    const tokens = tema
-      ? tema
-          .split(/[\s,;/|—\-]+/)
-          .map((t) => t.trim())
-          .filter((t) => t.length >= 3)
-          .slice(0, 5)
-      : [];
-
-    const festaTemaFilter =
+    // Busca ampla no banco; filtra/scoreia em memória (evita "mar" ⊂ "marrom")
+    const prismaFilter =
       tokens.length > 0
         ? {
-            OR: tokens.map((tok) => ({
-              tema: { contains: tok, mode: "insensitive" as const },
-            })),
+            OR: [
+              ...(phrase.length >= 4
+                ? [{ tema: { contains: tema, mode: "insensitive" as const } }]
+                : []),
+              ...tokens
+                .filter((t) => t.length >= 4)
+                .map((tok) => ({
+                  tema: { contains: tok, mode: "insensitive" as const },
+                })),
+            ],
           }
         : undefined;
 
+    // Se o OR ficou vazio (só tokens curtos), busca recentes e scoreia
     const midias = await prisma.midia.findMany({
       where: {
         tipo: { in: REF_TIPOS },
         mimeType: { startsWith: "image/" },
         OR: [{ data: { not: null } }, { storagePath: { not: null } }],
-        ...(festaTemaFilter
-          ? { festa: festaTemaFilter }
-          : { festaId: { not: null } }),
+        festaId: { not: null },
+        ...(prismaFilter && (prismaFilter.OR?.length ?? 0) > 0
+          ? { festa: prismaFilter }
+          : {}),
       },
       select: {
         id: true,
@@ -542,13 +617,24 @@ export class IntegracoesIaService {
         festa: { select: { id: true, tema: true, status: true } },
       },
       orderBy: { criadoEm: "desc" },
-      take: limite * 3,
+      take: tema ? Math.max(limite * 20, 60) : limite * 3,
     });
+
+    const scored = midias
+      .map((m) => ({
+        m,
+        score: tema ? scoreTemaMatch(m.festa?.tema, tema) : 50,
+      }))
+      .filter((x) => (tema ? x.score >= 40 : true))
+      .sort(
+        (a, b) =>
+          b.score - a.score || b.m.criadoEm.getTime() - a.m.criadoEm.getTime()
+      );
 
     // Dedup por festa (no máx. 1 foto por festa)
     const seenFesta = new Set<string>();
     const picked: typeof midias = [];
-    for (const m of midias) {
+    for (const { m } of scored) {
       if (m.festaId) {
         if (seenFesta.has(m.festaId)) continue;
         seenFesta.add(m.festaId);
@@ -557,10 +643,10 @@ export class IntegracoesIaService {
       if (picked.length >= limite) break;
     }
 
-    // Fallback: se tema não achou nada, portfolio recente
+    // Sem tema → portfolio recente. COM tema e zero match → NÃO inventa outro tema.
     let resultados = picked;
     let fallback = false;
-    if (resultados.length === 0 && tokens.length > 0) {
+    if (resultados.length === 0 && !tema) {
       fallback = true;
       resultados = await prisma.midia.findMany({
         where: {
