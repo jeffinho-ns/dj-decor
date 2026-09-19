@@ -198,6 +198,92 @@ function endOfHorizon(daysAhead = 30): Date {
   return d;
 }
 
+function startOfDaysAgo(daysAgo: number): Date {
+  const d = startOfToday();
+  d.setDate(d.getDate() - daysAgo);
+  return d;
+}
+
+export type FaseOperacao =
+  | "separar"
+  | "pronto_retirada"
+  | "na_rua"
+  | "a_caminho"
+  | "no_local"
+  | "montada"
+  | "desmontar";
+
+export interface OperacaoPainelItem {
+  festaId: string;
+  osId: string | null;
+  clienteNome: string;
+  tema: string;
+  endereco: string;
+  dataEvento: string;
+  horarioMontagem: string;
+  pegueEMonte: boolean;
+  fase: FaseOperacao;
+  faseLabel: string;
+  itensPendentes: number;
+  totalItens: number;
+  prontoRetiradaEm: string | null;
+  retiradoClienteEm: string | null;
+  montadorNome: string | null;
+  desmontadorNome: string | null;
+}
+
+const FASE_LABEL: Record<FaseOperacao, string> = {
+  separar: "Separar",
+  pronto_retirada: "Pronto p/ retirar",
+  na_rua: "Na rua",
+  a_caminho: "A caminho",
+  no_local: "No local",
+  montada: "Montada",
+  desmontar: "Desmontar",
+};
+
+function resolverFaseOperacao(params: {
+  pegueEMonte: boolean;
+  romaneioConcluido: boolean;
+  checkinAt: Date | null;
+  montagemLocalConcluida: boolean;
+  statusOs: StatusOS | null;
+  statusFesta: StatusFesta;
+  prontoRetiradaEm: Date | null;
+  retiradoClienteEm: Date | null;
+  dataEvento: Date;
+}): FaseOperacao {
+  const eventoPassou = params.dataEvento.getTime() < startOfToday().getTime();
+
+  if (params.pegueEMonte) {
+    if (params.retiradoClienteEm) {
+      if (
+        eventoPassou &&
+        params.statusFesta !== StatusFesta.CONCLUIDO
+      ) {
+        return "desmontar";
+      }
+      if (params.statusFesta === StatusFesta.CONCLUIDO) {
+        return "desmontar";
+      }
+      return "na_rua";
+    }
+    if (params.prontoRetiradaEm || params.romaneioConcluido) {
+      return "pronto_retirada";
+    }
+    return "separar";
+  }
+
+  if (!params.romaneioConcluido) return "separar";
+  if (!params.checkinAt) return "a_caminho";
+  if (!params.montagemLocalConcluida) return "no_local";
+  if (params.statusOs !== StatusOS.FINALIZADA) return "montada";
+  if (eventoPassou || params.statusFesta === StatusFesta.CONCLUIDO) {
+    return "desmontar";
+  }
+  return "montada";
+}
+
 export class OsNotFoundError extends Error {
   constructor(id: string) {
     super(`Ordem de serviço não encontrada: ${id}`);
@@ -454,6 +540,131 @@ export class OsService {
     return ordenarRotaDia(base);
   }
 
+  /**
+   * Painel operacional em tempo real: separação, Pegue e Monte na rua,
+   * montagens do dia e fila de desmontagem.
+   */
+  async listOperacaoPainel(): Promise<OperacaoPainelItem[]> {
+    const inicio = startOfDaysAgo(3);
+    const fim = endOfHorizon(7);
+
+    const festas = await prisma.festa.findMany({
+      where: {
+        status: {
+          in: [
+            StatusFesta.PAGO,
+            StatusFesta.FECHADO,
+            StatusFesta.EM_MONTAGEM,
+            StatusFesta.CONCLUIDO,
+          ],
+        },
+        OR: [
+          { horarioMontagem: { gte: inicio, lte: fim } },
+          { dataEvento: { gte: inicio, lte: fim } },
+          {
+            pegueEMonte: true,
+            OR: [
+              { prontoRetiradaEm: { not: null } },
+              { retiradoClienteEm: { not: null } },
+            ],
+            dataEvento: { gte: startOfDaysAgo(14), lte: fim },
+          },
+        ],
+      },
+      include: {
+        cliente: { select: { nome: true } },
+        ordemServico: {
+          include: {
+            montador: { select: { nome: true } },
+            desmontador: { select: { nome: true } },
+            itensRomaneio: {
+              select: { carregado: true, conferido: true },
+            },
+          },
+        },
+      },
+      orderBy: [{ horarioMontagem: "asc" }, { dataEvento: "asc" }],
+    });
+
+    const itens: OperacaoPainelItem[] = [];
+
+    for (const festa of festas) {
+      const os = festa.ordemServico;
+      const romaneioItens = os?.itensRomaneio ?? [];
+      const pendentes = romaneioItens.filter(
+        (i) => !i.carregado || !i.conferido
+      ).length;
+
+      const fase = resolverFaseOperacao({
+        pegueEMonte: festa.pegueEMonte,
+        romaneioConcluido: os?.romaneioConcluido ?? false,
+        checkinAt: os?.checkinAt ?? null,
+        montagemLocalConcluida: os?.montagemLocalConcluida ?? false,
+        statusOs: os?.status ?? null,
+        statusFesta: festa.status,
+        prontoRetiradaEm: festa.prontoRetiradaEm,
+        retiradoClienteEm: festa.retiradoClienteEm,
+        dataEvento: festa.dataEvento,
+      });
+
+      // CONCLUIDO sem material "na rua" e evento antigo → fora do painel
+      if (
+        festa.status === StatusFesta.CONCLUIDO &&
+        fase === "desmontar" &&
+        !festa.pegueEMonte &&
+        festa.dataEvento < startOfDaysAgo(2)
+      ) {
+        continue;
+      }
+      if (
+        festa.status === StatusFesta.CONCLUIDO &&
+        festa.pegueEMonte &&
+        festa.retiradoClienteEm &&
+        festa.dataEvento < startOfDaysAgo(7)
+      ) {
+        continue;
+      }
+
+      itens.push({
+        festaId: festa.id,
+        osId: os?.id ?? null,
+        clienteNome: festa.cliente.nome,
+        tema: festa.tema,
+        endereco: festa.endereco,
+        dataEvento: festa.dataEvento.toISOString(),
+        horarioMontagem: festa.horarioMontagem.toISOString(),
+        pegueEMonte: festa.pegueEMonte,
+        fase,
+        faseLabel: FASE_LABEL[fase],
+        itensPendentes: pendentes,
+        totalItens: romaneioItens.length,
+        prontoRetiradaEm: festa.prontoRetiradaEm?.toISOString() ?? null,
+        retiradoClienteEm: festa.retiradoClienteEm?.toISOString() ?? null,
+        montadorNome: os?.montador?.nome ?? null,
+        desmontadorNome: os?.desmontador?.nome ?? null,
+      });
+    }
+
+    const ordemFase: Record<FaseOperacao, number> = {
+      separar: 0,
+      a_caminho: 1,
+      pronto_retirada: 2,
+      no_local: 3,
+      montada: 4,
+      na_rua: 5,
+      desmontar: 6,
+    };
+
+    return itens.sort((a, b) => {
+      const df = ordemFase[a.fase] - ordemFase[b.fase];
+      if (df !== 0) return df;
+      return (
+        new Date(a.horarioMontagem).getTime() -
+        new Date(b.horarioMontagem).getTime()
+      );
+    });
+  }
+
   async listMine(montadorId: string) {
     const inicio = startOfToday();
     const fim = endOfHorizon(30);
@@ -661,16 +872,21 @@ export class OsService {
         });
       } else {
         const festaStatus = os.festa.status;
+        const festaUpdate: {
+          separacaoConcluidaEm: Date;
+          status?: StatusFesta;
+        } = { separacaoConcluidaEm: agora };
         if (
           festaStatus === StatusFesta.FECHADO ||
           festaStatus === StatusFesta.PAGO
         ) {
-          await tx.festa.update({
-            where: { id: os.festaId },
-            data: { status: StatusFesta.EM_MONTAGEM },
-          });
+          festaUpdate.status = StatusFesta.EM_MONTAGEM;
           updated.festa.status = StatusFesta.EM_MONTAGEM;
         }
+        await tx.festa.update({
+          where: { id: os.festaId },
+          data: festaUpdate,
+        });
       }
 
       return updated;

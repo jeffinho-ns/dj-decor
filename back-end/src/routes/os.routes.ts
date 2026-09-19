@@ -77,6 +77,12 @@ osRoutes.get(
 );
 
 osRoutes.get(
+  "/operacao",
+  requireRoles(...montagemRoles),
+  (req, res, next) => osController.listOperacao(req, res, next)
+);
+
+osRoutes.get(
   "/today",
   requireRoles(...montagemRoles),
   (req, res, next) => osController.listToday(req, res, next)

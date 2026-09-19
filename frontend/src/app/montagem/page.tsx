@@ -1,7 +1,8 @@
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { OfflineQueueSync } from "@/components/layout/offline-queue-sync";
 import { MontagemHoje } from "@/components/montagem/montagem-hoje";
-import { listFestas, listOsHoje, listOsMine } from "@/lib/api";
+import { MontagemOperacaoPainel } from "@/components/montagem/montagem-operacao-painel";
+import { listFestas, listOsHoje, listOsMine, listOsOperacao } from "@/lib/api";
 import { festasDoDia } from "@/lib/montagem";
 import {
   normalizarListaMontagem,
@@ -9,6 +10,7 @@ import {
   type MontagemListaItem,
 } from "@/lib/montagem-os";
 import { requireSession } from "@/lib/session";
+import type { OperacaoPainelItem } from "@/types/os";
 
 export const dynamic = "force-dynamic";
 
@@ -16,16 +18,24 @@ export default async function MontagemPage() {
   const { token, user } = await requireSession();
 
   let itens: MontagemListaItem[] = [];
+  let operacao: OperacaoPainelItem[] = [];
   let loadError: string | null = null;
   const isMontador = user.role === "MONTADOR";
 
   try {
+    const [listaResult, operacaoResult] = await Promise.all([
+      isMontador ? listOsMine(token) : listOsHoje(token),
+      listOsOperacao(token).catch(() => [] as OperacaoPainelItem[]),
+    ]);
+    operacao = operacaoResult;
     if (isMontador) {
-      const minhas = await listOsMine(token);
-      itens = normalizarListaMontagemFromOs(minhas);
+      itens = normalizarListaMontagemFromOs(
+        listaResult as Awaited<ReturnType<typeof listOsMine>>
+      );
     } else {
-      const festasOs = await listOsHoje(token);
-      itens = normalizarListaMontagem(festasOs);
+      itens = normalizarListaMontagem(
+        listaResult as Awaited<ReturnType<typeof listOsHoje>>
+      );
     }
   } catch {
     try {
@@ -45,6 +55,9 @@ export default async function MontagemPage() {
         checkinAt: null,
         itensPendentes: 0,
         totalItens: 0,
+        pegueEMonte: Boolean(festa.pegueEMonte),
+        prontoRetirada: false,
+        retiradoClienteEm: null,
       }));
     } catch (error) {
       loadError =
@@ -71,11 +84,14 @@ export default async function MontagemPage() {
           <p className="mt-1 opacity-90">{loadError}</p>
         </div>
       ) : (
-        <MontagemHoje
-          itens={itens}
-          token={token}
-          modo={isMontador ? "proximas" : "hoje"}
-        />
+        <div className="mx-auto max-w-lg space-y-5">
+          <MontagemOperacaoPainel token={token} inicial={operacao} />
+          <MontagemHoje
+            itens={itens}
+            token={token}
+            modo={isMontador ? "proximas" : "hoje"}
+          />
+        </div>
       )}
     </DashboardShell>
   );

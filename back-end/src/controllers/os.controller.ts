@@ -49,6 +49,19 @@ export class OsController {
     }
   }
 
+  async listOperacao(
+    _req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await osService.listOperacaoPainel();
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async listMine(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) {

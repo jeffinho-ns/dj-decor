@@ -65,6 +65,10 @@ export interface FestaMontagemHoje {
   tema: string;
   tamanhoDecoracao: string;
   endereco: string;
+  pegueEMonte?: boolean;
+  prontoRetiradaEm?: string | null;
+  retiradoClienteEm?: string | null;
+  separacaoConcluidaEm?: string | null;
   cliente: Cliente;
   ordemServico: OrdemServico | null;
 }
@@ -88,6 +92,35 @@ export interface RotaDiaItem {
   checkinLat: number | null;
   checkinLng: number | null;
   criterio: "horario" | "proximidade";
+}
+
+/** Fases do painel operacional (GET /api/os/operacao). */
+export type FaseOperacao =
+  | "separar"
+  | "pronto_retirada"
+  | "na_rua"
+  | "a_caminho"
+  | "no_local"
+  | "montada"
+  | "desmontar";
+
+export interface OperacaoPainelItem {
+  festaId: string;
+  osId: string | null;
+  clienteNome: string;
+  tema: string;
+  endereco: string;
+  dataEvento: string;
+  horarioMontagem: string;
+  pegueEMonte: boolean;
+  fase: FaseOperacao;
+  faseLabel: string;
+  itensPendentes: number;
+  totalItens: number;
+  prontoRetiradaEm: string | null;
+  retiradoClienteEm: string | null;
+  montadorNome: string | null;
+  desmontadorNome: string | null;
 }
 
 /** Status público do portal do cliente. */

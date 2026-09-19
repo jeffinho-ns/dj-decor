@@ -14,6 +14,9 @@ export interface MontagemListaItem {
   checkinAt: string | null;
   itensPendentes: number;
   totalItens: number;
+  pegueEMonte: boolean;
+  prontoRetirada: boolean;
+  retiradoClienteEm: string | null;
 }
 
 /** Normaliza festas de GET /api/os/today para cards da lista. */
@@ -27,6 +30,9 @@ export function normalizarListaMontagem(
       const pendentes = itens.filter(
         (item) => !item.carregado || !item.conferido
       ).length;
+      const pegueEMonte = Boolean(festa.pegueEMonte);
+      const prontoRetiradaEm = festa.prontoRetiradaEm;
+      const retiradoClienteEm = festa.retiradoClienteEm ?? null;
 
       return {
         osId: os?.id ?? null,
@@ -42,6 +48,11 @@ export function normalizarListaMontagem(
         checkinAt: os?.checkinAt ?? null,
         itensPendentes: pendentes,
         totalItens: itens.length,
+        pegueEMonte,
+        prontoRetirada: Boolean(
+          pegueEMonte && prontoRetiradaEm && !retiradoClienteEm
+        ),
+        retiradoClienteEm,
       };
     })
     .sort((a, b) => {
@@ -61,21 +72,30 @@ export function normalizarListaMontagemFromOs(
       const pendentes = itens.filter(
         (item) => !item.carregado || !item.conferido
       ).length;
+      const festa = os.festa;
+      const pegueEMonte = Boolean(festa?.pegueEMonte);
+      const prontoRetiradaEm = festa?.prontoRetiradaEm;
+      const retiradoClienteEm = festa?.retiradoClienteEm ?? null;
 
       return {
         osId: os.id,
         festaId: os.festaId,
-        clienteNome: os.festa?.cliente?.nome ?? "—",
-        tema: os.festa?.tema || "—",
-        endereco: os.festa?.endereco || "—",
-        horarioMontagem: os.festa?.horarioMontagem ?? os.criadoEm,
-        dataEvento: os.festa?.dataEvento ?? os.criadoEm,
+        clienteNome: festa?.cliente?.nome ?? "—",
+        tema: festa?.tema || "—",
+        endereco: festa?.endereco || "—",
+        horarioMontagem: festa?.horarioMontagem ?? os.criadoEm,
+        dataEvento: festa?.dataEvento ?? os.criadoEm,
         statusOs: os.status,
         romaneioConcluido: os.romaneioConcluido,
         montagemLocalConcluida: os.montagemLocalConcluida,
         checkinAt: os.checkinAt,
         itensPendentes: pendentes,
         totalItens: itens.length,
+        pegueEMonte,
+        prontoRetirada: Boolean(
+          pegueEMonte && prontoRetiradaEm && !retiradoClienteEm
+        ),
+        retiradoClienteEm,
       };
     })
     .sort((a, b) => {

@@ -635,6 +635,17 @@ export async function listOsHoje(token: string): Promise<FestaMontagemHoje[]> {
   return handleResponse<FestaMontagemHoje[]>(response);
 }
 
+/** Painel operacional em tempo real (GET /api/os/operacao). */
+export async function listOsOperacao(
+  token: string
+): Promise<import("@/types/os").OperacaoPainelItem[]> {
+  const response = await fetch(`${getBaseUrl()}/api/os/operacao`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  return handleResponse(response);
+}
+
 /** Rota sugerida do dia (GET /api/os/today/rota). */
 export async function listOsRotaHoje(token: string): Promise<RotaDiaItem[]> {
   const response = await fetch(`${getBaseUrl()}/api/os/today/rota`, {

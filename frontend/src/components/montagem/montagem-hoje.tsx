@@ -38,9 +38,24 @@ const BADGE_MONTAGEM = {
     label: "Concluída",
     badge: "bg-balloon-mint/12 text-balloon-mint",
   },
+  prontoRetirada: {
+    label: "Pronto p/ retirar",
+    badge: "bg-balloon-sky/12 text-balloon-sky",
+  },
+  naRua: {
+    label: "Na rua",
+    badge: "bg-balloon-sun/18 text-balloon-sun",
+  },
 } as const;
 
 function badgeMontagem(item: MontagemListaItem) {
+  if (item.pegueEMonte) {
+    if (item.retiradoClienteEm) return BADGE_MONTAGEM.naRua;
+    if (item.prontoRetirada || item.romaneioConcluido) {
+      return BADGE_MONTAGEM.prontoRetirada;
+    }
+    return BADGE_MONTAGEM.separar;
+  }
   if (item.statusOs === "FINALIZADA" || item.montagemLocalConcluida) {
     return BADGE_MONTAGEM.concluida;
   }
@@ -114,7 +129,7 @@ export function MontagemHoje({
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-5 px-0 sm:space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
@@ -230,6 +245,11 @@ function MontagemCard({
         <div className="min-w-0 flex-1">
           <p className="font-medium text-foreground">{item.clienteNome}</p>
           <p className={cn("truncate text-sm", accent.tema)}>{item.tema}</p>
+          {item.pegueEMonte ? (
+            <p className="mt-0.5 text-[11px] font-medium text-balloon-lilac">
+              Pegue e Monte
+            </p>
+          ) : null}
         </div>
         <span
           className={cn(

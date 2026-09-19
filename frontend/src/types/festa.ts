@@ -40,6 +40,9 @@ export interface Festa {
   itensExtrasConcluidos: string[];
   kitCatalogo?: string | null;
   pegueEMonte?: boolean;
+  separacaoConcluidaEm?: string | null;
+  prontoRetiradaEm?: string | null;
+  retiradoClienteEm?: string | null;
   observacoes?: string | null;
   notasInternas?: string | null;
   endereco: string;

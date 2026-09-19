@@ -124,6 +124,8 @@ export function MontagemOsDetalhe({
 
   const festa = os.festa;
   const itens = os.itensRomaneio;
+  const pegueEMonte = Boolean(festa.pegueEMonte);
+  const clienteRetirou = Boolean(festa.retiradoClienteEm);
 
   const romaneioOk = os.romaneioConcluido;
   const checkinOk = Boolean(os.checkinAt);
@@ -133,12 +135,13 @@ export function MontagemOsDetalhe({
 
   const etapaAtiva: Etapa = useMemo(() => {
     if (!romaneioOk) return "romaneio";
+    if (pegueEMonte) return "romaneio";
     if (!checkinOk) return "checkin";
     if (!montagemOk) return "montagem";
     if (!fotoOk) return "foto";
     if (!saidaOk) return "saida";
     return "saida";
-  }, [romaneioOk, checkinOk, montagemOk, fotoOk, saidaOk]);
+  }, [romaneioOk, pegueEMonte, checkinOk, montagemOk, fotoOk, saidaOk]);
 
   const todosItensSeparados =
     itens.length > 0 &&
@@ -404,7 +407,7 @@ export function MontagemOsDetalhe({
       ) : null}
 
       <ol className="flex gap-1" aria-label="Progresso da montagem">
-        {ETAPAS.map((etapa) => {
+        {(pegueEMonte ? (["romaneio"] as Etapa[]) : ETAPAS).map((etapa) => {
           const done =
             (etapa === "romaneio" && romaneioOk) ||
             (etapa === "checkin" && checkinOk) ||
@@ -439,6 +442,11 @@ export function MontagemOsDetalhe({
           <h3 className="font-display text-lg text-foreground">
             1. Separar no estoque
           </h3>
+          {pegueEMonte ? (
+            <span className="ml-auto rounded-lg bg-balloon-lilac/12 px-2 py-0.5 text-[10px] font-medium text-balloon-lilac">
+              Pegue e Monte
+            </span>
+          ) : null}
         </div>
 
         {itens.length === 0 ? (
@@ -535,14 +543,34 @@ export function MontagemOsDetalhe({
           >
             {pending ? (
               <Loader2 className="size-4 animate-spin" />
+            ) : pegueEMonte ? (
+              "Tudo separado — avisar cliente"
             ) : (
               "Tudo separado — pronto para levar"
             )}
           </Button>
         ) : romaneioOk ? (
-          <p className="mt-3 text-xs text-balloon-mint">
-            Separação concluída — pronto para levar
-          </p>
+          <div className="mt-3 space-y-1">
+            <p className="text-xs text-balloon-mint">
+              {pegueEMonte
+                ? clienteRetirou
+                  ? "Cliente retirou — itens na rua"
+                  : "Separação concluída — cliente avisado para retirar"
+                : "Separação concluída — pronto para levar"}
+            </p>
+            {pegueEMonte && festa.prontoRetiradaEm && !clienteRetirou ? (
+              <p className="text-xs text-muted-foreground">
+                Pronto desde{" "}
+                {safeTime(festa.prontoRetiradaEm)}
+                . Acompanhe no painel Operação ao vivo.
+              </p>
+            ) : null}
+            {pegueEMonte && clienteRetirou ? (
+              <p className="text-xs text-balloon-sun">
+                Retirada confirmada às {safeTime(festa.retiradoClienteEm)}
+              </p>
+            ) : null}
+          </div>
         ) : null}
       </section>
 
@@ -561,6 +589,8 @@ export function MontagemOsDetalhe({
         }}
       />
 
+      {!pegueEMonte ? (
+      <>
       <section className={sectionClass("checkin", etapaAtiva, !romaneioOk)}>
         <div className="flex items-center gap-2">
           {checkinOk ? (
@@ -781,6 +811,8 @@ export function MontagemOsDetalhe({
           </>
         )}
       </section>
+      </>
+      ) : null}
 
       {erro ? (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive neo-sm">
@@ -800,6 +832,7 @@ export function MontagemOsDetalhe({
         todosItensMontados={todosItensMontados}
         pending={pending}
         geoStatus={geoStatus}
+        pegueEMonte={pegueEMonte}
         onConcluirRomaneio={concluirRomaneioHandler}
         onCheckin={checkinHandler}
         onConcluirMontagem={concluirMontagemHandler}
@@ -823,6 +856,7 @@ function MontagemStickyAction({
   pending,
   geoStatus,
   canEdit,
+  pegueEMonte,
   onConcluirRomaneio,
   onCheckin,
   onConcluirMontagem,
@@ -840,6 +874,7 @@ function MontagemStickyAction({
   pending: boolean;
   geoStatus: string | null;
   canEdit: boolean;
+  pegueEMonte: boolean;
   onConcluirRomaneio: () => void;
   onCheckin: () => void;
   onConcluirMontagem: () => void;
@@ -859,11 +894,15 @@ function MontagemStickyAction({
       >
         {pending ? (
           <Loader2 className="size-4 animate-spin" />
+        ) : pegueEMonte ? (
+          "Tudo separado — avisar cliente"
         ) : (
           "Tudo separado — pronto para levar"
         )}
       </Button>
     );
+  } else if (pegueEMonte) {
+    action = null;
   } else if (etapaAtiva === "checkin" && !checkinOk) {
     action = (
       <Button
