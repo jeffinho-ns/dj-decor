@@ -2,6 +2,7 @@ import type { NextFunction, Response } from "express";
 import { ZodError } from "zod";
 import type { AuthenticatedRequest } from "../middlewares/auth";
 import {
+  DescontoInvalidoError,
   DescontoJaPendenteError,
   DescontoNaoPendenteError,
   DescontoSemValorOriginalError,
@@ -124,6 +125,11 @@ export class DescontosController {
 
     if (error instanceof DescontoSemValorOriginalError) {
       res.status(422).json({ error: error.message });
+      return;
+    }
+
+    if (error instanceof DescontoInvalidoError) {
+      res.status(400).json({ error: error.message });
       return;
     }
 

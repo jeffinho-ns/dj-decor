@@ -132,6 +132,7 @@ export function FestaDetalheModal({
               <DescontoBadge
                 status={current.descontoStatus}
                 percentual={current.descontoPercentual}
+                valor={current.descontoValor}
               />
               <CompraEstoqueBadge
                 alerta={current.alertaCompraEstoque}

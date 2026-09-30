@@ -430,7 +430,13 @@ export function CalendarioAgenda({
                     risco: updated.risco ?? f.risco,
                     descontoStatus: updated.descontoStatus ?? f.descontoStatus,
                     descontoPercentual:
-                      updated.descontoPercentual ?? f.descontoPercentual,
+                      updated.descontoPercentual !== undefined
+                        ? updated.descontoPercentual
+                        : f.descontoPercentual,
+                    descontoValor:
+                      updated.descontoValor !== undefined
+                        ? updated.descontoValor
+                        : f.descontoValor,
                   }
                 : f
             )

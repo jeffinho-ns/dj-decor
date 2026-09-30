@@ -7,8 +7,8 @@ import { ChevronDown, LayoutGrid, List, Loader2, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { DescontoBadge } from "@/components/vendas/desconto-badge";
+import { DescontoTextoField } from "@/components/vendas/desconto-texto-field";
 import { CompraEstoqueBadge } from "@/components/vendas/compra-estoque-badge";
 import { FestaContratoPanel } from "@/components/vendas/festa-contrato-panel";
 import { FestaDataEditor } from "@/components/vendas/festa-data-editor";
@@ -25,6 +25,7 @@ import {
   updateFesta,
   updateFestaStatus,
 } from "@/lib/api";
+import { descreverDesconto, rotuloDesconto } from "@/lib/desconto-texto";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types/auth";
@@ -119,7 +120,7 @@ function FestaCard({
   pessoas,
 }: FestaCardProps) {
   const next = STATUS_TRANSITIONS[festa.status];
-  const [percentualDesconto, setPercentualDesconto] = useState("10");
+  const [textoDesconto, setTextoDesconto] = useState("");
   const [solicitandoDesconto, setSolicitandoDesconto] = useState(false);
   const [descontoError, setDescontoError] = useState<string | null>(null);
 
@@ -149,6 +150,7 @@ function FestaCard({
             <DescontoBadge
               status={festa.descontoStatus}
               percentual={festa.descontoPercentual}
+              valor={festa.descontoValor}
             />
             <CompraEstoqueBadge
               alerta={festa.alertaCompraEstoque}
@@ -171,7 +173,14 @@ function FestaCard({
           <span className="text-muted-foreground">
             {format(parseISO(festa.dataEvento), "dd MMM", { locale: ptBR })}
           </span>
-          <span className="font-medium text-balloon-sun">
+          <span className="flex items-center gap-1.5 font-medium text-balloon-sun">
+            {festa.valorOriginal != null &&
+            Number(festa.valorOriginal) > Number(festa.valor) + 0.009 &&
+            (descontoStatus === "PENDENTE" || descontoStatus === "APROVADO") ? (
+              <span className="text-[10px] font-normal text-muted-foreground line-through">
+                {formatCurrency(festa.valorOriginal)}
+              </span>
+            ) : null}
             {formatCurrency(festa.valor)}
           </span>
         </div>
@@ -258,100 +267,91 @@ function FestaCard({
                 </p>
                 {podeSolicitarDesconto ? (
                   <div className="mt-2 space-y-2">
-                    <div className="flex flex-col gap-2">
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <Label
-                          htmlFor={`desconto-${festa.id}`}
-                          className="text-xs text-muted-foreground"
-                        >
-                          Percentual (1–50%)
-                        </Label>
-                        <Input
-                          id={`desconto-${festa.id}`}
-                          type="number"
-                          min={1}
-                          max={50}
-                          step={1}
-                          className="h-11 md:h-9"
-                          value={percentualDesconto}
-                          disabled={solicitandoDesconto}
-                          onClick={(event) => event.stopPropagation()}
-                          onChange={(event) =>
-                            setPercentualDesconto(event.target.value)
-                          }
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="min-h-11 w-full whitespace-normal md:min-h-9"
-                        disabled={solicitandoDesconto}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          const pct = Number(percentualDesconto);
-                          if (!Number.isFinite(pct) || pct < 1 || pct > 50) {
+                    <DescontoTextoField
+                      id={`desconto-${festa.id}`}
+                      value={textoDesconto}
+                      onChange={setTextoDesconto}
+                      valorVenda={Number(festa.valor)}
+                      disabled={solicitandoDesconto}
+                      obrigatorio
+                      ocultarRotulo
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="min-h-11 w-full whitespace-normal md:min-h-9"
+                      disabled={solicitandoDesconto}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        const preview = descreverDesconto(
+                          Number(festa.valor),
+                          textoDesconto
+                        );
+                        if (!preview.ok) {
+                          setDescontoError(
+                            textoDesconto.trim() ? null : preview.mensagem
+                          );
+                          return;
+                        }
+                        setDescontoError(null);
+                        setSolicitandoDesconto(true);
+                        void solicitarDesconto(
+                          festa.id,
+                          { texto: textoDesconto.trim() },
+                          token
+                        )
+                          .then((updated) => {
+                            onFestaUpdate({
+                              ...festa,
+                              ...updated,
+                            });
+                            setTextoDesconto("");
+                          })
+                          .catch((err) => {
                             setDescontoError(
-                              "Informe um percentual entre 1 e 50"
+                              err instanceof Error
+                                ? err.message
+                                : "Falha ao solicitar desconto"
                             );
-                            return;
-                          }
-                          setDescontoError(null);
-                          setSolicitandoDesconto(true);
-                          void solicitarDesconto(
-                            festa.id,
-                            { percentual: pct },
-                            token
-                          )
-                            .then((updated) => {
-                              onFestaUpdate({
-                                ...festa,
-                                descontoStatus: updated.descontoStatus,
-                                descontoPercentual: updated.descontoPercentual,
-                              });
-                            })
-                            .catch((err) => {
-                              setDescontoError(
-                                err instanceof Error
-                                  ? err.message
-                                  : "Falha ao solicitar desconto"
-                              );
-                            })
-                            .finally(() => setSolicitandoDesconto(false));
-                        }}
-                      >
-                        {solicitandoDesconto ? (
-                          <>
-                            <Loader2 className="size-3.5 animate-spin" />
-                            Enviando…
-                          </>
-                        ) : (
-                          "Solicitar desconto"
-                        )}
-                      </Button>
-                    </div>
+                          })
+                          .finally(() => setSolicitandoDesconto(false));
+                      }}
+                    >
+                      {solicitandoDesconto ? (
+                        <>
+                          <Loader2 className="size-3.5 animate-spin" />
+                          Enviando…
+                        </>
+                      ) : (
+                        "Solicitar desconto"
+                      )}
+                    </Button>
                     {descontoError ? (
                       <p className="text-xs text-destructive">{descontoError}</p>
                     ) : (
                       <p className="text-[11px] text-muted-foreground">
-                        Enviado para aprovação do gerente.
+                        O valor é abatido na hora e segue para aprovação do
+                        gerente. Se for recusado, o preço original volta.
                       </p>
                     )}
                   </div>
                 ) : descontoStatus === "PENDENTE" ? (
                   <p className="mt-2 text-xs text-muted-foreground">
                     Desconto de{" "}
-                    {festa.descontoPercentual != null
-                      ? `${Number(festa.descontoPercentual).toFixed(0)}%`
-                      : "—"}{" "}
-                    aguardando aprovação.
+                    {rotuloDesconto({
+                      percentual: festa.descontoPercentual,
+                      valor: festa.descontoValor,
+                    }) ?? "—"}{" "}
+                    já abatido. Aguardando aprovação.
                   </p>
                 ) : descontoStatus === "APROVADO" ? (
                   <p className="mt-2 text-xs text-balloon-mint">
                     Desconto de{" "}
-                    {festa.descontoPercentual != null
-                      ? `${Number(festa.descontoPercentual).toFixed(0)}%`
-                      : "—"}{" "}
+                    {rotuloDesconto({
+                      percentual: festa.descontoPercentual,
+                      valor: festa.descontoValor,
+                    }) ?? "—"}{" "}
                     aprovado.
                   </p>
                 ) : null}
@@ -447,14 +447,11 @@ export function KanbanBoard({
     setFestas((prev) =>
       prev.map((f) =>
         f.id === updated.id
-          ? {
-              ...f,
-              ...updated,
-              risco: updated.risco ?? f.risco,
-              descontoStatus: updated.descontoStatus ?? f.descontoStatus,
-              descontoPercentual:
-                updated.descontoPercentual ?? f.descontoPercentual,
-            }
+            ? {
+                ...f,
+                ...updated,
+                risco: updated.risco ?? f.risco,
+              }
           : f
       )
     );

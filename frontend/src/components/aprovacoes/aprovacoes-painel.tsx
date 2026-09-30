@@ -14,6 +14,10 @@ import {
 } from "@/components/ui/table";
 import { aprovarDesconto, recusarDesconto } from "@/lib/api";
 import { getClientToken } from "@/lib/auth";
+import {
+  preverValorComDesconto,
+  rotuloDesconto,
+} from "@/lib/desconto-texto";
 import type { FestaDescontoPendente } from "@/types/desconto";
 
 function formatCurrency(value: string | number | null | undefined): string {
@@ -23,11 +27,13 @@ function formatCurrency(value: string | number | null | undefined): string {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function formatPercent(value: string | number | null | undefined): string {
-  if (value == null) return "—";
-  const n = typeof value === "string" ? Number(value) : value;
-  if (!Number.isFinite(n)) return "—";
-  return `${n}%`;
+function formatDesconto(festa: FestaDescontoPendente): string {
+  return (
+    rotuloDesconto({
+      percentual: festa.descontoPercentual,
+      valor: festa.descontoValor,
+    }) ?? "—"
+  );
 }
 
 interface AprovacoesPainelProps {
@@ -129,7 +135,13 @@ function AprovacaoCard({
         <div className="flex justify-between gap-3">
           <dt className="text-muted-foreground">Desconto</dt>
           <dd className="text-right font-medium tabular-nums text-balloon-pink">
-            {formatPercent(festa.descontoPercentual)}
+            {formatDesconto(festa)}
+          </dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt className="text-muted-foreground">Valor com desconto</dt>
+          <dd className="text-right font-medium tabular-nums text-foreground">
+            {formatCurrency(preverValorComDesconto(festa))}
           </dd>
         </div>
       </dl>
@@ -266,7 +278,10 @@ export function AprovacoesPainel({
                     </TableCell>
                     <TableCell>{formatCurrency(valorOriginal)}</TableCell>
                     <TableCell className="font-medium text-balloon-pink">
-                      {formatPercent(festa.descontoPercentual)}
+                      {formatDesconto(festa)}
+                      <div className="text-xs font-normal text-muted-foreground">
+                        fica {formatCurrency(preverValorComDesconto(festa))}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <AprovacaoActions

@@ -286,6 +286,8 @@ model Festa {
 
   valorOriginal           Decimal?       @map("valor_original") @db.Decimal(10, 2)
   descontoPercentual      Decimal?       @map("desconto_percentual") @db.Decimal(5, 2)
+  /** Abatimento fixo em reais, quando o desconto não é percentual. */
+  descontoValor           Decimal?       @map("desconto_valor") @db.Decimal(10, 2)
   descontoStatus          StatusDesconto @default(NENHUM) @map("desconto_status")
   descontoSolicitadoPorId String?        @map("desconto_solicitado_por_id")
   descontoSolicitadoPor   User?          @relation("DescontoSolicitadoPor", fields: [descontoSolicitadoPorId], references: [id])

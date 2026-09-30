@@ -23,6 +23,7 @@ import { QtyInput, resolveDraftQty } from "@/components/ui/qty-input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { FestaContratoPanel } from "@/components/vendas/festa-contrato-panel";
+import { DescontoTextoField } from "@/components/vendas/desconto-texto-field";
 import { PagamentoForm } from "@/components/vendas/pagamento-form";
 import { EquipeFestaFields } from "@/components/equipe/equipe-festa-fields";
 import {
@@ -34,6 +35,7 @@ import {
   getClienteById,
   getConfiguracoes,
   listMontadores,
+  solicitarDesconto,
   sugestoesProdutos,
   uploadMidia,
 } from "@/lib/api";
@@ -53,6 +55,7 @@ import {
   montarTextoOrcamento,
   type CatalogoKitId,
 } from "@/lib/catalogo-kits";
+import { descreverDesconto, rotuloDesconto } from "@/lib/desconto-texto";
 import { formatCurrency } from "@/lib/format";
 import { enderecoPareceForaParacambi } from "@/lib/paracambi";
 import { cn } from "@/lib/utils";
@@ -169,6 +172,8 @@ export function NovaVendaForm({
   const [temaUploadBusy, setTemaUploadBusy] = useState(false);
   const [bolasUploadBusy, setBolasUploadBusy] = useState(false);
   const [valorManual, setValorManual] = useState(false);
+  const [descontoTexto, setDescontoTexto] = useState("");
+  const [descontoAviso, setDescontoAviso] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [sugestoes, setSugestoes] = useState<ProdutoSugestao[]>([]);
   const [loadingSugestoes, setLoadingSugestoes] = useState(false);
@@ -712,6 +717,17 @@ export function NovaVendaForm({
       }
     }
 
+    const valorVenda = soBolas
+      ? bolasOrcamento.valorCliente
+      : Number(data.valor.replace(",", "."));
+    if (descontoTexto.trim()) {
+      const previewDesconto = descreverDesconto(valorVenda, descontoTexto);
+      if (!previewDesconto.ok) {
+        setSubmitError(previewDesconto.mensagem);
+        return;
+      }
+    }
+
     try {
       const horaMontagem = pegueAtivo ? data.horaEvento : data.horaMontagem;
       const depositoPadrao = enderecoEmpresa.trim() || "Depósito da empresa";
@@ -775,10 +791,39 @@ export function NovaVendaForm({
         token
       );
 
+      let festaSalva = festa;
+      setDescontoAviso(null);
+      if (descontoTexto.trim()) {
+        try {
+          const comDesconto = await solicitarDesconto(
+            festa.id,
+            { texto: descontoTexto.trim() },
+            token
+          );
+          festaSalva = {
+            ...festa,
+            valor: comDesconto.valor,
+            valorOriginal: comDesconto.valorOriginal,
+            descontoPercentual: comDesconto.descontoPercentual,
+            descontoValor: comDesconto.descontoValor,
+            descontoStatus: comDesconto.descontoStatus,
+          };
+        } catch (descErr) {
+          setDescontoAviso(
+            descErr instanceof Error
+              ? `Venda salva, mas o desconto não foi aplicado: ${descErr.message}. Você pode lançar de novo na página Vendas.`
+              : "Venda salva, mas o desconto não foi aplicado. Você pode lançar de novo na página Vendas."
+          );
+        }
+      }
+
       const novosPagamentos: Pagamento[] = [];
       let avisoPagamento: string | null = null;
 
-      if (temEntrada) {
+      if (temEntrada && Number(festaSalva.valor) <= 0.009) {
+        avisoPagamento =
+          "A venda ficou zerada com o desconto, então o pagamento informado não foi lançado.";
+      } else if (temEntrada) {
         try {
           const pagamento = await createPagamento(
             festa.id,
@@ -810,7 +855,7 @@ export function NovaVendaForm({
                   : "Venda salva e pagamento criado, mas o comprovante falhou. Anexe de novo abaixo.";
               setPagamentos(novosPagamentos);
               setPagamentoAviso(avisoPagamento);
-              setFestaCriada(festa);
+              setFestaCriada(festaSalva);
               window.scrollTo({ top: 0, behavior: "smooth" });
               return;
             }
@@ -827,7 +872,7 @@ export function NovaVendaForm({
 
       setPagamentos(novosPagamentos);
       setPagamentoAviso(avisoPagamento);
-      setFestaCriada(festa);
+      setFestaCriada(festaSalva);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       setSubmitError(
@@ -861,6 +906,8 @@ export function NovaVendaForm({
     setBolasMidiaIds([]);
     setTemaMidiaIds([]);
     setValorManual(false);
+    setDescontoTexto("");
+    setDescontoAviso(null);
     setSugestoes([]);
     setSugestoesError(null);
     setClienteId(initialClienteId ?? null);
@@ -905,6 +952,34 @@ export function NovaVendaForm({
                   {formatCurrency(Number(festaCriada.valor))}
                 </span>
               </p>
+              {festaCriada.descontoStatus === "PENDENTE" ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Desconto de{" "}
+                  <span className="font-medium text-foreground">
+                    {rotuloDesconto({
+                      percentual: festaCriada.descontoPercentual,
+                      valor: festaCriada.descontoValor,
+                    }) ?? "—"}
+                  </span>{" "}
+                  abatido
+                  {festaCriada.valorOriginal != null ? (
+                    <>
+                      {" "}
+                      sobre{" "}
+                      <span className="tabular-nums">
+                        {formatCurrency(Number(festaCriada.valorOriginal))}
+                      </span>
+                    </>
+                  ) : null}
+                  . Aguardando aprovação do gerente.
+                  {Number(festaCriada.valor) <= 0.009
+                    ? " Como o valor ficou zerado, não precisa lançar pagamento."
+                    : ""}
+                </p>
+              ) : null}
+              {descontoAviso ? (
+                <p className="mt-2 text-sm text-destructive">{descontoAviso}</p>
+              ) : null}
               <p className="mt-3 text-sm text-muted-foreground">
                 {pagamentos.length > 0 ? (
                   <>
@@ -1967,6 +2042,19 @@ export function NovaVendaForm({
             {errors.valor ? (
               <p className="text-xs text-destructive">{errors.valor.message}</p>
             ) : null}
+          </div>
+
+          <div className="mt-4">
+            <DescontoTextoField
+              id="desconto-nova-venda"
+              value={descontoTexto}
+              onChange={setDescontoTexto}
+              valorVenda={
+                soBolas
+                  ? bolasOrcamento.valorCliente
+                  : Number(String(valorWatch ?? "").replace(",", ".")) || 0
+              }
+            />
           </div>
         </div>
 

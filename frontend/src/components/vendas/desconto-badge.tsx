@@ -1,3 +1,4 @@
+import { rotuloDesconto } from "@/lib/desconto-texto";
 import { cn } from "@/lib/utils";
 import type { StatusDesconto } from "@/types/desconto";
 
@@ -19,12 +20,14 @@ const statusLabel: Record<Exclude<StatusDesconto, "NENHUM">, string> = {
 interface DescontoBadgeProps {
   status?: StatusDesconto | null;
   percentual?: string | number | null;
+  valor?: string | number | null;
   className?: string;
 }
 
 export function DescontoBadge({
   status,
   percentual,
+  valor,
   className,
 }: DescontoBadgeProps) {
   if (
@@ -35,10 +38,7 @@ export function DescontoBadge({
     return null;
   }
 
-  const pct =
-    percentual != null && percentual !== ""
-      ? `${Number(percentual).toFixed(0)}%`
-      : null;
+  const pct = rotuloDesconto({ percentual, valor });
 
   return (
     <span

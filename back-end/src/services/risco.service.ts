@@ -13,6 +13,23 @@ const DESCONTO_ALTO_PERCENTUAL = 15;
 const ORCAMENTO_PARADO_DIAS = 7;
 const EVENTO_PROXIMO_HORAS = 72;
 
+function percentualParaRisco(festa: {
+  descontoPercentual: { toString(): string } | number | null;
+  descontoValor?: { toString(): string } | number | null;
+  valorOriginal?: { toString(): string } | number | null;
+  valor?: { toString(): string } | number | null;
+}): number | null {
+  if (festa.descontoPercentual != null) {
+    return Number(festa.descontoPercentual);
+  }
+  if (festa.descontoValor != null) {
+    const base = Number(festa.valorOriginal ?? festa.valor ?? 0);
+    if (base <= 0) return 100;
+    return (Number(festa.descontoValor) / base) * 100;
+  }
+  return null;
+}
+
 function nivelFromScore(score: number): NivelRisco {
   if (score >= 67) return "ALTO";
   if (score >= 34) return "MEDIO";
@@ -83,6 +100,9 @@ export class RiscoService {
         id: true,
         clienteId: true,
         descontoPercentual: true,
+        descontoValor: true,
+        valorOriginal: true,
+        valor: true,
         descontoStatus: true,
         dataEvento: true,
         status: true,
@@ -104,9 +124,7 @@ export class RiscoService {
 
     return computeRisco({
       festasAnterioresCliente: festasAnteriores,
-      descontoPercentual: festa.descontoPercentual
-        ? Number(festa.descontoPercentual)
-        : null,
+      descontoPercentual: percentualParaRisco(festa),
       descontoStatus: festa.descontoStatus,
       dataEvento: festa.dataEvento,
       status: festa.status,
@@ -127,6 +145,9 @@ export class RiscoService {
         id: true,
         clienteId: true,
         descontoPercentual: true,
+        descontoValor: true,
+        valorOriginal: true,
+        valor: true,
         descontoStatus: true,
         dataEvento: true,
         status: true,
@@ -159,9 +180,7 @@ export class RiscoService {
         festa.id,
         computeRisco({
           festasAnterioresCliente: anteriores,
-          descontoPercentual: festa.descontoPercentual
-            ? Number(festa.descontoPercentual)
-            : null,
+          descontoPercentual: percentualParaRisco(festa),
           descontoStatus: festa.descontoStatus,
           dataEvento: festa.dataEvento,
           status: festa.status,

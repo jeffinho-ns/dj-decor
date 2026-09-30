@@ -55,7 +55,9 @@ export interface Festa {
   cliente: Cliente;
   vendedor: User;
   risco?: RiscoOrcamento;
+  valorOriginal?: string | number | null;
   descontoPercentual?: string | number | null;
+  descontoValor?: string | number | null;
   descontoStatus?: StatusDesconto;
   alertaCompraEstoque?: boolean;
   itensFaltaEstoque?: string[];

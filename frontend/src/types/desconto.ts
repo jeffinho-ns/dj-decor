@@ -11,6 +11,7 @@ export interface FestaDescontoPendente {
   valor: string | number;
   valorOriginal: string | number | null;
   descontoPercentual: string | number | null;
+  descontoValor?: string | number | null;
   descontoStatus: StatusDesconto;
   tema: string;
   endereco: string;
@@ -21,5 +22,5 @@ export interface FestaDescontoPendente {
 }
 
 export interface SolicitarDescontoPayload {
-  percentual: number;
+  texto: string;
 }
