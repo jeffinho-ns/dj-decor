@@ -258,7 +258,6 @@ function resolverFaseOperacao(params: {
   checkinAt: Date | null;
   montagemLocalConcluida: boolean;
   retornoConcluido: boolean;
-  statusOs: StatusOS | null;
   statusFesta: StatusFesta;
   prontoRetiradaEm: Date | null;
   retiradoClienteEm: Date | null;
@@ -267,6 +266,9 @@ function resolverFaseOperacao(params: {
   if (params.retornoConcluido) return null;
 
   const eventoPassou = params.dataEvento.getTime() < startOfToday().getTime();
+  // O dia da festa já chegou (hoje inclusive). Desmontagem no local
+  // acontece no mesmo dia — não espera o calendário virar.
+  const diaEventoChegou = params.dataEvento.getTime() <= endOfToday().getTime();
 
   if (params.pegueEMonte) {
     if (params.retiradoClienteEm) {
@@ -284,8 +286,9 @@ function resolverFaseOperacao(params: {
   if (!params.romaneioConcluido) return "separar";
   if (!params.checkinAt) return "a_caminho";
   if (!params.montagemLocalConcluida) return "no_local";
-  if (params.statusOs !== StatusOS.FINALIZADA) return "montada";
-  if (eventoPassou || params.statusFesta === StatusFesta.CONCLUIDO) {
+  // Montagem no local já registrada: entra na fila de desmontagem no dia
+  // da festa, sem exigir foto, saída ou status FINALIZADA.
+  if (diaEventoChegou || params.statusFesta === StatusFesta.CONCLUIDO) {
     return "desmontar";
   }
   return "montada";
@@ -622,7 +625,6 @@ export class OsService {
         checkinAt: os?.checkinAt ?? null,
         montagemLocalConcluida: os?.montagemLocalConcluida ?? false,
         retornoConcluido: os?.retornoConcluido ?? false,
-        statusOs: os?.status ?? null,
         statusFesta: festa.status,
         prontoRetiradaEm: festa.prontoRetiradaEm,
         retiradoClienteEm: festa.retiradoClienteEm,

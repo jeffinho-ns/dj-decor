@@ -872,15 +872,17 @@ export function MontagemOsDetalhe({
               <PackageCheck className="size-5 text-balloon-lilac" />
             )}
             <h3 className="font-display text-lg text-foreground">
-              Checklist de retorno
+              {pegueEMonte ? "Checklist de retorno" : "Desmontagem"}
             </h3>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Confira cada item que voltou ao depósito após a festa.
+            {pegueEMonte
+              ? "Confira cada item que voltou ao depósito após a festa."
+              : "Montagem no local já registrada. Marque cada peça conforme for desmontada e voltar ao depósito."}
           </p>
           {retornoOk ? (
             <p className="mt-3 text-xs text-balloon-mint">
-              Retorno concluído
+              {pegueEMonte ? "Retorno concluído" : "Desmontagem concluída"}
               {os.retornoConcluidoEm
                 ? ` às ${safeTime(os.retornoConcluidoEm)}`
                 : ""}
@@ -916,8 +918,10 @@ export function MontagemOsDetalhe({
               >
                 {pending ? (
                   <Loader2 className="size-4 animate-spin" />
-                ) : (
+                ) : pegueEMonte ? (
                   "Tudo retornou ao depósito"
+                ) : (
+                  "Desmontagem feita"
                 )}
               </Button>
             </>

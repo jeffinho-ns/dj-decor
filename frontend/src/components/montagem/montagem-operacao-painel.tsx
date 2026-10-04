@@ -58,6 +58,8 @@ const FILTROS: { id: "todas" | "alertas" | FaseOperacao; label: string }[] = [
   { id: "pronto_retirada", label: "Retirada" },
   { id: "na_rua", label: "Na rua" },
   { id: "a_caminho", label: "A caminho" },
+  { id: "no_local", label: "No local" },
+  { id: "montada", label: "Montada" },
   { id: "desmontar", label: "Desmontar" },
 ];
 
