@@ -12,6 +12,7 @@ import {
   parseLinhaInventario,
 } from "../catalog/inventario";
 import { dispatchWhatsAppSafe } from "../integrations/whatsapp";
+import { ymdBrasil } from "../lib/periodo-equipe";
 import { prisma } from "../prisma/client";
 import { comissoesService } from "./comissoes.service";
 import { estoqueService } from "./estoque.service";
@@ -179,16 +180,14 @@ function ordenarRotaDia(
   }));
 }
 
+/** 00:00 do dia civil em America/Sao_Paulo (UTC−3, sem horário de verão). */
 function startOfToday(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+  const [year, month, day] = ymdBrasil(new Date()).split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 3, 0, 0, 0));
 }
 
 function endOfToday(): Date {
-  const d = new Date();
-  d.setHours(23, 59, 59, 999);
-  return d;
+  return new Date(startOfToday().getTime() + 24 * 60 * 60 * 1000 - 1);
 }
 
 /** Horizonte padrão das montagens do montador (hoje + N dias). */

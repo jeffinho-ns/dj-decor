@@ -85,12 +85,15 @@ interface MontagemOperacaoPainelProps {
   token: string;
   inicial?: OperacaoPainelItem[];
   podeTrocarEquipe?: boolean;
+  /** Página de desmontagem: só a fila de quem já montou no local. */
+  somenteDesmontagem?: boolean;
 }
 
 export function MontagemOperacaoPainel({
   token,
   inicial = [],
   podeTrocarEquipe = false,
+  somenteDesmontagem = false,
 }: MontagemOperacaoPainelProps) {
   const [itens, setItens] = useState<OperacaoPainelItem[]>(inicial);
   const [filtro, setFiltro] = useState<"todas" | "alertas" | FaseOperacao>(
@@ -147,27 +150,38 @@ export function MontagemOperacaoPainel({
     };
   }, [podeTrocarEquipe, token]);
 
+  const base = useMemo(
+    () =>
+      somenteDesmontagem
+        ? itens.filter((item) => item.fase === "desmontar")
+        : itens.filter((item) => item.fase !== "desmontar"),
+    [itens, somenteDesmontagem]
+  );
+
   const contagens = useMemo(() => {
     const map: Partial<Record<FaseOperacao, number>> = {};
-    for (const item of itens) {
+    for (const item of base) {
       map[item.fase] = (map[item.fase] ?? 0) + 1;
     }
     return map;
-  }, [itens]);
+  }, [base]);
 
   const alertasCount = useMemo(
-    () =>
-      itens.filter((i) => i.atrasado || i.slaSeparacaoEstourado).length,
-    [itens]
+    () => base.filter((i) => i.atrasado || i.slaSeparacaoEstourado).length,
+    [base]
   );
 
+  const filtrosVisiveis = somenteDesmontagem
+    ? []
+    : FILTROS.filter((f) => f.id !== "desmontar");
+
   const filtrados = useMemo(() => {
-    if (filtro === "todas") return itens;
+    if (somenteDesmontagem || filtro === "todas") return base;
     if (filtro === "alertas") {
-      return itens.filter((i) => i.atrasado || i.slaSeparacaoEstourado);
+      return base.filter((i) => i.atrasado || i.slaSeparacaoEstourado);
     }
-    return itens.filter((i) => i.fase === filtro);
-  }, [itens, filtro]);
+    return base.filter((i) => i.fase === filtro);
+  }, [base, filtro, somenteDesmontagem]);
 
   const naRua = contagens.na_rua ?? 0;
   const separar = contagens.separar ?? 0;
@@ -180,7 +194,7 @@ export function MontagemOperacaoPainel({
           <div className="flex items-center gap-2">
             <Radio className="size-4 text-balloon-pink" />
             <h3 className="font-display text-lg text-foreground">
-              Operação ao vivo
+              {somenteDesmontagem ? "Fila de desmontagem" : "Operação ao vivo"}
             </h3>
             <span className="relative flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-balloon-mint opacity-60" />
@@ -188,35 +202,46 @@ export function MontagemOperacaoPainel({
             </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Separação, Pegue e Monte, retorno e desmontagem — a cada 5s
+            {somenteDesmontagem
+              ? "Festas com montagem no local já registrada — a cada 5s"
+              : "Separação, Pegue e Monte e montagem do dia — a cada 5s"}
             {atualizadoEm
               ? ` · ${format(atualizadoEm, "HH:mm:ss")}`
               : null}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-[11px] font-medium">
-          {alertasCount > 0 ? (
-            <span className="rounded-lg bg-destructive/12 px-2 py-1 text-destructive">
-              {alertasCount} alerta{alertasCount > 1 ? "s" : ""}
+          {somenteDesmontagem ? (
+            <span className="rounded-lg bg-muted px-2 py-1 text-foreground">
+              {base.length} para desmontar
             </span>
-          ) : null}
-          <span className="rounded-lg bg-balloon-pink/12 px-2 py-1 text-balloon-pink">
-            {separar} separar
-          </span>
-          <span className="rounded-lg bg-balloon-sky/12 px-2 py-1 text-balloon-sky">
-            {pronto} retirada
-          </span>
-          <span className="rounded-lg bg-balloon-sun/12 px-2 py-1 text-balloon-sun">
-            {naRua} na rua
-          </span>
+          ) : (
+            <>
+              {alertasCount > 0 ? (
+                <span className="rounded-lg bg-destructive/12 px-2 py-1 text-destructive">
+                  {alertasCount} alerta{alertasCount > 1 ? "s" : ""}
+                </span>
+              ) : null}
+              <span className="rounded-lg bg-balloon-pink/12 px-2 py-1 text-balloon-pink">
+                {separar} separar
+              </span>
+              <span className="rounded-lg bg-balloon-sky/12 px-2 py-1 text-balloon-sky">
+                {pronto} retirada
+              </span>
+              <span className="rounded-lg bg-balloon-sun/12 px-2 py-1 text-balloon-sun">
+                {naRua} na rua
+              </span>
+            </>
+          )}
         </div>
       </div>
 
+      {filtrosVisiveis.length > 0 ? (
       <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-        {FILTROS.map((f) => {
+        {filtrosVisiveis.map((f) => {
           const count =
             f.id === "todas"
-              ? itens.length
+              ? base.length
               : f.id === "alertas"
                 ? alertasCount
                 : (contagens[f.id] ?? 0);
@@ -239,6 +264,7 @@ export function MontagemOperacaoPainel({
           );
         })}
       </div>
+      ) : null}
 
       {erro ? (
         <p className="mt-3 text-xs text-destructive">{erro}</p>
@@ -251,7 +277,9 @@ export function MontagemOperacaoPainel({
         </div>
       ) : filtrados.length === 0 ? (
         <p className="mt-4 py-4 text-center text-sm text-muted-foreground">
-          Nada nesta fila no momento.
+          {somenteDesmontagem
+            ? "Nenhuma desmontagem pendente agora."
+            : "Nada nesta fila no momento."}
         </p>
       ) : (
         <ul className="mt-3 max-h-96 space-y-2 overflow-y-auto">

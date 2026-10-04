@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { OfflineQueueSync } from "@/components/layout/offline-queue-sync";
 import { MontagemHoje } from "@/components/montagem/montagem-hoje";
@@ -85,6 +87,12 @@ export default async function MontagemPage() {
         </div>
       ) : (
         <div className="mx-auto max-w-lg space-y-5">
+          <Link
+            href="/desmontagem"
+            className="inline-flex text-sm font-medium text-balloon-lilac hover:underline"
+          >
+            Abrir fila de desmontagem
+          </Link>
           <MontagemOperacaoPainel
             token={token}
             inicial={operacao}

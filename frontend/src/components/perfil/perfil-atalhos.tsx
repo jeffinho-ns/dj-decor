@@ -9,6 +9,7 @@ import {
   Users,
   Wallet,
   Hammer,
+  PackageOpen,
   ShoppingBag,
   UserPlus,
   PhoneForwarded,
@@ -43,6 +44,13 @@ function atalhosParaRole(role: Role): Atalho[] {
         description: "Suas festas atribuídas",
         icon: Hammer,
         tone: "text-balloon-pink",
+      },
+      {
+        href: "/desmontagem",
+        label: "Desmontagem",
+        description: "Festas já montadas",
+        icon: PackageOpen,
+        tone: "text-balloon-lilac",
       },
       {
         href: "/comissoes",
@@ -129,6 +137,13 @@ function atalhosParaRole(role: Role): Atalho[] {
       description: "Extrato e meta",
       icon: Wallet,
       tone: "text-balloon-mint",
+    },
+    {
+      href: "/desmontagem",
+      label: "Desmontagem",
+      description: "Festas já montadas",
+      icon: PackageOpen,
+      tone: "text-balloon-lilac",
     },
     {
       href: "/equipe",

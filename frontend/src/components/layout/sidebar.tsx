@@ -9,6 +9,7 @@ import {
   Hammer,
   Headphones,
   Package,
+  PackageOpen,
   PartyPopper,
   PlusCircle,
   Settings,
@@ -42,6 +43,7 @@ const DEFAULT_NAV = [
 const GESTAO_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/montagem", label: "Montagem", icon: Hammer },
+  { href: "/desmontagem", label: "Desmontagem", icon: PackageOpen },
   { href: "/atendimento", label: "Atendimento", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
@@ -61,6 +63,7 @@ const GESTAO_NAV = [
 const ADMIN_NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/montagem", label: "Montagem", icon: Hammer },
+  { href: "/desmontagem", label: "Desmontagem", icon: PackageOpen },
   { href: "/atendimento", label: "Atendimento", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", icon: PlusCircle },
@@ -80,6 +83,7 @@ const ADMIN_NAV = [
 
 const MONTADOR_NAV = [
   { href: "/montagem", label: "Montagem", icon: Hammer },
+  { href: "/desmontagem", label: "Desmontagem", icon: PackageOpen },
   { href: "/comissoes", label: "Comissões", icon: Coins },
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/perfil", label: "Perfil", icon: UserRound },
@@ -111,6 +115,9 @@ export function isNavActive(pathname: string, href: string): boolean {
   }
   if (href === "/montagem") {
     return pathname === "/montagem" || pathname.startsWith("/montagem/");
+  }
+  if (href === "/desmontagem") {
+    return pathname === "/desmontagem" || pathname.startsWith("/desmontagem/");
   }
   if (href === "/vendas") {
     return (

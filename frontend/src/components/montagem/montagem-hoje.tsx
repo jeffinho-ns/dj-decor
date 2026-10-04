@@ -249,6 +249,10 @@ function MontagemCard({
             <p className="mt-0.5 text-[11px] font-medium text-balloon-lilac">
               Pegue e Monte
             </p>
+          ) : item.montagemLocalConcluida ? (
+            <p className="mt-0.5 text-[11px] font-medium text-balloon-lilac">
+              Montagem registrada
+            </p>
           ) : null}
         </div>
         <span

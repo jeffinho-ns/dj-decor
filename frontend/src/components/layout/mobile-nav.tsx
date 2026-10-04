@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   Loader2,
   Package,
+  PackageOpen,
   PartyPopper,
   PlusCircle,
   Settings,
@@ -54,6 +55,7 @@ const DEFAULT_ITEMS: NavItem[] = [
 const GESTAO_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/montagem", label: "Montagem", icon: Hammer },
+  { href: "/desmontagem", label: "Desmontagem", shortLabel: "Desm.", icon: PackageOpen },
   { href: "/atendimento", label: "Atendimento", shortLabel: "Inbox", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", shortLabel: "Nova", icon: PlusCircle },
@@ -73,6 +75,7 @@ const GESTAO_ITEMS: NavItem[] = [
 const ADMIN_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/montagem", label: "Montagem", icon: Hammer },
+  { href: "/desmontagem", label: "Desmontagem", shortLabel: "Desm.", icon: PackageOpen },
   { href: "/atendimento", label: "Atendimento", shortLabel: "Inbox", icon: Headphones },
   { href: "/vendas", label: "Vendas", icon: PartyPopper },
   { href: "/vendas/nova", label: "Nova Venda", shortLabel: "Nova", icon: PlusCircle },
@@ -92,6 +95,7 @@ const ADMIN_ITEMS: NavItem[] = [
 
 const MONTADOR_ITEMS: NavItem[] = [
   { href: "/montagem", label: "Montagem", icon: Hammer },
+  { href: "/desmontagem", label: "Desmontagem", shortLabel: "Desm.", icon: PackageOpen },
   { href: "/comissoes", label: "Comissões", shortLabel: "$$", icon: Coins },
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/perfil", label: "Perfil", icon: UserRound },
@@ -119,16 +123,16 @@ const PRIMARY_HREFS_GESTAO = new Set([
   "/atendimento",
   "/vendas",
   "/montagem",
+  "/desmontagem",
   "/financeiro",
-  "/equipe",
 ]);
 
 const PRIMARY_HREFS_ADMIN = new Set([
   "/atendimento",
   "/vendas",
   "/montagem",
+  "/desmontagem",
   "/financeiro",
-  "/equipe",
 ]);
 
 const PRIMARY_HREFS_BOLISTA = new Set([
