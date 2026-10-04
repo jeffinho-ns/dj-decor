@@ -34,6 +34,41 @@ export class ComissoesController {
     }
   }
 
+  async meuDia(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: "Não autenticado" });
+        return;
+      }
+      const result = await comissoesService.listarDia(userId);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async diaEquipe(_req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const result = await comissoesService.listarDia();
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async pagarDia(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+      const result = await comissoesService.pagarItensDia(
+        ids.filter((id: unknown) => typeof id === "string")
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async meusTotais(
     req: AuthenticatedRequest,
     res: Response,

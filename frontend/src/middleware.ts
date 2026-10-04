@@ -22,7 +22,7 @@ const PROTECTED_PREFIXES = [
   "/atendimento",
   "/teste-app",
 ];
-const VENDEDOR_ONLY_PREFIXES = ["/vendas", "/clientes", "/comissoes", "/atendimento"];
+const VENDEDOR_ONLY_PREFIXES = ["/vendas", "/clientes", "/atendimento"];
 const MONTADOR_BLOCKED_PREFIXES = ["/follow-ups", "/atendimento"];
 const GESTAO_ONLY_PREFIXES = ["/estoque", "/equipe", "/aprovacoes"];
 const GESTAO_FINANCEIRO_PREFIXES = ["/financeiro"];

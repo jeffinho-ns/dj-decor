@@ -80,6 +80,7 @@ const ADMIN_NAV = [
 
 const MONTADOR_NAV = [
   { href: "/montagem", label: "Montagem", icon: Hammer },
+  { href: "/comissoes", label: "Comissões", icon: Coins },
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/perfil", label: "Perfil", icon: UserRound },
   { href: "/configuracoes", label: "Configurações", icon: Settings },

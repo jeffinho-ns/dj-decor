@@ -9,6 +9,7 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { ComissoesDoDia } from "@/components/comissoes/comissoes-do-dia";
 import { Button } from "@/components/ui/button";
 import { getMeusTotais } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
@@ -82,6 +83,8 @@ export function CarteiraComissoes({
   return (
     <div className="space-y-6">
       {showRankingSlot}
+
+      <ComissoesDoDia token={token} />
 
       <section className="space-y-3 rounded-2xl neo-sm p-4">
         <div>

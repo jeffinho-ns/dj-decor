@@ -78,6 +78,7 @@ import type {
   ColaboradorFinanceiroDetalhe,
   APagarFila,
   APagarItem,
+  DiaComissoes,
   CalendarioDiariasMes,
   CalendarioDiariaDia,
   CalendarioDiariaPessoa,
@@ -937,6 +938,69 @@ export async function setCatalogoAddonAtivo(
       body: JSON.stringify({ ativo }),
     }
   );
+  return handleResponse(response);
+}
+
+function normalizeDiaComissoes(raw: Record<string, unknown>): DiaComissoes {
+  const itensRaw = Array.isArray(raw.itens) ? raw.itens : [];
+  return {
+    ymd: typeof raw.ymd === "string" ? raw.ymd : "",
+    label: typeof raw.label === "string" ? raw.label : "",
+    total: toNumber(raw.total),
+    totalPendente: toNumber(raw.totalPendente),
+    totalPago: toNumber(raw.totalPago),
+    itens: itensRaw.map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        id: typeof row.id === "string" ? row.id : String(row.id ?? ""),
+        beneficiarioId:
+          typeof row.beneficiarioId === "string" ? row.beneficiarioId : "",
+        beneficiarioNome:
+          typeof row.beneficiarioNome === "string" ? row.beneficiarioNome : "",
+        tipo: typeof row.tipo === "string" ? row.tipo : "",
+        tipoLabel: typeof row.tipoLabel === "string" ? row.tipoLabel : "",
+        valor: toNumber(row.valor),
+        status: row.status === "PAGA" ? "PAGA" : "PENDENTE",
+        prevista: Boolean(row.prevista),
+        festaId: typeof row.festaId === "string" ? row.festaId : "",
+        festaTema: typeof row.festaTema === "string" ? row.festaTema : "",
+        clienteNome: typeof row.clienteNome === "string" ? row.clienteNome : "",
+        pagoEm: typeof row.pagoEm === "string" ? row.pagoEm : null,
+      };
+    }),
+  };
+}
+
+/** Comissões e diária de desmontagem de hoje do usuário logado. */
+export async function getMeuDia(token: string): Promise<DiaComissoes> {
+  const response = await fetch(`${getBaseUrl()}/api/comissoes/meu-dia`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  const raw = await handleResponse<Record<string, unknown>>(response);
+  return normalizeDiaComissoes(raw);
+}
+
+/** Comissões e diárias de desmontagem de hoje, de toda a equipe. */
+export async function getDiaEquipe(token: string): Promise<DiaComissoes> {
+  const response = await fetch(`${getBaseUrl()}/api/comissoes/dia`, {
+    headers: authHeaders(token),
+    cache: "no-store",
+  });
+  const raw = await handleResponse<Record<string, unknown>>(response);
+  return normalizeDiaComissoes(raw);
+}
+
+/** Dona, super admin e gerente marcam o dia como pago. */
+export async function pagarDiaComissoes(
+  ids: string[],
+  token: string
+): Promise<{ count: number }> {
+  const response = await fetch(`${getBaseUrl()}/api/comissoes/dia/pagar`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ ids }),
+  });
   return handleResponse(response);
 }
 

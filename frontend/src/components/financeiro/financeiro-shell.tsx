@@ -7,6 +7,7 @@ import { AlertaForaParacambi } from "@/components/financeiro/alerta-fora-paracam
 import { CalendarioDiariasMesView } from "@/components/financeiro/calendario-diarias-mes";
 import { ColaboradoresFinanceiroLista } from "@/components/financeiro/colaboradores-financeiro-lista";
 import { FestasFinanceiroMes } from "@/components/financeiro/festas-financeiro-mes";
+import { ComissoesDoDia } from "@/components/comissoes/comissoes-do-dia";
 import { FilaAPagar } from "@/components/financeiro/fila-a-pagar";
 import { FinanceiroPainel } from "@/components/financeiro/financeiro-painel";
 import { ReconciliarComissoes } from "@/components/financeiro/reconciliar-comissoes";
@@ -138,7 +139,12 @@ export function FinanceiroShell({
       </div>
 
       <div role="tabpanel">
-        {aba === "pagar" ? <FilaAPagar token={token} mes={mes} /> : null}
+        {aba === "pagar" ? (
+          <div className="space-y-4">
+            <ComissoesDoDia token={token} equipe podeMarcar />
+            <FilaAPagar token={token} mes={mes} />
+          </div>
+        ) : null}
 
         {aba === "colaboradores" ? (
           <ColaboradoresFinanceiroLista token={token} />

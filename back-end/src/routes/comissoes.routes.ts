@@ -15,14 +15,32 @@ comissoesRoutes.get(
 
 comissoesRoutes.get(
   "/minhas",
-  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN, Role.MONTADOR),
   (req, res, next) => comissoesController.minhas(req, res, next)
 );
 
 comissoesRoutes.get(
   "/meus-totais",
-  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN),
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN, Role.MONTADOR),
   (req, res, next) => comissoesController.meusTotais(req, res, next)
+);
+
+comissoesRoutes.get(
+  "/meu-dia",
+  requireRoles(Role.VENDEDOR, Role.GERENTE, Role.ADMIN, Role.MONTADOR),
+  (req, res, next) => comissoesController.meuDia(req, res, next)
+);
+
+comissoesRoutes.get(
+  "/dia",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => comissoesController.diaEquipe(req, res, next)
+);
+
+comissoesRoutes.post(
+  "/dia/pagar",
+  requireRoles(Role.ADMIN, Role.GERENTE),
+  (req, res, next) => comissoesController.pagarDia(req, res, next)
 );
 
 comissoesRoutes.get(

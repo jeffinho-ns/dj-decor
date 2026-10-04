@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-
 import { CarteiraComissoes } from "@/components/comissoes/carteira-comissoes";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { ComissaoRankingSection } from "@/components/vendas/comissao-ranking-widget";
@@ -11,10 +9,6 @@ export const dynamic = "force-dynamic";
 
 export default async function ComissoesPage() {
   const { token, user } = await requireSession();
-
-  if (user.role === "MONTADOR") {
-    redirect("/montagem");
-  }
 
   const podeVerRanking = user.role === "GERENTE" || user.role === "ADMIN";
 
@@ -37,9 +31,7 @@ export default async function ComissoesPage() {
       user={user}
       title="Comissões"
       description={
-        podeVerRanking
-          ? "Seu extrato por período e ranking da equipe."
-          : "Só você vê quanto tem a receber — por semana, 15 dias ou mês."
+        "O que você ganha hoje, inclusive a diária de desmontagem, e o extrato do período."
       }
     >
       {error ? (

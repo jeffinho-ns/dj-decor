@@ -92,6 +92,7 @@ const ADMIN_ITEMS: NavItem[] = [
 
 const MONTADOR_ITEMS: NavItem[] = [
   { href: "/montagem", label: "Montagem", icon: Hammer },
+  { href: "/comissoes", label: "Comissões", shortLabel: "$$", icon: Coins },
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/perfil", label: "Perfil", icon: UserRound },
   { href: "/configuracoes", label: "Configurações", shortLabel: "Ajustes", icon: Settings },

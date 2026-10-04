@@ -278,7 +278,8 @@ export class ComissoesService {
 
   /**
    * Diárias ao escalar equipe:
-   * - Desmontagem / montagem para quem for escalado (exceto role VENDEDOR)
+   * - Montagem para quem for escalado, exceto role VENDEDOR
+   * - Desmontagem para quem for escalado, inclusive quem também vende
    * - Suellem em Paracambi: diária montagem R$70; fora: sem diária (só %)
    */
   async sincronizarDiariasEquipe(
@@ -363,7 +364,7 @@ export class ComissoesService {
         where: { id: params.desmontadorId },
         select: { id: true, role: true },
       });
-      if (desmontador && desmontador.role !== Role.VENDEDOR) {
+      if (desmontador) {
         const diaria = await this.emitirDiariaSeNova(tx, {
           festaId: params.festaId,
           beneficiarioId: desmontador.id,
@@ -732,11 +733,17 @@ export class ComissoesService {
     const { inicio, fim, label } = this.resolvePeriodoWindow(periodo, offset);
     const agora = new Date();
 
+    const inicioYmd = ymdBrasil(inicio);
+    const fimYmd = ymdBrasil(fim);
     const list = await prisma.comissao.findMany({
       where: {
         beneficiarioId,
         status: { not: StatusComissao.CANCELADA },
-        elegivelEm: { gte: inicio, lte: fim },
+        OR: [
+          { elegivelEm: { gte: inicio, lte: fim } },
+          { diaReferencia: { gte: inicio, lte: fim } },
+          { festa: { dataEvento: { gte: inicio, lte: fim } } },
+        ],
       },
       include: {
         festa: {
@@ -751,7 +758,13 @@ export class ComissoesService {
       orderBy: { elegivelEm: "desc" },
     });
 
-    const filtrados = list;
+    const filtrados = list.filter((item) => {
+      const ymd =
+        item.diaReferencia != null
+          ? ymdBrasil(item.diaReferencia)
+          : ymdBrasil(item.festa.dataEvento);
+      return ymd >= inicioYmd && ymd <= fimYmd;
+    });
 
     const byTipo: Record<
       string,
@@ -811,6 +824,289 @@ export class ComissoesService {
       })),
       lancamentos,
     };
+  }
+
+  /**
+   * Lançamentos do dia civil (America/Sao_Paulo): comissões da festa
+   * e uma diária de desmontagem por pessoa — mesmo sem registro ainda.
+   */
+  async listarDia(beneficiarioId?: string) {
+    const ymd = ymdBrasil(new Date());
+    const [year, month, day] = ymd.split("-").map(Number);
+    const inicio = new Date(Date.UTC(year, month - 1, day - 1, 12, 0, 0));
+    const fim = new Date(Date.UTC(year, month - 1, day + 1, 12, 0, 0));
+    const regras = await configuracoesService.getRegrasFinanceiras();
+
+    const festas = await prisma.festa.findMany({
+      where: {
+        status: { in: STATUS_COM_REPASSE },
+        dataEvento: { gte: inicio, lte: fim },
+      },
+      include: {
+        cliente: { select: { nome: true } },
+        desmontadorEquipe: { select: { id: true, nome: true } },
+        ordemServico: {
+          select: {
+            desmontadorCarroProprio: true,
+            desmontador: { select: { id: true, nome: true } },
+          },
+        },
+        comissoes: {
+          where: { status: { not: StatusComissao.CANCELADA } },
+          include: { beneficiario: { select: { id: true, nome: true } } },
+        },
+      },
+    });
+
+    const doDia = festas.filter((festa) => ymdBrasil(festa.dataEvento) === ymd);
+
+    type DiaItem = {
+      id: string;
+      beneficiarioId: string;
+      beneficiarioNome: string;
+      tipo: string;
+      tipoLabel: string;
+      valor: number;
+      status: "PENDENTE" | "PAGA";
+      prevista: boolean;
+      festaId: string;
+      festaTema: string;
+      clienteNome: string;
+      pagoEm: string | null;
+      comissaoIds: string[];
+    };
+
+    const itens: DiaItem[] = [];
+
+    for (const festa of doDia) {
+      for (const comissao of festa.comissoes) {
+        if (beneficiarioId && comissao.beneficiarioId !== beneficiarioId) {
+          continue;
+        }
+        if (
+          comissao.tipo === TipoRepasse.DIARIA_MONTAGEM ||
+          comissao.tipo === TipoRepasse.DIARIA_DESMONTAGEM
+        ) {
+          continue;
+        }
+        itens.push({
+          id: comissao.id,
+          beneficiarioId: comissao.beneficiarioId,
+          beneficiarioNome: comissao.beneficiario.nome,
+          tipo: comissao.tipo,
+          tipoLabel: tipoLabel[comissao.tipo],
+          valor: money(Number(comissao.valor)),
+          status: comissao.status === StatusComissao.PAGA ? "PAGA" : "PENDENTE",
+          prevista: false,
+          festaId: festa.id,
+          festaTema: festa.tema,
+          clienteNome: festa.cliente.nome,
+          pagoEm: comissao.pagoEm?.toISOString() ?? null,
+          comissaoIds: [comissao.id],
+        });
+      }
+    }
+
+    type DiariaAcc = {
+      pessoaId: string;
+      nome: string;
+      carroProprio: boolean;
+      festas: Array<{ id: string; tema: string; clienteNome: string }>;
+      paga: boolean;
+      pagoEm: string | null;
+      comissaoIds: string[];
+      valorPersistido: number | null;
+    };
+    const diarias = new Map<string, DiariaAcc>();
+
+    for (const festa of doDia) {
+      const desmontador =
+        festa.ordemServico?.desmontador ?? festa.desmontadorEquipe;
+      if (!desmontador) continue;
+      if (beneficiarioId && desmontador.id !== beneficiarioId) continue;
+
+      const carro =
+        festa.ordemServico?.desmontadorCarroProprio ??
+        festa.desmontadorCarroProprio;
+      const acc = diarias.get(desmontador.id) ?? {
+        pessoaId: desmontador.id,
+        nome: desmontador.nome,
+        carroProprio: carro !== false,
+        festas: [],
+        paga: false,
+        pagoEm: null,
+        comissaoIds: [],
+        valorPersistido: null,
+      };
+      if (carro === false) acc.carroProprio = false;
+      if (!acc.festas.some((f) => f.id === festa.id)) {
+        acc.festas.push({
+          id: festa.id,
+          tema: festa.tema,
+          clienteNome: festa.cliente.nome,
+        });
+      }
+      for (const comissao of festa.comissoes) {
+        if (
+          comissao.tipo !== TipoRepasse.DIARIA_DESMONTAGEM ||
+          comissao.beneficiarioId !== desmontador.id
+        ) {
+          continue;
+        }
+        acc.comissaoIds.push(comissao.id);
+        acc.valorPersistido = Number(comissao.valor);
+        if (comissao.status === StatusComissao.PAGA) {
+          acc.paga = true;
+          acc.pagoEm = comissao.pagoEm?.toISOString() ?? acc.pagoEm;
+        }
+      }
+      diarias.set(desmontador.id, acc);
+    }
+
+    for (const acc of diarias.values()) {
+      const valor =
+        acc.valorPersistido ??
+        (acc.carroProprio
+          ? regras.diariaDesmontador
+          : regras.diariaDesmontadorCarroEmpresa);
+      const primeira = acc.festas[0];
+      itens.push({
+        id: acc.comissaoIds[0] ?? `diaria:${acc.pessoaId}:${ymd}`,
+        beneficiarioId: acc.pessoaId,
+        beneficiarioNome: acc.nome,
+        tipo: TipoRepasse.DIARIA_DESMONTAGEM,
+        tipoLabel: tipoLabel[TipoRepasse.DIARIA_DESMONTAGEM],
+        valor: money(valor),
+        status: acc.paga ? "PAGA" : "PENDENTE",
+        prevista: acc.comissaoIds.length === 0,
+        festaId: primeira.id,
+        festaTema: acc.festas.map((f) => f.tema).join(", "),
+        clienteNome: acc.festas.map((f) => f.clienteNome).join(", "),
+        pagoEm: acc.pagoEm,
+        comissaoIds: acc.comissaoIds,
+      });
+    }
+
+    const totalPendente = itens
+      .filter((item) => item.status === "PENDENTE")
+      .reduce((acc, item) => acc + item.valor, 0);
+    const totalPago = itens
+      .filter((item) => item.status === "PAGA")
+      .reduce((acc, item) => acc + item.valor, 0);
+
+    const label = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).toLocaleDateString(
+      "pt-BR",
+      {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        timeZone: "UTC",
+      }
+    );
+
+    return {
+      ymd,
+      label,
+      total: money(totalPendente + totalPago),
+      totalPendente: money(totalPendente),
+      totalPago: money(totalPago),
+      itens,
+    };
+  }
+
+  /** Marca comissões e a diária de desmontagem do dia como pagas. */
+  async pagarItensDia(ids: string[]) {
+    const unicos = [...new Set(ids.filter((id) => typeof id === "string" && id))];
+    let count = 0;
+
+    for (const id of unicos) {
+      if (id.startsWith("diaria:")) {
+        const [, beneficiarioId, ymd] = id.split(":");
+        if (!beneficiarioId || !ymd) continue;
+        const dia = await this.listarDia(beneficiarioId);
+        const item = dia.itens.find(
+          (row) =>
+            row.tipo === TipoRepasse.DIARIA_DESMONTAGEM &&
+            row.beneficiarioId === beneficiarioId &&
+            row.status === "PENDENTE"
+        );
+        if (!item) continue;
+        await this.quitarDiariaDesmontagem(item, ymd);
+        count += 1;
+        continue;
+      }
+
+      const row = await prisma.comissao.findUnique({
+        where: { id },
+        include: { festa: { select: { dataEvento: true } } },
+      });
+      if (!row || row.status !== StatusComissao.PENDENTE) continue;
+
+      if (row.tipo === TipoRepasse.DIARIA_DESMONTAGEM) {
+        const ymd = row.diaReferencia
+          ? ymdBrasil(row.diaReferencia)
+          : ymdBrasil(row.festa.dataEvento);
+        const dia = await this.listarDia(row.beneficiarioId);
+        const item = dia.itens.find(
+          (entry) => entry.tipo === TipoRepasse.DIARIA_DESMONTAGEM
+        );
+        if (!item || item.status === "PAGA") continue;
+        await this.quitarDiariaDesmontagem(item, ymd);
+        count += 1;
+        continue;
+      }
+
+      const updated = await this.marcarPagas([id]);
+      count += updated.count;
+    }
+
+    return { count };
+  }
+
+  private async quitarDiariaDesmontagem(
+    item: {
+      beneficiarioId: string;
+      festaId: string;
+      valor: number;
+      comissaoIds: string[];
+    },
+    ymd: string
+  ) {
+    const [year, month, day] = ymd.split("-").map(Number);
+    const diaReferencia = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    const agora = new Date();
+
+    if (item.comissaoIds.length === 0) {
+      await this.pagarDiariaDoDia({
+        festaId: item.festaId,
+        beneficiarioId: item.beneficiarioId,
+        tipo: TipoRepasse.DIARIA_DESMONTAGEM,
+        valor: item.valor,
+        diaReferencia,
+      });
+      return;
+    }
+
+    const [principal, ...extras] = item.comissaoIds;
+    await prisma.comissao.updateMany({
+      where: { id: principal, status: StatusComissao.PENDENTE },
+      data: {
+        status: StatusComissao.PAGA,
+        pagoEm: agora,
+        valor: item.valor,
+        diaReferencia,
+      },
+    });
+    if (extras.length > 0) {
+      await prisma.comissao.updateMany({
+        where: {
+          id: { in: extras },
+          status: StatusComissao.PENDENTE,
+          tipo: TipoRepasse.DIARIA_DESMONTAGEM,
+        },
+        data: { status: StatusComissao.CANCELADA },
+      });
+    }
   }
 
   async getRanking(rawQuery: unknown) {

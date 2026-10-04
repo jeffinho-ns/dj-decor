@@ -157,7 +157,7 @@ export function AlertaForaParacambi({ token, mes }: AlertaForaParacambiProps) {
               Marcar todos como fora
             </Button>
           </div>
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-2 max-h-72 space-y-2 overflow-y-auto overscroll-contain pr-1">
             {itens.map((item) => {
               const busy =
                 pending && (markingId === item.id || markingId === "all");

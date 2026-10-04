@@ -44,6 +44,13 @@ function atalhosParaRole(role: Role): Atalho[] {
         icon: Hammer,
         tone: "text-balloon-pink",
       },
+      {
+        href: "/comissoes",
+        label: "Comissões",
+        description: "O que você ganha hoje",
+        icon: Wallet,
+        tone: "text-balloon-mint",
+      },
       agenda,
     ];
   }

@@ -174,6 +174,31 @@ export interface MeusTotaisPorTipo {
   total: number;
 }
 
+/** Lançamento do dia (comissões + diária de desmontagem). */
+export interface DiaComissaoItem {
+  id: string;
+  beneficiarioId: string;
+  beneficiarioNome: string;
+  tipo: string;
+  tipoLabel: string;
+  valor: number;
+  status: "PENDENTE" | "PAGA";
+  prevista: boolean;
+  festaId: string;
+  festaTema: string;
+  clienteNome: string;
+  pagoEm: string | null;
+}
+
+export interface DiaComissoes {
+  ymd: string;
+  label: string;
+  total: number;
+  totalPendente: number;
+  totalPago: number;
+  itens: DiaComissaoItem[];
+}
+
 export interface MeusTotaisPeriodo {
   periodo: "semana" | "quinzena" | "mes";
   offset: number;
